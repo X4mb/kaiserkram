@@ -345,16 +345,20 @@ export class TraderShop extends appBase() {
     const owner = item.parent ?? null;
     if (owner?.id === this.trader.id) return;
 
-    if (owner) {
-      // An item dragged out of a character's inventory is an offer to sell it.
-      if (!owner.isOwner) return;
+    // The GM stocks the shop by dropping items (from anywhere, an actor included) unless they are
+    // on the Sell tab selling as a character. For anyone else, an item from their own
+    // inventory is an offer to sell it.
+    if (this.isGM && (!owner || this.tab !== 'sell')) {
+      const copy = item.toObject();
+      delete copy._id;
+      if (copy.flags) delete copy.flags[MODULE_ID];
+      await this.trader.createEmbeddedDocuments('Item', [copy]);
+      return;
+    }
+    if (owner?.isOwner) {
       this.customerId = owner.id;
       this.tab = 'sell';
       await this.sellItem(owner, item);
-    } else if (this.isGM) {
-      const copy = item.toObject();
-      delete copy._id;
-      await this.trader.createEmbeddedDocuments('Item', [copy]);
     }
   }
 

@@ -25,6 +25,7 @@ type ActorLike = {
   name: string;
   documentName?: string;
   isOwner: boolean;
+  hasPlayerOwner?: boolean;
   items: { contents: ItemLike[] };
   createEmbeddedDocuments(type: 'Item', data: Record<string, unknown>[]): Promise<unknown>;
 };
@@ -46,10 +47,17 @@ function itemFromDrop(data: DropData | undefined): ItemLike | null {
   }
 }
 
-/** Whether an item moving from `source` to `target` should leave `source` (one side is the party). */
+/**
+ * Whether an item moving from `source` to `target` should leave `source`: one side is the party,
+ * the other a player's character or another party. Copies to NPCs (a trader's stock, say) stay copies.
+ */
 function involvesParty(source: ActorLike | null | undefined, target: ActorLike | null | undefined): boolean {
   if (!source || !target || source.id === target.id) return false;
-  if (!isPartyActor(source) && !isPartyActor(target)) return false;
+  const sourceParty = isPartyActor(source);
+  const targetParty = isPartyActor(target);
+  if (!sourceParty && !targetParty) return false;
+  const other = sourceParty ? target : source;
+  if (!isPartyActor(other) && !other.hasPlayerOwner) return false;
   return source.isOwner && target.isOwner;
 }
 

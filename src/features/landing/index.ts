@@ -106,7 +106,9 @@ function addSceneContextOptions(_application: unknown, options: Record<string, u
  */
 async function isFreshWorldBoot(): Promise<boolean> {
   try {
-    const response = await fetch(`${window.location.origin}/api/status`);
+    // getRoute honours a configured route prefix (e.g. https://host/foundry/api/status).
+    const getRoute = (foundry.utils as unknown as { getRoute?(path: string): string }).getRoute;
+    const response = await fetch(getRoute ? getRoute('api/status') : `${window.location.origin}/api/status`);
     if (!response.ok) throw new Error(`status endpoint returned ${response.status}`);
     const data = (await response.json()) as { uptime?: unknown };
     if (typeof data.uptime !== 'number') throw new Error('status endpoint had no uptime field');
