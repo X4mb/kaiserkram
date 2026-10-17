@@ -19,6 +19,7 @@
     "@league-of-foundry-developers/foundry-vtt-types": "^13.346.0-beta.20250812191140",
     "archiver": "^7.0.1",
     "esbuild": "^0.25.0",
+    "linkedom": "^0.18.13",
     "typescript": "^5.7.0"
   }
 }

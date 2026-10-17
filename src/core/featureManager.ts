@@ -45,6 +45,10 @@ export function featureName(id: FeatureId): string {
   return loc(...TEXT[id].name);
 }
 
+export function featureHint(id: FeatureId): string {
+  return loc(...TEXT[id].hint);
+}
+
 function renderFeature(feature: Feature, enabled: EnabledMap): string {
   const { id } = feature;
   const legacy = moduleById(feature.legacyModuleId);
@@ -61,7 +65,7 @@ function renderFeature(feature: Feature, enabled: EnabledMap): string {
       <div class="form-fields">
         <input type="checkbox" id="kaiserkram-feature-${id}" name="${id}" ${enabled[id] === true ? 'checked' : ''} />
       </div>
-      <p class="hint">${escapeHtml(loc(...TEXT[id].hint))}</p>
+      <p class="hint">${escapeHtml(featureHint(id))}</p>
       ${legacyNote}
     </div>`;
 }

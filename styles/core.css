@@ -10,3 +10,17 @@
 .kaiserkram-features .kaiserkram-legacy {
   color: var(--color-level-warning, #b8860b);
 }
+
+/* Configure Settings: one heading per Kaiserkram feature. */
+.kaiserkram-settings-section {
+  margin-top: 1rem;
+}
+
+.kaiserkram-settings-section h4.divider {
+  margin: 0 0 0.25rem;
+  font-weight: bold;
+}
+
+.kaiserkram-settings-section .hint {
+  margin: 0 0 0.5rem;
+}

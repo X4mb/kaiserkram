@@ -13,6 +13,7 @@ import { join, dirname } from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 import assert from 'assert/strict';
 import { readFileSync } from 'fs';
+import { parseHTML } from 'linkedom';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const bundle = pathToFileURL(join(root, JSON.parse(readFileSync(join(root, 'module.json'), 'utf8')).esmodules[0])).href;
@@ -335,7 +336,7 @@ async function run({ label, systemId, enabled, legacy = false }) {
   }
 
   const featureHooks = record.hooks.filter((h) => !(h.phase === 'load' && (h.name === 'init' || h.name === 'ready')));
-  return { record, featureHooks, game, CONFIG, OriginalClient, values, world };
+  return { record, featureHooks, hookFns, game, CONFIG, OriginalClient, values, world };
 }
 
 function ok(label) {
@@ -345,7 +346,7 @@ function ok(label) {
 // 1. Everything on, WFRP4e world with data from the old modules.
 {
   const all = { landing: true, party: true, earshot: true, trader: true };
-  const { record, featureHooks, game, CONFIG, OriginalClient, values, world } = await run({
+  const { record, featureHooks, hookFns, game, CONFIG, OriginalClient, values, world } = await run({
     label: 'all-on',
     systemId: 'wfrp4e',
     enabled: all,
@@ -398,6 +399,34 @@ function ok(label) {
   assert.deepEqual(world.syntheticTrader.updates, [{ 'flags.kaiserkram.trader': { haggle: { pc1: { penalty: 5 } } } }]);
   assert.deepEqual(world.deltaItems[0].flags.kaiserkram.trader, { notForSale: true });
   ok('migration copies settings, flags, sheet class, images and token deltas');
+
+  // Configure Settings: a heading per feature, with its settings grouped under it.
+  const { document, HTMLElement, Node } = parseHTML(`<section class="settings">
+    <div class="form-group"><input name="kaiserkram.partyDeployOnDrop" type="checkbox"></div>
+    <div class="form-group"><input name="kaiserkram.traderDefaultMarkup" type="number"></div>
+    <div class="form-group"><file-picker name="kaiserkram.partyDefaultTokenImage"></file-picker></div>
+    <div class="form-group"><range-picker name="kaiserkram.earshotMaxRange"></range-picker></div>
+    <div class="form-group"><input name="othermodule.party" type="checkbox"></div>
+  </section>`);
+  Object.assign(globalThis, { document, HTMLElement, Node });
+  const root = document.querySelector('section');
+  for (let pass = 0; pass < 2; pass++) for (const fn of hookFns.get('renderSettingsConfig')) fn({}, root);
+  const order = [...root.children].map((el) =>
+    el.classList.contains('kaiserkram-settings-section')
+      ? `# ${el.dataset.feature}`
+      : el.querySelector('[name]').getAttribute('name'),
+  );
+  assert.deepEqual(order, [
+    '# party',
+    'kaiserkram.partyDeployOnDrop',
+    'kaiserkram.partyDefaultTokenImage',
+    '# earshot',
+    'kaiserkram.earshotMaxRange',
+    '# trader',
+    'kaiserkram.traderDefaultMarkup',
+    'othermodule.party',
+  ]);
+  ok('Configure Settings shows a heading per feature, settings grouped under it');
 }
 
 // 2. Everything off (the default), with legacy data: nothing registers, migration still runs.

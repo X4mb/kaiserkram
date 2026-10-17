@@ -6,6 +6,7 @@ import { loadTemplates, moduleById, notify } from './core/foundryApi.js';
 import { fmt } from './core/i18n.js';
 import { migrate } from './core/migration.js';
 import { FEATURES } from './core/registry.js';
+import { registerSettingsSections } from './core/settingsSections.js';
 import { isAvailable, isEnabled, registerCoreSettings } from './core/toggles.js';
 
 /** Features running in this world, decided once during `init`. */
@@ -33,6 +34,7 @@ Hooks.once('init', () => {
     }
   }
   if (templates.length) void loadTemplates(templates);
+  if (active.length) registerSettingsSections(active);
   log(active.length ? `active features: ${active.map((f) => f.id).join(', ')}` : 'no features enabled');
 });
 
