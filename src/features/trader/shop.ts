@@ -1,7 +1,7 @@
 import { MODULE_ID } from '../../core/constants.js';
-import { dialogV2, renderTemplate, resolveDocument } from '../../core/foundryApi.js';
+import { dialogV2, escapeHtml, postChat, renderTemplate, resolveDocument, speakerFor } from '../../core/foundryApi.js';
 import { fmt, loc } from '../../core/i18n.js';
-import { FLAGS, TEMPLATES } from './constants.js';
+import { CARD_CLASS, FLAGS, TEMPLATES } from './constants.js';
 import { g, type WfrpActor, type WfrpItem } from './wfrp.js';
 import { canHaggle, resetHaggling, startHaggle } from './haggle.js';
 import { bpToPrice, formatBP, parsePrice, purseOf, purseTotal } from './money.js';
@@ -26,28 +26,31 @@ import {
 } from './trader.js';
 import { ACTIONS } from './transactions.js';
 
-/** The slice of ApplicationV2 / ActorSheetV2 this sheet relies on. */
-type SheetInstance = {
-  document: WfrpActor;
+/** The slice of ApplicationV2 this window relies on. */
+type AppInstance = {
   element: HTMLElement;
-  isEditable: boolean;
   rendered: boolean;
   render(options?: unknown): Promise<unknown>;
   close(options?: unknown): Promise<unknown>;
+  bringToFront?(): void;
   _prepareContext(options: unknown): Promise<Record<string, unknown>>;
   _onRender(context: unknown, options: unknown): Promise<void>;
 };
-type SheetConstructor = new (options?: Record<string, unknown>) => SheetInstance;
+type AppConstructor = new (options?: Record<string, unknown>) => AppInstance;
 
-function sheetBase(): SheetConstructor {
-  const api = foundry.applications.api as unknown as { HandlebarsApplicationMixin(c: unknown): SheetConstructor };
-  const sheets = foundry.applications.sheets as unknown as { ActorSheetV2: unknown };
-  return api.HandlebarsApplicationMixin(sheets.ActorSheetV2);
+function appBase(): AppConstructor {
+  const api = foundry.applications.api as unknown as {
+    HandlebarsApplicationMixin(c: unknown): AppConstructor;
+    ApplicationV2: unknown;
+  };
+  return api.HandlebarsApplicationMixin(api.ApplicationV2);
 }
 
 const OWNERSHIP = { NONE: 0, LIMITED: 1 } as const;
 
-type ActionFn = (this: TraderSheet, event: Event, target: HTMLElement) => unknown;
+export type ShopTab = 'buy' | 'sell' | 'manage';
+
+type ActionFn = (this: TraderShop, event: Event, target: HTMLElement) => unknown;
 
 function notify(kind: 'info' | 'warn', message: string): void {
   (ui.notifications as unknown as Record<string, (m: string) => void>)[kind](message);
@@ -87,39 +90,52 @@ async function askQuantity(title: string, max: number, unitLabel: string): Promi
   return Math.min(max, Math.max(1, Math.floor(qty)));
 }
 
-export class TraderSheet extends sheetBase() {
-  /** Open trader sheets, so a customer's money/items changing can refresh them. */
-  static readonly open = new Set<TraderSheet>();
+/**
+ * The shop window for one trader. It is a plain window, not the trader's actor sheet: the trader
+ * stays an ordinary NPC with the system's own sheet, and players need no permission on it to shop.
+ */
+export class TraderShop extends appBase() {
+  /** One window per trader on this client. */
+  static readonly open = new Map<string, TraderShop>();
 
   static DEFAULT_OPTIONS = {
-    classes: [MODULE_ID, 'trader-sheet'],
-    position: { width: 760, height: 720 },
+    classes: [MODULE_ID, 'trader-shop'],
+    position: { width: 820, height: 760 },
     window: { resizable: true, icon: 'fa-solid fa-store' },
-    form: { submitOnChange: false, closeOnSubmit: false },
     actions: {
-      buy: TraderSheet.onBuy as ActionFn,
-      haggle: TraderSheet.onHaggle as ActionFn,
-      sell: TraderSheet.onSell as ActionFn,
-      openItem: TraderSheet.onOpenItem as ActionFn,
-      removeItem: TraderSheet.onRemoveItem as ActionFn,
-      toggleOpen: TraderSheet.onToggleOpen as ActionFn,
-      showPlayers: TraderSheet.onShowPlayers as ActionFn,
-      restock: TraderSheet.onRestock as ActionFn,
-      resetHaggle: TraderSheet.onResetHaggle as ActionFn,
-      forgiveCustomer: TraderSheet.onForgiveCustomer as ActionFn,
-      openActorSheet: TraderSheet.onOpenActorSheet as ActionFn,
+      tab: TraderShop.onTab as ActionFn,
+      buy: TraderShop.onBuy as ActionFn,
+      haggle: TraderShop.onHaggle as ActionFn,
+      sell: TraderShop.onSell as ActionFn,
+      openItem: TraderShop.onOpenItem as ActionFn,
+      removeItem: TraderShop.onRemoveItem as ActionFn,
+      toggleOpen: TraderShop.onToggleOpen as ActionFn,
+      showPlayers: TraderShop.onShowPlayers as ActionFn,
+      restock: TraderShop.onRestock as ActionFn,
+      resetHaggle: TraderShop.onResetHaggle as ActionFn,
+      forgiveCustomer: TraderShop.onForgiveCustomer as ActionFn,
+      openActorSheet: TraderShop.onOpenActorSheet as ActionFn,
     },
   };
 
   static PARTS = {
-    main: { template: TEMPLATES.SHEET, scrollable: ['.trader-scroll'] },
+    main: { template: TEMPLATES.SHOP, scrollable: ['.shop-body'] },
   };
 
   /** Who the viewer is buying/selling as. */
   customerId: string | null = null;
 
-  get trader(): WfrpActor {
-    return this.document;
+  tab: ShopTab = 'buy';
+
+  readonly trader: WfrpActor;
+
+  constructor(trader: WfrpActor, options: Record<string, unknown> = {}) {
+    super({ id: `${MODULE_ID}-shop-${trader.id}`, ...options });
+    this.trader = trader;
+  }
+
+  get title(): string {
+    return this.trader.name;
   }
 
   get isGM(): boolean {
@@ -142,6 +158,7 @@ export class TraderSheet extends sheetBase() {
   async _prepareContext(options: unknown): Promise<Record<string, unknown>> {
     const context = await super._prepareContext(options);
     const trader = this.trader;
+    if (!this.isGM && this.tab === 'manage') this.tab = 'buy';
     const config = traderConfig(trader);
     const customer = this.customer();
     const state = haggleState(trader);
@@ -203,9 +220,19 @@ export class TraderSheet extends sheetBase() {
 
     const customerStanding = customer ? state[customer.id] : undefined;
 
+    const forSale = stock.filter((s) => s.forSale && (isGM || !s.soldOut));
     return {
       ...context,
       isGM,
+      tab: this.tab,
+      tabs: {
+        buy: this.tab === 'buy',
+        sell: this.tab === 'sell',
+        manage: this.tab === 'manage',
+      },
+      canTrade: isGM || config.open,
+      forSale,
+      forSaleCount: forSale.length,
       trader: { name: trader.name, img: trader.img },
       config,
       purse: formatBP(purseTotal(purseOf(trader))),
@@ -223,6 +250,7 @@ export class TraderSheet extends sheetBase() {
       stock,
       hasStock: stock.length > 0,
       sellable,
+      sellableCount: sellable.length,
       standings,
       haggleOn,
       settlements: settlementChoices(config.settlement),
@@ -231,16 +259,8 @@ export class TraderSheet extends sheetBase() {
 
   async _onRender(context: unknown, options: unknown): Promise<void> {
     await super._onRender(context, options);
-    TraderSheet.open.add(this);
+    TraderShop.open.set(this.trader.uuid, this);
     const root = this.element;
-
-    // DocumentSheetV2 disables every control on sheets the viewer can't edit, which is every
-    // player on a trader. Shopping doesn't edit the trader, so turn the shop controls back on.
-    root
-      .querySelectorAll<HTMLButtonElement | HTMLSelectElement>(
-        '.window-content button[data-action], .window-content select[data-customer-select]',
-      )
-      .forEach((el) => (el.disabled = false));
 
     root.querySelector<HTMLSelectElement>('select[data-customer-select]')?.addEventListener('change', (ev) => {
       this.customerId = (ev.currentTarget as HTMLSelectElement).value;
@@ -266,8 +286,15 @@ export class TraderSheet extends sheetBase() {
   }
 
   async close(options?: unknown): Promise<unknown> {
-    TraderSheet.open.delete(this);
+    TraderShop.open.delete(this.trader.uuid);
     return super.close(options);
+  }
+
+  static onTab(this: TraderShop, _event: Event, target: HTMLElement): void {
+    const tab = target.dataset.tab as ShopTab | undefined;
+    if (!tab || tab === this.tab) return;
+    this.tab = tab;
+    void this.render();
   }
 
   private async saveConfig(input: HTMLInputElement | HTMLSelectElement): Promise<void> {
@@ -330,6 +357,7 @@ export class TraderSheet extends sheetBase() {
       // An item dragged out of a character's inventory is an offer to sell it.
       if (!owner.isOwner) return;
       this.customerId = owner.id;
+      this.tab = 'sell';
       await this.sellItem(owner, item);
     } else if (this.isGM) {
       const copy = item.toObject();
@@ -372,7 +400,7 @@ export class TraderSheet extends sheetBase() {
     });
   }
 
-  static async onBuy(this: TraderSheet, _event: Event, target: HTMLElement): Promise<void> {
+  static async onBuy(this: TraderShop, _event: Event, target: HTMLElement): Promise<void> {
     const item = this.trader.items.get(dataId(target));
     const customer = this.customer();
     if (!item || !customer) return;
@@ -392,24 +420,24 @@ export class TraderSheet extends sheetBase() {
     });
   }
 
-  static async onHaggle(this: TraderSheet, _event: Event, target: HTMLElement): Promise<void> {
+  static async onHaggle(this: TraderShop, _event: Event, target: HTMLElement): Promise<void> {
     const item = this.trader.items.get(dataId(target));
     const customer = this.customer();
     if (item && customer) await startHaggle(this.trader, item, customer);
   }
 
-  static async onSell(this: TraderSheet, _event: Event, target: HTMLElement): Promise<void> {
+  static async onSell(this: TraderShop, _event: Event, target: HTMLElement): Promise<void> {
     const customer = this.customer();
     const item = customer?.items.get(dataId(target));
     if (customer && item) await this.sellItem(customer, item);
   }
 
-  static onOpenItem(this: TraderSheet, _event: Event, target: HTMLElement): void {
+  static onOpenItem(this: TraderShop, _event: Event, target: HTMLElement): void {
     const item = this.trader.items.get(dataId(target)) as (WfrpItem & { sheet?: { render(o: unknown): void } }) | undefined;
     item?.sheet?.render({ force: true });
   }
 
-  static async onRemoveItem(this: TraderSheet, _event: Event, target: HTMLElement): Promise<void> {
+  static async onRemoveItem(this: TraderShop, _event: Event, target: HTMLElement): Promise<void> {
     const item = this.trader.items.get(dataId(target));
     if (!item) return;
     const ok = await dialogV2().confirm({
@@ -421,7 +449,7 @@ export class TraderSheet extends sheetBase() {
   }
 
   /** Opening the shop also lets players see the sheet (Limited ownership); closing takes that back. */
-  static async onToggleOpen(this: TraderSheet): Promise<void> {
+  static async onToggleOpen(this: TraderShop): Promise<void> {
     const trader = this.trader;
     const open = !traderConfig(trader).open;
     const current = Number(trader.ownership?.default ?? OWNERSHIP.NONE);
@@ -429,12 +457,14 @@ export class TraderSheet extends sheetBase() {
     if (open && current < OWNERSHIP.LIMITED) update['ownership.default'] = OWNERSHIP.LIMITED;
     if (!open && current === OWNERSHIP.LIMITED) update['ownership.default'] = OWNERSHIP.NONE;
     await trader.update(update);
+    if (open) await announceShop(trader);
   }
 
   /** Open the shop if needed, then pop this sheet open on every connected player's screen. */
-  static async onShowPlayers(this: TraderSheet): Promise<void> {
+  static async onShowPlayers(this: TraderShop): Promise<void> {
     const trader = this.trader;
-    if (!traderConfig(trader).open) await TraderSheet.onToggleOpen.call(this);
+    if (!traderConfig(trader).open) await TraderShop.onToggleOpen.call(this);
+    else await announceShop(trader);
     showToPlayers(trader.uuid);
     const players = g().users.contents.filter((u) => u.active && !u.isGM).length;
     notify(
@@ -445,11 +475,11 @@ export class TraderSheet extends sheetBase() {
     );
   }
 
-  static async onRestock(this: TraderSheet): Promise<void> {
+  static async onRestock(this: TraderShop): Promise<void> {
     await openRestockDialog(this.trader);
   }
 
-  static async onResetHaggle(this: TraderSheet): Promise<void> {
+  static async onResetHaggle(this: TraderShop): Promise<void> {
     const ok = await dialogV2().confirm({
       window: { title: loc('kaiserkram.trader.gm.resetHaggle', 'Reset haggling') },
       content: `<p>${loc('kaiserkram.trader.gm.resetConfirm', 'Forget every haggled deal and grudge this trader holds?')}</p>`,
@@ -458,7 +488,7 @@ export class TraderSheet extends sheetBase() {
     if (ok) await resetHaggling(this.trader);
   }
 
-  static async onForgiveCustomer(this: TraderSheet, _event: Event, target: HTMLElement): Promise<void> {
+  static async onForgiveCustomer(this: TraderShop, _event: Event, target: HTMLElement): Promise<void> {
     const actorId = target.closest<HTMLElement>('[data-actor-id]')?.dataset.actorId;
     if (!actorId) return;
     const state = haggleState(this.trader);
@@ -466,18 +496,34 @@ export class TraderSheet extends sheetBase() {
     await saveHaggleState(this.trader, state);
   }
 
-  /** GM: open the trader with the system's normal NPC sheet, for stats, money and anything else. */
-  static onOpenActorSheet(this: TraderSheet): void {
-    const classes = (CONFIG as unknown as {
-      Actor: { sheetClasses: Record<string, Record<string, { id: string; cls: unknown; default?: boolean }>> };
-    }).Actor.sheetClasses[this.trader.type] ?? {};
-    const entries = Object.values(classes).filter((e) => !e.id.startsWith(`${MODULE_ID}.`));
-    const entry = entries.find((e) => e.default) ?? entries[0];
-    if (!entry) return;
-    const Cls = entry.cls as new (arg: unknown) => { render(o: unknown): unknown };
-    const isV2 = (Cls as unknown as { prototype: unknown }).prototype instanceof
-      (foundry.applications.api as unknown as { ApplicationV2: new () => unknown }).ApplicationV2;
-    const sheet = isV2 ? new Cls({ document: this.trader }) : new Cls(this.trader);
-    sheet.render(isV2 ? { force: true } : true);
+  /** GM: the trader's own sheet (the system's NPC sheet), for stats, money and anything else. */
+  static onOpenActorSheet(this: TraderShop): void {
+    this.trader.sheet?.render({ force: true });
   }
+}
+
+/** Open (or bring forward) the shop window for `trader` on this client. */
+export function openShop(trader: WfrpActor, tab?: ShopTab): TraderShop {
+  const shop = TraderShop.open.get(trader.uuid) ?? new TraderShop(trader);
+  if (tab) shop.tab = tab;
+  void shop.render({ force: true });
+  shop.bringToFront?.();
+  return shop;
+}
+
+/** Re-render every open shop, e.g. after the trader's or a customer's items or coins changed. */
+export function refreshShops(): void {
+  for (const shop of TraderShop.open.values()) if (shop.rendered) void shop.render();
+}
+
+/** Chat card telling everyone the shop is open, with a button that opens it. */
+export async function announceShop(trader: WfrpActor): Promise<void> {
+  const text = fmt('kaiserkram.trader.chat.open', '{trader} is open for business.', { trader: escapeHtml(trader.name) });
+  const button = escapeHtml(loc('kaiserkram.trader.chat.enter', 'Enter the shop'));
+  await postChat({
+    speaker: speakerFor(trader),
+    content: `<div class="${CARD_CLASS}"><p>${text}</p><button type="button" data-${MODULE_ID}-shop="${escapeHtml(
+      trader.uuid,
+    )}"><i class="fa-solid fa-store"></i> ${button}</button></div>`,
+  });
 }

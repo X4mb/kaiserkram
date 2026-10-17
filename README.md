@@ -25,33 +25,35 @@ Each enabled feature adds its own settings under Configure Settings → Kaiserkr
 
 ## Using the Trader
 
-1. **Make a trader.** In the Actors sidebar, click **Create Trader** (GM only). Or open any NPC, go to *Sheet* in its title bar and pick the *Trader* sheet. **NPC sheet** on the trader sheet opens the normal WFRP4e sheet for stats and the trader's purse.
-2. **Stock it.** Drag items from the Items sidebar or a compendium onto the trader sheet, or click **Restock from table**. The restock dialog only lists world roll tables that give goods (weapons, armour, trappings…). For a compendium table, drag it onto the dialog. Each row has a count, an ∞ box for unlimited stock, a fixed-price box and a "for sale" tick.
-3. **Set prices.** *Markup* is what the trader charges, as a % of book price; *Buy-back rate* is what it pays players. A fixed price overrides one item.
-4. **Open the shop.** The GM's buttons sit in a bar under the trader's name. **Open shop** gives players Limited permission, so they can see the trader; **Close shop** takes that back. **Show to players** opens the shop if needed and pops the window up on every connected player's screen.
-5. **Players trade.** They open the shop by double-clicking the trader's token or from the Actors sidebar, pick the character they trade as, and buy, haggle or sell (or drag an item from their character sheet onto the shop). Coins move automatically. A GM has to be online, because the trades run on the GM's client.
+A trader is an ordinary WFRP4e NPC that keeps its normal NPC sheet (for stats and the trader's coins). Its shop opens in a window of its own, with **Buy**, **Sell** and, for the GM, **Manage** tabs.
 
-The sheet has a collapsible **How this works** box with the same steps for the GM.
+1. **Make a trader.** In the Actors sidebar, click **Create Trader**, or right-click an NPC → **Make Trader**. The shop window opens on the Manage tab.
+2. **Stock it.** Drag items from the Items sidebar or a compendium onto the shop window, or click **Restock from table**. The restock dialog only lists world roll tables that give goods (weapons, armour, trappings…); drag a compendium table onto it to use that. In Manage, set each item's count, ∞ for unlimited stock, a fixed price, and whether it is for sale.
+3. **Set prices.** *Markup* is what the trader charges, as a % of book price; *Buy-back rate* is what it pays players.
+4. **Open the shop.** The GM's buttons sit in a bar under the trader's name. **Open shop** lets players in and posts an *open for business* card in chat; **Close shop** shuts them out. **Show to players** opens the shop if needed and pops the window up on every connected player's screen.
+5. **Players trade.** They get in through the chat card's **Enter the shop** button, the **Shops** button at the top of the Actors sidebar, or by double-clicking the trader's token. They pick the character they trade as, then buy or haggle in **Buy** and sell in **Sell** (or drag an item from their character sheet onto the shop). Coins move automatically. A GM has to be online, because the trades run on the GM's client.
+
+The GM can also open any shop from the trader's Token HUD, from right-click → **Open Shop**, or from **Shops**. The Manage tab has a collapsible **How this works** box with these steps.
 
 ## Moving from the old modules
 
 The first time a GM loads a world with Kaiserkram enabled, Kaiserkram copies the old modules' data into its own namespace. This happens once, whether or not any feature is enabled yet:
 
 - world settings of all four modules
-- traders: their flags, their stock flags (fixed prices, unlimited stock, not for sale) and **their sheet**, so they still open as trader sheets
+- traders: their flags and their stock flags (fixed prices, unlimited stock, not for sale). They go back to the normal NPC sheet and shop in their own window
 - party markers and deployed tokens, so Deploy and Recall keep working
 - per-actor voice profiles
 - the landing scene
 - image paths that pointed into the old modules' folders
 - unlinked tokens: trader flags and haggle state stored on the token itself
 
-A notice lists which features had data. **Those features stay off until you enable them.** Nothing is deleted: the old flags and settings stay where they were. The one thing that is switched over is each trader's sheet, so if you go back to the old Trader module, pick its sheet again in the trader's sheet configuration.
+A notice lists which features had data. **Those features stay off until you enable them.** Nothing is deleted: the old flags and settings stay where they were. The one thing that is switched over is each trader's sheet (back to the NPC sheet), so if you go back to the old Trader module, pick its sheet again in the trader's sheet configuration.
 
 Then disable the four old modules. Running a feature next to the module it replaces doubles its hooks, registers two trader sheets, or fights over the A/V client; Kaiserkram warns the GM if it sees that.
 
 Not migrated:
 
-- **Compendium actors.** Traders stored in a compendium still point at the old sheet; re-import them, or pick the *Trader* sheet in their sheet configuration.
+- **Compendium actors.** Traders stored in a compendium still carry the old module's data; after importing one, right-click it → **Make Trader**.
 - **Keybindings.** Rebind Within Earshot's shortcuts once under Configure Controls.
 - Within Earshot's per-user voice token pin, which is cleared on every load anyway.
 

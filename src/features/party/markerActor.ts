@@ -1,5 +1,5 @@
 import { MODULE_ID } from '../../core/constants.js';
-import { expandObject, flags } from '../../core/foundryApi.js';
+import { expandObject, flags, notify } from '../../core/foundryApi.js';
 import { loc } from '../../core/i18n.js';
 import { FLAGS } from './constants.js';
 import { collectActorsInFolder } from './spawn.js';
@@ -22,9 +22,9 @@ const OWNER = 3;
 const PREFERRED_TYPES = ['party', 'group', 'npc', 'creature', 'character'];
 
 function actorType(): string | null {
-  const types = Object.keys(
-    (game as unknown as { documentTypes?: { Actor?: Record<string, unknown> } }).documentTypes?.Actor ?? {},
-  ).filter((t) => t !== 'base');
+  // `game.documentTypes.Actor` is a list of type names (an object keyed by type in older cores).
+  const raw = (game as unknown as { documentTypes?: { Actor?: string[] | Record<string, unknown> } }).documentTypes?.Actor;
+  const types = (Array.isArray(raw) ? raw : Object.keys(raw ?? {})).filter((t) => t !== 'base');
   return PREFERRED_TYPES.find((t) => types.includes(t)) ?? types[0] ?? null;
 }
 
@@ -85,8 +85,21 @@ export async function markerActorFor(folder: Folder, img: string): Promise<Actor
 
 /** Token data that hands a marker to its actor, so players can control it and see from it. */
 export async function playerMarkerData(folder: Folder, img: string): Promise<Record<string, unknown>> {
-  const actor = await markerActorFor(folder, img);
-  if (!actor) return {};
+  let actor: ActorLike | null = null;
+  try {
+    actor = await markerActorFor(folder, img);
+  } catch (err) {
+    console.error(`${MODULE_ID} | party: could not create the actor behind the party marker`, err);
+  }
+  if (!actor) {
+    notify().warn(
+      loc(
+        'kaiserkram.party.notifications.noMarkerActor',
+        'Could not create an actor for the party marker, so only the GM can move it. See the console for details.',
+      ),
+    );
+    return {};
+  }
   return { actorId: actor.id, actorLink: true, ...visionFrom(folder) };
 }
 

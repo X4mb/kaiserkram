@@ -14,7 +14,14 @@ import { SHEET_CLASS } from '../features/trader/constants.js';
  * One-time copy of the data the four stand-alone modules left in a world, into Kaiserkram's
  * namespaces. Nothing is deleted: the old flags and settings stay where they were.
  */
-export const MIGRATION_VERSION = 1;
+export const MIGRATION_VERSION = 2;
+
+/**
+ * Steps:
+ *  1. copy the old modules' settings, flags and image paths
+ *  2. traders stop using a custom sheet (they keep the system's NPC sheet and shop in their own
+ *     window), so clear the old and the earlier Kaiserkram trader sheet class and flag them instead
+ */
 
 const LEGACY = {
   landing: 'world-landing-fvtt',
@@ -23,7 +30,7 @@ const LEGACY = {
   trader: 'trader-wfrp4e',
 } as const;
 
-const LEGACY_SHEET_CLASS = `${LEGACY.trader}.TraderSheet`;
+const TRADER_SHEET_CLASSES = [`${LEGACY.trader}.TraderSheet`, SHEET_CLASS];
 
 /** Old world setting key → new Kaiserkram setting key, per feature. */
 const SETTING_MAP: Record<FeatureId, Record<string, string>> = {
@@ -106,6 +113,8 @@ export type MigrationReport = {
   actors: number;
   items: number;
   tokens: number;
+  /** Traders moved off a trader sheet class (step 2). */
+  traderSheets: number;
   errors: number;
 };
 
@@ -175,7 +184,7 @@ async function writeSetting(key: string, value: unknown): Promise<void> {
 }
 
 class Migrator {
-  readonly report: MigrationReport = { features: [], settings: 0, actors: 0, items: 0, tokens: 0, errors: 0 };
+  readonly report: MigrationReport = { features: [], settings: 0, actors: 0, items: 0, tokens: 0, traderSheets: 0, errors: 0 };
   private readonly found = new Set<FeatureId>();
 
   private mark(feature: FeatureId): void {
@@ -215,11 +224,6 @@ class Migrator {
     const traderFlags = legacyNamespace(source.flags, LEGACY.trader);
     if (traderFlags) {
       update[`flags.${MODULE_ID}.trader`] = clone(traderFlags);
-      this.mark('trader');
-    }
-    const core = source.flags?.core as Obj | undefined;
-    if (core?.sheetClass === LEGACY_SHEET_CLASS) {
-      update['flags.core.sheetClass'] = SHEET_CLASS;
       this.mark('trader');
     }
     const earshot = legacyNamespace(source.flags, LEGACY.earshot);
@@ -311,6 +315,34 @@ class Migrator {
     }
   }
 
+  /** Changes that move a (base or synthetic) actor off a trader sheet class. */
+  private sheetChanges(source: { flags?: Obj }): Obj {
+    const core = source.flags?.core as Obj | undefined;
+    if (!TRADER_SHEET_CLASSES.includes(String(core?.sheetClass ?? ''))) return {};
+    return { 'flags.core.sheetClass': '', [`flags.${MODULE_ID}.trader.isTrader`]: true };
+  }
+
+  /** Step 2: traders back on the system's sheet. */
+  async traderSheets(): Promise<void> {
+    for (const actor of (game.actors as unknown as { contents: ActorDoc[] }).contents) {
+      const update = this.sheetChanges(actor._source);
+      if (Object.keys(update).length && (await this.attempt(`sheet of ${actor.name}`, () => actor.update(update)))) {
+        this.report.traderSheets += 1;
+      }
+    }
+    for (const scene of (game.scenes as unknown as { contents: SceneDoc[] }).contents) {
+      for (const token of scene.tokens.contents) {
+        const delta = token._source.delta;
+        if (token._source.actorLink || !delta || !token.actor) continue;
+        const update = this.sheetChanges(delta);
+        const synthetic = token.actor;
+        if (Object.keys(update).length && (await this.attempt(`sheet of token ${token.name}`, () => synthetic.update(update)))) {
+          this.report.traderSheets += 1;
+        }
+      }
+    }
+  }
+
   finish(): MigrationReport {
     this.report.features = [...this.found];
     return this.report;
@@ -330,13 +362,17 @@ export async function migrate({ force = false }: { force?: boolean } = {}): Prom
     notify().warn(loc('kaiserkram.migration.gmOnly', 'Only a GM can migrate data.'));
     return null;
   }
-  if (!force && migrationVersion() >= MIGRATION_VERSION) return null;
+  const from = force ? 0 : migrationVersion();
+  if (from >= MIGRATION_VERSION) return null;
 
-  console.log(`[${MODULE_ID}] migrating data from the old modules…`);
+  console.log(`[${MODULE_ID}] migrating world data from version ${from} to ${MIGRATION_VERSION}…`);
   const migrator = new Migrator();
-  await migrator.settings();
-  await migrator.actors();
-  await migrator.scenes();
+  if (from < 1) {
+    await migrator.settings();
+    await migrator.actors();
+    await migrator.scenes();
+  }
+  if (from < 2) await migrator.traderSheets();
   const report = migrator.finish();
   console.log(`[${MODULE_ID}] migration finished`, report);
 
@@ -353,6 +389,16 @@ export async function migrate({ force = false }: { force?: boolean } = {}): Prom
   }
 
   await settings().set(MODULE_ID, CORE_SETTINGS.MIGRATION_VERSION, MIGRATION_VERSION);
+  if (report.traderSheets) {
+    notify().info(
+      fmt(
+        'kaiserkram.migration.traderSheets',
+        'Kaiserkram: {count} trader(s) now open with their normal NPC sheet. Their shop has its own window: right-click the trader in the Actors sidebar → Open Shop, or use the Shops button.',
+        { count: report.traderSheets },
+      ),
+      { permanent: true },
+    );
+  }
   if (report.features.length) {
     notify().info(
       fmt(

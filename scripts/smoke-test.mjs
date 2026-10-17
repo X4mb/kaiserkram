@@ -127,6 +127,8 @@ function seedLegacyWorld() {
     },
     { Item: traderItems },
   );
+  // Made a trader by an earlier Kaiserkram build: only the sheet class says so.
+  const oldKaiserkramTrader = fakeDoc('Old trader', { img: 'x.png', flags: { core: { sheetClass: 'kaiserkram.TraderSheet' } }, items: [] });
   const pc = fakeDoc('PC', { img: 'pc.png', flags: { withinearshot: { voiceProfile: { gainMultiplier: 1.5 } } }, items: [] });
 
   const deltaItems = [{ _id: 'item1', flags: { 'trader-wfrp4e': { notForSale: true } } }];
@@ -171,14 +173,15 @@ function seedLegacyWorld() {
       }
     },
   };
-  return { settingDocs, traderActor, traderItems, pc, syntheticTrader, deltaItems, tokens, scene, tokenUpdates };
+  return { settingDocs, traderActor, oldKaiserkramTrader, traderItems, pc, syntheticTrader, deltaItems, tokens, scene, tokenUpdates };
 }
 
-async function run({ label, systemId, enabled, legacy = false }) {
+async function run({ label, systemId, enabled, legacy = false, migrationVersion }) {
   const phase = { current: 'load' };
   const record = { hooks: [], settings: [], menus: [], keybindings: [], sheets: [], socketOn: 0, styles: [], templates: [], errors: [], created: [] };
   const hookFns = new Map();
   const values = new Map([[`${MODULE_ID}.enabledFeatures`, enabled]]);
+  if (migrationVersion !== undefined) values.set(`${MODULE_ID}.migrationVersion`, migrationVersion);
   const registered = new Map();
   const world = legacy ? seedLegacyWorld() : null;
   const settingDocs = world?.settingDocs ?? [];
@@ -211,7 +214,7 @@ async function run({ label, systemId, enabled, legacy = false }) {
     modules: new Map([[MODULE_ID, { id: MODULE_ID, title: 'Kaiserkram', active: true, version: '0.1.0' }]]),
     i18n: partial('i18n', { localize: (k) => k, format: (k) => k }),
     socket: { on: () => void record.socketOn++, emit: () => {} },
-    actors: { contents: world ? [world.traderActor, world.pc] : [] },
+    actors: { contents: world ? [world.traderActor, world.oldKaiserkramTrader, world.pc] : [] },
     scenes: { contents: world ? [world.scene] : [], get: () => undefined, active: null },
     settings: {
       settings: registered,
@@ -360,8 +363,7 @@ function ok(label) {
   }
   assert.deepEqual(record.keybindings.sort(), [`${MODULE_ID}.earshotToggleGMVoiceGlobal`, `${MODULE_ID}.earshotVoiceToken`]);
   assert.deepEqual(record.menus, [`${MODULE_ID}.features`]);
-  assert.equal(record.sheets.length, 1);
-  assert.equal(record.sheets[0].scope, MODULE_ID);
+  assert.deepEqual(record.sheets, [], 'traders keep the system sheet; nothing should register one');
   assert.deepEqual(record.styles, ['modules/kaiserkram/styles/trader.css?v=0.1.0']);
   assert.equal(record.templates.length, 5);
   assert.equal(record.socketOn, 1);
@@ -372,7 +374,7 @@ function ok(label) {
   ok('all features on (WFRP4e): registers in init, exposes api');
 
   // Migration
-  assert.equal(values.get(`${MODULE_ID}.migrationVersion`), 1, 'migrationVersion not set');
+  assert.equal(values.get(`${MODULE_ID}.migrationVersion`), 2, 'migrationVersion not set');
   const created = Object.fromEntries(record.created.map((c) => [c.key, JSON.parse(c.value)]));
   // These features are enabled, so their settings are registered and go through game.settings.set.
   assert.equal(values.get(`${MODULE_ID}.landingDefaultSceneId`), 'scene123');
@@ -384,7 +386,9 @@ function ok(label) {
   assert.deepEqual(created, {});
 
   const t = world.traderActor._source;
-  assert.equal(t.flags.core.sheetClass, 'kaiserkram.TraderSheet');
+  assert.equal(t.flags.core.sheetClass, '', 'trader should be back on the default sheet');
+  assert.equal(world.oldKaiserkramTrader._source.flags.core.sheetClass, '');
+  assert.equal(world.oldKaiserkramTrader._source.flags.kaiserkram.trader.isTrader, true);
   assert.deepEqual(t.flags.kaiserkram.trader, { isTrader: true, config: { markup: 110, open: true } });
   assert.ok(t.flags['trader-wfrp4e'], 'old trader flags must be kept');
   assert.equal(t.img, 'modules/kaiserkram/assets/trader.svg');
@@ -398,7 +402,7 @@ function ok(label) {
   assert.equal(traderTok.texture.src, 'modules/kaiserkram/assets/trader.svg');
   assert.deepEqual(world.syntheticTrader.updates, [{ 'flags.kaiserkram.trader': { haggle: { pc1: { penalty: 5 } } } }]);
   assert.deepEqual(world.deltaItems[0].flags.kaiserkram.trader, { notForSale: true });
-  ok('migration copies settings, flags, sheet class, images and token deltas');
+  ok('migration copies settings, flags, images and token deltas, and moves traders off the old sheet');
 
   // Configure Settings: a heading per feature, with its settings grouped under it.
   const { document, HTMLElement, Node } = parseHTML(`<section class="settings">
@@ -449,7 +453,7 @@ function ok(label) {
   ok('all features off: registers nothing');
 
   // Unregistered settings are written straight to world storage.
-  assert.equal(values.get(`${MODULE_ID}.migrationVersion`), 1);
+  assert.equal(values.get(`${MODULE_ID}.migrationVersion`), 2);
   const created = Object.fromEntries(record.created.map((c) => [c.key, JSON.parse(c.value)]));
   assert.deepEqual(created, {
     'kaiserkram.landingDefaultSceneId': 'scene123',
@@ -472,4 +476,22 @@ function ok(label) {
   assert.ok(!record.settings.some((k) => k.startsWith(`${MODULE_ID}.trader`)), 'trader settings registered');
   assert.deepEqual(Object.keys(game.modules.get(MODULE_ID).api.features).sort(), ['earshot', 'landing', 'party']);
   ok('non-WFRP world: Trader stays off');
+}
+
+// 4. A world already migrated to version 1: only step 2 runs (settings are not copied again).
+{
+  const { record, values, world } = await run({
+    label: 'from-v1',
+    systemId: 'wfrp4e',
+    enabled: {},
+    legacy: true,
+    migrationVersion: 1,
+  });
+  assert.deepEqual(record.errors, []);
+  assert.equal(values.get(`${MODULE_ID}.migrationVersion`), 2);
+  assert.deepEqual(record.created, [], 'step 1 ran again');
+  assert.equal(world.traderActor._source.flags.kaiserkram?.trader?.config, undefined, 'step 1 ran again');
+  assert.equal(world.traderActor._source.flags.core.sheetClass, '');
+  assert.equal(world.oldKaiserkramTrader._source.flags.kaiserkram.trader.isTrader, true);
+  ok('a version-1 world only gets step 2');
 }

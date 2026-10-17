@@ -1,6 +1,6 @@
 import { emitSocket, registerSocketHandler } from '../../core/socket.js';
 import { loc } from '../../core/i18n.js';
-import { g, resolveActor, type FoundryUser } from './wfrp.js';
+import { g, type FoundryUser } from './wfrp.js';
 
 /**
  * Players don't own the trader, so every trade runs on the active GM's client.
@@ -41,7 +41,7 @@ export function registerSocket(): void {
   registerSocketHandler('trader', (raw: unknown) => {
     const data = raw as RequestMessage | ResponseMessage | ShowMessage | undefined;
     if (data?.type === 'show') {
-      void showSheet(data.traderUuid);
+      if (!g().user.isGM) showHandler(data.traderUuid);
     } else if (data?.type === 'response') {
       if (data.userId !== g().user.id) return;
       pending.get(data.requestId)?.(data.result);
@@ -53,14 +53,14 @@ export function registerSocket(): void {
   });
 }
 
-async function showSheet(traderUuid: string): Promise<void> {
-  if (g().user.isGM) return;
-  const trader = await resolveActor(traderUuid);
-  if (!trader?.testUserPermission(g().user, 'LIMITED')) return;
-  trader.sheet?.render({ force: true });
+/** What a player's client does when the GM shows them a shop (set by the feature, to avoid an import cycle). */
+let showHandler: (traderUuid: string) => void = () => {};
+
+export function onShowShop(handler: (traderUuid: string) => void): void {
+  showHandler = handler;
 }
 
-/** GM: pop the trader's sheet open for every connected player who can see it. */
+/** GM: pop the trader's shop open for every connected player. */
 export function showToPlayers(traderUuid: string): void {
   const message: ShowMessage = { type: 'show', traderUuid };
   emitSocket('trader', message);

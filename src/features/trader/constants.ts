@@ -1,6 +1,9 @@
 import { MODULE_ID, MODULE_PATH } from '../../core/constants.js';
 
-/** Sheet class id as stored in `flags.core.sheetClass`. */
+/**
+ * Sheet class id earlier Kaiserkram builds stored in `flags.core.sheetClass`. Traders now keep
+ * the system's sheet and shop in their own window; migration clears this.
+ */
 export const SHEET_CLASS = `${MODULE_ID}.TraderSheet`;
 
 /** Flags, as dotted paths under flags.kaiserkram (i.e. flags.kaiserkram.trader.<key>). */
@@ -30,7 +33,7 @@ export const DEFAULT_TRADER_IMAGE = `${MODULE_PATH}/assets/trader.svg`;
 export const CARD_CLASS = `${MODULE_ID}-trader-card`;
 
 export const TEMPLATES = {
-  SHEET: `${MODULE_PATH}/templates/trader/trader-sheet.hbs`,
+  SHOP: `${MODULE_PATH}/templates/trader/shop.hbs`,
   HAGGLE_DIALOG: `${MODULE_PATH}/templates/trader/haggle-dialog.hbs`,
   RESTOCK_DIALOG: `${MODULE_PATH}/templates/trader/restock-dialog.hbs`,
   SETTLEMENT_DIALOG: `${MODULE_PATH}/templates/trader/settlement-dialog.hbs`,
