@@ -1,0 +1,12 @@
+<div class="kaiserkram trader-dialog">
+  <p>{{localize "kaiserkram.trader.haggle.intro"}}</p>
+  <p><b>{{item}}</b> — {{price}}</p>
+  <label class="range">
+    {{localize "kaiserkram.trader.haggle.ask"}}
+    <input type="range" name="ask" min="5" max="{{maxAsk}}" step="5" value="{{ask}}" />
+    <span data-out="ask"></span>
+  </label>
+  <p>{{localize "kaiserkram.trader.haggle.youPropose"}} <b data-out="price"></b></p>
+  <p>{{localize "kaiserkram.trader.haggle.modifier"}} <b data-out="modifier"></b></p>
+  <p class="hint">{{localize "kaiserkram.trader.haggle.risk"}}</p>
+</div>

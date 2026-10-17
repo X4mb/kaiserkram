@@ -1,0 +1,24 @@
+{
+  "name": "kaiserkram",
+  "version": "0.1.0",
+  "private": true,
+  "author": "X4mb",
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "type": "module",
+  "scripts": {
+    "bundle": "esbuild src/main.ts --bundle --outfile=dist/kaiserkram.js --format=esm --platform=neutral --target=es2022 --sourcemap --minify",
+    "build": "npm run bundle && node scripts/deploy.mjs",
+    "watch": "esbuild src/main.ts --bundle --outfile=dist/kaiserkram.js --format=esm --platform=neutral --target=es2022 --sourcemap --watch",
+    "deploy": "npm run build",
+    "release-pack": "npm run build && node scripts/package-release.mjs",
+    "typecheck": "tsc --noEmit",
+    "check:i18n": "node scripts/check-i18n.mjs",
+    "smoke": "npm run bundle && node scripts/smoke-test.mjs"
+  },
+  "devDependencies": {
+    "@league-of-foundry-developers/foundry-vtt-types": "^13.346.0-beta.20250812191140",
+    "archiver": "^7.0.1",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.7.0"
+  }
+}

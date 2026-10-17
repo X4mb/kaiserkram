@@ -1,0 +1,17 @@
+<div class="kaiserkram trader-dialog">
+  <p>{{localize "kaiserkram.trader.settlement.prompt"}}</p>
+  <label>
+    {{localize "kaiserkram.trader.settlement.label"}}
+    <select name="settlement">
+      {{#each settlements}}
+        <option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>
+      {{/each}}
+    </select>
+  </label>
+  {{#if showRestock}}
+    <label class="inline">
+      <input type="checkbox" name="restock" />
+      {{localize "kaiserkram.trader.settlement.restockNow"}}
+    </label>
+  {{/if}}
+</div>

@@ -1,0 +1,12 @@
+/* Kaiserkram Features window. Feature styles (e.g. trader.css) are injected only when that feature is active. */
+.kaiserkram-features fieldset {
+  margin: 0 0 0.75rem;
+}
+
+.kaiserkram-features .kaiserkram-feature .hint {
+  flex: 0 0 100%;
+}
+
+.kaiserkram-features .kaiserkram-legacy {
+  color: var(--color-level-warning, #b8860b);
+}

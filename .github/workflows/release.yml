@@ -1,0 +1,51 @@
+# LIVE release: push a `v*` tag (on main) -> build module.zip and attach it to the
+# GitHub Release. The live module.json "download" points at releases/latest, so this
+# is what players actually install/update.
+#
+# Also runnable manually (Actions -> Release package zip -> Run workflow) when pushing
+# a tag isn't an option; give it the tag to publish (e.g. v0.1.0) and it creates it.
+name: Release package zip
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to create/publish (e.g. v0.1.0)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Check module.json version matches the tag
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          VERSION=$(node -p "require('./module.json').version")
+          if [ "v$VERSION" != "$TAG" ]; then
+            echo "module.json version $VERSION does not match tag $TAG"; exit 1
+          fi
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run check:i18n
+      - run: npm run smoke
+      - run: npm run release-pack
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag || github.ref_name }}
+          files: module.zip
+          generate_release_notes: true
