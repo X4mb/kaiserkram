@@ -6,11 +6,8 @@
  * (e.g. `D:/FoundryVTT/Data/modules/kaiserkram`).
  */
 import { cpSync, copyFileSync, mkdirSync, existsSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
-import { MODULE_ID, PACKAGE_DIRS } from './package-files.mjs';
-
-const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+import { join } from 'path';
+import { MODULE_ID, PACKAGE_DIRS, ROOT as root, bundlePath } from './package-files.mjs';
 
 const dest =
   process.env.FOUNDRY_MODULE_PATH?.trim() ||
@@ -27,8 +24,8 @@ if (!dest) {
   process.exit(0);
 }
 
-if (!existsSync(join(root, 'dist', `${MODULE_ID}.js`))) {
-  console.error(`[${MODULE_ID}] dist/${MODULE_ID}.js missing — run esbuild first.`);
+if (!existsSync(join(root, bundlePath()))) {
+  console.error(`[${MODULE_ID}] ${bundlePath()} missing — run esbuild first.`);
   process.exit(1);
 }
 

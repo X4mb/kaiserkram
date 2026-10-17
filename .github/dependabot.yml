@@ -4,6 +4,8 @@ updates:
   # npm dev toolchain (esbuild, typescript, archiver, foundry-vtt-types)
   - package-ecosystem: "npm"
     directory: "/"
+    # Updates land on test first; promote to main along with everything else.
+    target-branch: "test"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -23,6 +25,8 @@ updates:
   # GitHub Actions used by the CI / release workflows
   - package-ecosystem: "github-actions"
     directory: "/"
+    # Updates land on test first; promote to main along with everything else.
+    target-branch: "test"
     schedule:
       interval: "weekly"
       day: "monday"

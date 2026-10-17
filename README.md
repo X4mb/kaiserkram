@@ -35,7 +35,7 @@ The first time a GM loads a world with Kaiserkram enabled, Kaiserkram copies the
 - image paths that pointed into the old modules' folders
 - unlinked tokens: trader flags and haggle state stored on the token itself
 
-A notice lists which features had data. **Those features stay off until you enable them.** Nothing is deleted: the old flags and settings stay where they were, so the old modules still work if you go back.
+A notice lists which features had data. **Those features stay off until you enable them.** Nothing is deleted: the old flags and settings stay where they were. The one thing that is switched over is each trader's sheet, so if you go back to the old Trader module, pick its sheet again in the trader's sheet configuration.
 
 Then disable the four old modules. Running a feature next to the module it replaces doubles its hooks, registers two trader sheets, or fights over the A/V client; Kaiserkram warns the GM if it sees that.
 
@@ -80,9 +80,18 @@ Layout: `src/main.ts` boots the module; `src/core/` holds the feature toggles, t
 
 Naming inside the module: settings are `kaiserkram.<feature><Key>` (e.g. `traderDefaultMarkup`), flags are nested per feature (`flags.kaiserkram.trader.isTrader`), i18n keys are `kaiserkram.<feature>.…`.
 
-### Releasing
+### Branches and releases
 
-Bump `version` in `module.json` (and `package.json`), commit, then push a matching tag (`v0.1.0`). The release workflow checks the version matches the tag, builds `module.zip` and attaches it to a GitHub Release; the manifest's `download` URL always points at the latest release.
+- **`test`**: every push builds a pre-release under the reused tag `test-latest`, versioned `<module.json version>.<run number>`. Install it in Foundry with:
+
+  ```
+  https://github.com/X4mb/kaiserkram/releases/download/test-latest/module.json
+  ```
+
+  It is titled *Kaiserkram (Test)* but uses the same module id as the release, so only one of the two can be installed at a time. Dependabot opens its PRs against `test`.
+- **`main`**: bump `version` in `module.json` (and `package.json`), merge `test` into `main`, then push a matching tag (`v0.1.0`). The release workflow checks the version matches the tag, builds `module.zip` and attaches it to a GitHub Release; the manifest's `download` URL always points at the latest release.
+
+Published builds load a version-stamped bundle (`dist/kaiserkram-<version>.js`, set by `scripts/stamp.mjs`), so browsers behind a caching proxy pick up updates right away. Local builds use `dist/kaiserkram.js`.
 
 ## License
 

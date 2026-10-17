@@ -42,6 +42,8 @@ jobs:
       - run: npm run typecheck
       - run: npm run check:i18n
       - run: npm run smoke
+      - name: Stamp a versioned bundle name
+        run: node scripts/stamp.mjs release
       - run: npm run release-pack
 
       - uses: softprops/action-gh-release@v2

@@ -6,7 +6,7 @@
   "license": "PolyForm-Noncommercial-1.0.0",
   "type": "module",
   "scripts": {
-    "bundle": "esbuild src/main.ts --bundle --outfile=dist/kaiserkram.js --format=esm --platform=neutral --target=es2022 --sourcemap --minify",
+    "bundle": "node scripts/build.mjs",
     "build": "npm run bundle && node scripts/deploy.mjs",
     "watch": "esbuild src/main.ts --bundle --outfile=dist/kaiserkram.js --format=esm --platform=neutral --target=es2022 --sourcemap --watch",
     "deploy": "npm run build",

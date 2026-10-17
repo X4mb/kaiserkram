@@ -1,15 +1,12 @@
 /** Build module.zip: module.json, LICENSE, dist/, lang/, assets/, templates/, styles/ (for GitHub Release + manifest download). */
 import { createWriteStream, existsSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { join } from 'path';
 import archiver from 'archiver';
-import { MODULE_ID, PACKAGE_DIRS, PACKAGE_FILES } from './package-files.mjs';
-
-const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+import { MODULE_ID, PACKAGE_DIRS, PACKAGE_FILES, ROOT as root, bundlePath } from './package-files.mjs';
 const outPath = join(root, 'module.zip');
 
-if (!existsSync(join(root, 'dist', `${MODULE_ID}.js`))) {
-  console.error(`[${MODULE_ID}] dist/${MODULE_ID}.js missing — run npm run build first.`);
+if (!existsSync(join(root, bundlePath()))) {
+  console.error(`[${MODULE_ID}] ${bundlePath()} missing — run npm run build first.`);
   process.exit(1);
 }
 

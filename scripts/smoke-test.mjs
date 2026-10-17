@@ -12,9 +12,10 @@
 import { join, dirname } from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 import assert from 'assert/strict';
+import { readFileSync } from 'fs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const bundle = pathToFileURL(join(root, 'dist', 'kaiserkram.js')).href;
+const bundle = pathToFileURL(join(root, JSON.parse(readFileSync(join(root, 'module.json'), 'utf8')).esmodules[0])).href;
 const MODULE_ID = 'kaiserkram';
 
 /** A callable, constructible object where every property is another stub. */
@@ -206,7 +207,7 @@ async function run({ label, systemId, enabled, legacy = false }) {
       filter: () => [],
       get: () => undefined,
     }),
-    modules: new Map([[MODULE_ID, { id: MODULE_ID, title: 'Kaiserkram', active: true }]]),
+    modules: new Map([[MODULE_ID, { id: MODULE_ID, title: 'Kaiserkram', active: true, version: '0.1.0' }]]),
     i18n: partial('i18n', { localize: (k) => k, format: (k) => k }),
     socket: { on: () => void record.socketOn++, emit: () => {} },
     actors: { contents: world ? [world.traderActor, world.pc] : [] },
@@ -360,7 +361,7 @@ function ok(label) {
   assert.deepEqual(record.menus, [`${MODULE_ID}.features`]);
   assert.equal(record.sheets.length, 1);
   assert.equal(record.sheets[0].scope, MODULE_ID);
-  assert.deepEqual(record.styles, ['modules/kaiserkram/styles/trader.css']);
+  assert.deepEqual(record.styles, ['modules/kaiserkram/styles/trader.css?v=0.1.0']);
   assert.equal(record.templates.length, 5);
   assert.equal(record.socketOn, 1);
   assert.notEqual(CONFIG.WebRTC.clientClass, OriginalClient, 'WebRTC client not replaced');

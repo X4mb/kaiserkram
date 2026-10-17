@@ -1,0 +1,64 @@
+# Push to `test` -> build and publish an installable PRE-RELEASE.
+#
+# Distribution model:
+#   * One reused pre-release tag, `test-latest`, holds both module.json and module.zip,
+#     so the test manifest URL never changes:
+#       https://github.com/X4mb/kaiserkram/releases/download/test-latest/module.json
+#   * Every build gets version <module.json version>.<run number>, so Foundry's
+#     "Check for Updates" sees each push as an update without a manual version bump.
+#   * The bundle filename carries that version, so a caching proxy can't keep serving
+#     an old bundle after an update.
+name: Test pre-release
+on:
+  push:
+    branches: [test]
+    paths-ignore:
+      - "README.md"
+      - "HANDOFF.md"
+      - ".github/dependabot.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: test-release
+  cancel-in-progress: true
+
+jobs:
+  test-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run check:i18n
+      - run: npm run smoke
+
+      - name: Stamp test version
+        run: node scripts/stamp.mjs test ${{ github.run_number }}
+
+      - name: Build + package
+        run: npm run release-pack
+
+      - name: Read module version
+        id: mod
+        run: echo "version=$(node -p "require('./module.json').version")" >> "$GITHUB_OUTPUT"
+
+      # Recreate the pre-release so its assets always match the latest test build.
+      - name: Publish test pre-release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete test-latest --yes --cleanup-tag || true
+          gh release create test-latest module.zip module.json \
+            --prerelease \
+            --target "${GITHUB_SHA}" \
+            --title "Test build ${{ steps.mod.outputs.version }}" \
+            --notes "Automated test build from ${GITHUB_SHA}. Install or update in Foundry with the manifest URL: https://github.com/X4mb/kaiserkram/releases/download/test-latest/module.json"
