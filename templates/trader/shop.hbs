@@ -49,7 +49,6 @@
         {{/if}}
       </button>
       <button type="button" data-action="showPlayers" data-tooltip="{{localize "kaiserkram.trader.gm.showPlayersHint"}}"><i class="fa-solid fa-bullhorn"></i> {{localize "kaiserkram.trader.gm.showPlayers"}}</button>
-      <button type="button" data-action="restock"><i class="fa-solid fa-boxes-stacked"></i> {{localize "kaiserkram.trader.gm.restock"}}</button>
       <button type="button" data-action="openActorSheet"><i class="fa-solid fa-user"></i> {{localize "kaiserkram.trader.gm.npcSheet"}}</button>
     </nav>
   {{/if}}
@@ -175,13 +174,6 @@
           </label>
           <label>{{localize "kaiserkram.trader.gm.sellRate"}}
             <input type="number" min="0" step="5" value="{{config.sellRate}}" data-config="sellRate" /> %
-          </label>
-          <label>{{localize "kaiserkram.trader.settlement.label"}}
-            <select data-config="settlement">
-              {{#each settlements}}
-                <option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>
-              {{/each}}
-            </select>
           </label>
           <label class="inline">
             <input type="checkbox" data-config="buysFromPlayers" {{#if config.buysFromPlayers}}checked{{/if}} />

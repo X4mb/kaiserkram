@@ -53,21 +53,12 @@ const SETTING_MAP: Record<FeatureId, Record<string, string>> = {
     throughWallGain: EARSHOT.THROUGH_WALL_GAIN,
     muteUnresolvedSpeaker: EARSHOT.MUTE_UNRESOLVED_SPEAKER,
   },
+  // The old module's other trader settings (restocking, haggle tuning) no longer exist.
   trader: {
     defaultMarkup: TRADER.DEFAULT_MARKUP,
     defaultSellRate: TRADER.DEFAULT_SELL_RATE,
     enforcePurse: TRADER.ENFORCE_PURSE,
-    askSettlementOnDrop: TRADER.ASK_SETTLEMENT,
     haggleEnabled: TRADER.HAGGLE_ENABLED,
-    haggleMode: TRADER.HAGGLE_MODE,
-    haggleMaxAsk: TRADER.HAGGLE_MAX_ASK,
-    haggleDifficultyPerPercent: TRADER.HAGGLE_DIFFICULTY,
-    haggleDiscountPerSL: TRADER.HAGGLE_DISCOUNT_PER_SL,
-    hagglePenaltyPerSL: TRADER.HAGGLE_PENALTY_PER_SL,
-    haggleGreed: TRADER.HAGGLE_GREED,
-    haggleMaxPenalty: TRADER.HAGGLE_MAX_PENALTY,
-    haggleBystanderShare: TRADER.HAGGLE_BYSTANDER_SHARE,
-    haggleBystanderRadius: TRADER.HAGGLE_BYSTANDER_RADIUS,
     haggleRetry: TRADER.HAGGLE_RETRY,
   },
 };

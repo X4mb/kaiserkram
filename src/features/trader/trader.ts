@@ -14,16 +14,7 @@ export type TraderConfig = {
   buysFromPlayers: boolean;
   /** Whether players can browse and buy (also controls default ownership). */
   open: boolean;
-  /** Settlement size for Availability tests when restocking; '' skips them. */
-  settlement: Settlement;
 };
-
-export const SETTLEMENTS = ['village', 'town', 'city'] as const;
-export type Settlement = (typeof SETTLEMENTS)[number] | '';
-
-export function asSettlement(v: unknown): Settlement {
-  return (SETTLEMENTS as readonly string[]).includes(String(v)) ? (v as Settlement) : '';
-}
 
 /** One player character's standing with a trader, stored in flags.kaiserkram.trader.haggle.<actorId>. */
 export type HaggleStanding = {
@@ -49,7 +40,6 @@ export function traderConfig(actor: WfrpActor): TraderConfig {
     sellRate: Number.isFinite(stored.sellRate) ? Number(stored.sellRate) : getNumber(SETTINGS.DEFAULT_SELL_RATE),
     buysFromPlayers: stored.buysFromPlayers ?? true,
     open: stored.open ?? false,
-    settlement: asSettlement(stored.settlement),
   };
 }
 

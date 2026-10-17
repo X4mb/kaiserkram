@@ -5,11 +5,9 @@ import { CARD_CLASS, FLAGS, TEMPLATES } from './constants.js';
 import { g, type WfrpActor, type WfrpItem } from './wfrp.js';
 import { canHaggle, resetHaggling, startHaggle } from './haggle.js';
 import { bpToPrice, formatBP, parsePrice, purseOf, purseTotal } from './money.js';
-import { openRestockDialog, settlementChoices } from './restock.js';
 import { getBool, SETTINGS } from './settings.js';
 import { requestGM, showToPlayers } from './socket.js';
 import {
-  asSettlement,
   bookPriceBP,
   buyQuote,
   haggleState,
@@ -111,7 +109,6 @@ export class TraderShop extends appBase() {
       removeItem: TraderShop.onRemoveItem as ActionFn,
       toggleOpen: TraderShop.onToggleOpen as ActionFn,
       showPlayers: TraderShop.onShowPlayers as ActionFn,
-      restock: TraderShop.onRestock as ActionFn,
       resetHaggle: TraderShop.onResetHaggle as ActionFn,
       forgiveCustomer: TraderShop.onForgiveCustomer as ActionFn,
       openActorSheet: TraderShop.onOpenActorSheet as ActionFn,
@@ -253,7 +250,6 @@ export class TraderShop extends appBase() {
       sellableCount: sellable.length,
       standings,
       haggleOn,
-      settlements: settlementChoices(config.settlement),
     };
   }
 
@@ -300,11 +296,7 @@ export class TraderShop extends appBase() {
   private async saveConfig(input: HTMLInputElement | HTMLSelectElement): Promise<void> {
     const key = input.dataset.config as keyof TraderConfig;
     const value =
-      key === 'settlement'
-        ? asSettlement(input.value)
-        : input instanceof HTMLInputElement && input.type === 'checkbox'
-          ? input.checked
-          : Math.max(0, Number(input.value) || 0);
+      input instanceof HTMLInputElement && input.type === 'checkbox' ? input.checked : Math.max(0, Number(input.value) || 0);
     await this.trader.setFlag(MODULE_ID, `${FLAGS.CONFIG}.${key}`, value);
   }
 
@@ -473,10 +465,6 @@ export class TraderShop extends appBase() {
         ? fmt('kaiserkram.trader.gm.shownToPlayers', 'Showed {trader} to {count} player(s).', { trader: trader.name, count: players })
         : loc('kaiserkram.trader.gm.noPlayers', 'No players are connected; they can open the shop from its token or the Actors sidebar.'),
     );
-  }
-
-  static async onRestock(this: TraderShop): Promise<void> {
-    await openRestockDialog(this.trader);
   }
 
   static async onResetHaggle(this: TraderShop): Promise<void> {

@@ -31,7 +31,7 @@ const TEXT: Record<FeatureId, { name: [string, string]; hint: [string, string] }
     name: ['kaiserkram.features.trader.name', 'Trader'],
     hint: [
       'kaiserkram.features.trader.hint',
-      'Turns WFRP4e NPCs into shops players buy from and sell to, with restocking and haggling.',
+      'Turns WFRP4e NPCs into shops players buy from and sell to, with haggling.',
     ],
   },
 };

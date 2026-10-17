@@ -12,7 +12,6 @@ export const FLAGS = {
   IS_TRADER: 'trader.isTrader',
   CONFIG: 'trader.config',
   HAGGLE: 'trader.haggle',
-  RESTOCK_TABLE: 'trader.restockTable',
 
   // Set on items in the trader's inventory.
   PRICE_OVERRIDE: 'trader.priceOverride',
@@ -35,8 +34,6 @@ export const CARD_CLASS = `${MODULE_ID}-trader-card`;
 export const TEMPLATES = {
   SHOP: `${MODULE_PATH}/templates/trader/shop.hbs`,
   HAGGLE_DIALOG: `${MODULE_PATH}/templates/trader/haggle-dialog.hbs`,
-  RESTOCK_DIALOG: `${MODULE_PATH}/templates/trader/restock-dialog.hbs`,
-  SETTLEMENT_DIALOG: `${MODULE_PATH}/templates/trader/settlement-dialog.hbs`,
   QUANTITY_DIALOG: `${MODULE_PATH}/templates/trader/quantity-dialog.hbs`,
 } as const;
 

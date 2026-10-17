@@ -7,9 +7,9 @@ Every feature is **off** until you enable it. A disabled feature registers nothi
 | Feature | Group | What it does | Replaces |
 |---|---|---|---|
 | **World Landing** | General | Right-click a scene → *Set as Default Scene*. It is activated whenever the world starts (GM only). | `world-landing-fvtt` |
-| **Deploy Party** | General | Drag an actor folder onto the canvas to get one party marker. Players can move the marker and see from it (it is backed by an actor every player owns, kept in a *Party Markers* actor folder; turn this off in the settings). From its Token HUD the GM *Deploys* every actor as its own token and *Recalls* them. | `deploy-party` |
+| **Deploy Party** | General | Drag an actor folder onto the canvas to get one party marker. Players can move the marker and see from it (it is backed by an actor every player owns, kept in a *Party Markers* actor folder; turn this off in the settings). The marker's actor is also the party's shared inventory: items dragged between it and a character (onto its sheet or onto the marker token) move rather than copy. From its Token HUD the GM *Deploys* every actor as its own token and *Recalls* them. | `deploy-party` |
 | **Within Earshot** | General | Proximity voice: how loud others are follows token distance and walls. Optional global GM voice, and a voice-token shortcut (default Ctrl+Shift+V). Replaces Foundry's A/V client. | `withinearshot` |
-| **Trader** | WFRP4e | Turns a WFRP4e NPC into a shop sheet: buy and sell with the coins on your character, restock from a RollTable with Availability tests, and haggle. Only offered in WFRP4e worlds. | `trader-wfrp4e` |
+| **Trader** | WFRP4e | Turns a WFRP4e NPC into a shop: players buy and sell with the coins on their character, and haggle. Only offered in WFRP4e worlds. | `trader-wfrp4e` |
 
 ## Installation
 
@@ -28,10 +28,19 @@ Each enabled feature adds its own settings under Configure Settings → Kaiserkr
 A trader is an ordinary WFRP4e NPC that keeps its normal NPC sheet (for stats and the trader's coins). Its shop opens in a window of its own, with **Buy**, **Sell** and, for the GM, **Manage** tabs.
 
 1. **Make a trader.** In the Actors sidebar, click **Create Trader**, or right-click an NPC → **Make Trader**. The shop window opens on the Manage tab.
-2. **Stock it.** Drag items from the Items sidebar or a compendium onto the shop window, or click **Restock from table**. The restock dialog only lists world roll tables that give goods (weapons, armour, trappings…); drag a compendium table onto it to use that. In Manage, set each item's count, ∞ for unlimited stock, a fixed price, and whether it is for sale.
+2. **Stock it.** Drag items from the Items sidebar, a compendium or an actor onto the shop window. In Manage, set each item's count, ∞ for unlimited stock, a fixed price, and whether it is for sale.
 3. **Set prices.** *Markup* is what the trader charges, as a % of book price; *Buy-back rate* is what it pays players.
 4. **Open the shop.** The GM's buttons sit in a bar under the trader's name. **Open shop** lets players in and posts an *open for business* card in chat; **Close shop** shuts them out. **Show to players** opens the shop if needed and pops the window up on every connected player's screen.
+   The bar also has **NPC sheet** for the trader's stats and coins.
 5. **Players trade.** They get in through the chat card's **Enter the shop** button, the **Shops** button at the top of the Actors sidebar, or by double-clicking the trader's token. They pick the character they trade as, then buy or haggle in **Buy** and sell in **Sell** (or drag an item from their character sheet onto the shop). Coins move automatically. A GM has to be online, because the trades run on the GM's client.
+
+**Haggling** is an opposed Haggle test against the trader. The player picks a discount up to 80%; their test gets harder the more they ask, the trader's has no modifier:
+
+| Discount asked | up to 10% | 20% | 30% | 40% | 50% | 60% | 70% | 80% |
+|---|---|---|---|---|---|---|---|---|
+| Player's modifier | ±0 | −10 | −20 | −30 | −45 | −55 | −65 | −80 |
+
+Higher SL wins (on a tie, the higher skill). Win, and the next purchase of that item gets exactly the discount asked for; lose, and the price stays. Each character gets one try per item unless *Haggle: allow repeat attempts* is on; **Reset haggling** in Manage clears all tries and deals.
 
 The GM can also open any shop from the trader's Token HUD, from right-click → **Open Shop**, or from **Shops**. The Manage tab has a collapsible **How this works** box with these steps.
 

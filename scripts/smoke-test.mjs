@@ -104,7 +104,8 @@ function seedLegacyWorld() {
     ['deploy-party.defaultTokenImage', JSON.stringify('modules/deploy-party/assets/party-token.svg')],
     ['deploy-party.tokenSpacing', JSON.stringify(1.5)],
     ['trader-wfrp4e.defaultMarkup', JSON.stringify(120)],
-    ['trader-wfrp4e.haggleMode', JSON.stringify('simple')],
+    ['trader-wfrp4e.haggleMode', JSON.stringify('simple')], // gone: must not be copied
+    ['trader-wfrp4e.haggleRetry', JSON.stringify(true)],
     ['withinearshot.maxRange', JSON.stringify(30)],
     ['someothermodule.thing', JSON.stringify(1)],
   ].map(([key, value]) => fakeDoc(key, { value }));
@@ -178,7 +179,7 @@ function seedLegacyWorld() {
 
 async function run({ label, systemId, enabled, legacy = false, migrationVersion }) {
   const phase = { current: 'load' };
-  const record = { hooks: [], settings: [], menus: [], keybindings: [], sheets: [], socketOn: 0, styles: [], templates: [], errors: [], created: [] };
+  const record = { domListeners: [], hooks: [], settings: [], menus: [], keybindings: [], sheets: [], socketOn: 0, styles: [], templates: [], errors: [], created: [] };
   const hookFns = new Map();
   const values = new Map([[`${MODULE_ID}.enabledFeatures`, enabled]]);
   if (migrationVersion !== undefined) values.set(`${MODULE_ID}.migrationVersion`, migrationVersion);
@@ -308,7 +309,7 @@ async function run({ label, systemId, enabled, legacy = false, migrationVersion 
     ui: stub('ui'),
     canvas: null,
     PIXI: stub('PIXI'),
-    document: { head, createElement: () => ({ dataset: {} }) },
+    document: { head, createElement: () => ({ dataset: {} }), addEventListener: (type) => void record.domListeners.push(type) },
     window: { location: { origin: 'http://localhost' }, addEventListener: () => {} },
     fetch: async () => {
       throw new Error('no server in smoke test');
@@ -365,7 +366,7 @@ function ok(label) {
   assert.deepEqual(record.menus, [`${MODULE_ID}.features`]);
   assert.deepEqual(record.sheets, [], 'traders keep the system sheet; nothing should register one');
   assert.deepEqual(record.styles, ['modules/kaiserkram/styles/trader.css?v=0.1.0']);
-  assert.equal(record.templates.length, 5);
+  assert.equal(record.templates.length, 3);
   assert.equal(record.socketOn, 1);
   assert.notEqual(CONFIG.WebRTC.clientClass, OriginalClient, 'WebRTC client not replaced');
   const api = game.modules.get(MODULE_ID).api;
@@ -381,7 +382,8 @@ function ok(label) {
   assert.equal(values.get(`${MODULE_ID}.partyDefaultTokenImage`), 'modules/kaiserkram/assets/party-token.svg');
   assert.equal(values.get(`${MODULE_ID}.partyTokenSpacing`), 1.5);
   assert.equal(values.get(`${MODULE_ID}.traderDefaultMarkup`), 120);
-  assert.equal(values.get(`${MODULE_ID}.traderHaggleMode`), 'simple');
+  assert.equal(values.get(`${MODULE_ID}.traderHaggleRetry`), true);
+  assert.equal(values.has(`${MODULE_ID}.traderHaggleMode`), false);
   assert.equal(values.get(`${MODULE_ID}.earshotMaxRange`), 30);
   assert.deepEqual(created, {});
 
@@ -446,6 +448,7 @@ function ok(label) {
   assert.deepEqual(record.settings.sort(), [`${MODULE_ID}.enabledFeatures`, `${MODULE_ID}.migrationVersion`]);
   assert.deepEqual(record.keybindings, []);
   assert.deepEqual(record.sheets, []);
+  assert.deepEqual(record.domListeners, []);
   assert.deepEqual(record.styles, []);
   assert.deepEqual(record.templates, []);
   assert.equal(record.socketOn, 0);
@@ -460,7 +463,7 @@ function ok(label) {
     'kaiserkram.partyDefaultTokenImage': 'modules/kaiserkram/assets/party-token.svg',
     'kaiserkram.partyTokenSpacing': 1.5,
     'kaiserkram.traderDefaultMarkup': 120,
-    'kaiserkram.traderHaggleMode': 'simple',
+    'kaiserkram.traderHaggleRetry': true,
     'kaiserkram.earshotMaxRange': 30,
   });
   ok('migration runs with every feature off');
