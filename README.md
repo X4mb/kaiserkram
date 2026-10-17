@@ -23,6 +23,16 @@ Enable **Kaiserkram** in the world's **Manage Modules**, then as GM open **Confi
 
 Each enabled feature adds its own settings under Configure Settings → Kaiserkram, and Within Earshot's keybindings appear under Configure Controls → Kaiserkram.
 
+## Using the Trader
+
+1. **Make a trader.** In the Actors sidebar, click **Create Trader** (GM only). Or open any NPC, go to *Sheet* in its title bar and pick the *Trader* sheet. **NPC sheet** on the trader sheet opens the normal WFRP4e sheet for stats and the trader's purse.
+2. **Stock it.** Drag items from the Items sidebar or a compendium onto the trader sheet, or click **Restock from table**. The restock dialog only lists world roll tables that give goods (weapons, armour, trappings…). For a compendium table, drag it onto the dialog. Each row has a count, an ∞ box for unlimited stock, a fixed-price box and a "for sale" tick.
+3. **Set prices.** *Markup* is what the trader charges, as a % of book price; *Buy-back rate* is what it pays players. A fixed price overrides one item.
+4. **Open the shop.** **Open shop** gives players Limited permission, so they can see the trader; **Close shop** takes that back. **Show to players** opens the shop if needed and pops the window up on every connected player's screen.
+5. **Players trade.** They open the shop by double-clicking the trader's token or from the Actors sidebar, pick the character they trade as, and buy, haggle or sell (or drag an item from their character sheet onto the shop). Coins move automatically. A GM has to be online, because the trades run on the GM's client.
+
+The sheet has a collapsible **How this works** box with the same steps for the GM.
+
 ## Moving from the old modules
 
 The first time a GM loads a world with Kaiserkram enabled, Kaiserkram copies the old modules' data into its own namespace. This happens once, whether or not any feature is enabled yet:

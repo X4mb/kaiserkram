@@ -148,8 +148,8 @@
   "kaiserkram.trader.haggle.risk": "Fail, and the trader will charge you more for everything, and your companions standing nearby a bit more as well.",
   "kaiserkram.trader.restock.title": "Restock {trader}",
   "kaiserkram.trader.restock.go": "Restock",
-  "kaiserkram.trader.restock.table": "Roll table",
-  "kaiserkram.trader.restock.uuid": "…or a table UUID (e.g. from a compendium)",
+  "kaiserkram.trader.restock.table": "Roll table (only tables that give goods are listed)",
+  "kaiserkram.trader.restock.uuid": "…or drop a roll table on this window (from the sidebar or a compendium), or paste its UUID",
   "kaiserkram.trader.restock.rolls": "Number of draws",
   "kaiserkram.trader.restock.clear": "Clear current stock first",
   "kaiserkram.trader.restock.hint": "Every draw that gives an Item (a document or compendium result, or a text result naming a world item) is added to stock. With a settlement size, each item gets one Availability test and its stock comes from the WFRP table (cities stock common to rare goods without limit); without one, each draw adds one and repeat draws stack.",
@@ -199,5 +199,16 @@
   "kaiserkram.trader.settlement.title": "Where is {trader} trading?",
   "kaiserkram.trader.settlement.prompt": "Restocking rolls WFRP Availability tests for this settlement size: rarer goods are less likely to be in stock, and the table decides how many there are. You can change this later on the trader sheet.",
   "kaiserkram.trader.settlement.restockNow": "Restock from a table now",
-  "kaiserkram.trader.restock.reportTitle": "Availability in a {settlement}: {trader}"
+  "kaiserkram.trader.restock.reportTitle": "Availability in a {settlement}: {trader}",
+  "kaiserkram.trader.restock.noTables": "No roll table in this world gives goods (weapons, armour, trappings…). Drop one from a compendium on this window, or paste its UUID below.",
+  "kaiserkram.trader.gm.showPlayers": "Show to players",
+  "kaiserkram.trader.gm.showPlayersHint": "Opens the shop if it is closed, then opens this window on every connected player's screen.",
+  "kaiserkram.trader.gm.shownToPlayers": "Showed {trader} to {count} player(s).",
+  "kaiserkram.trader.gm.noPlayers": "No players are connected; they can open the shop from its token or the Actors sidebar.",
+  "kaiserkram.trader.help.title": "How this works",
+  "kaiserkram.trader.help.stock": "Stock: drag items from the Items sidebar or a compendium onto this window, or use Restock from table. Set a count, or tick ∞ for unlimited stock.",
+  "kaiserkram.trader.help.prices": "Prices: the trader charges Markup % of each item's book price and pays Buy-back rate % for what players sell. Type a fixed price to override one item.",
+  "kaiserkram.trader.help.open": "Open shop lets players see this trader (it gives them Limited permission); Close shop hides it again. Players can't trade while the shop is closed.",
+  "kaiserkram.trader.help.players": "Players open the shop by double-clicking the trader's token, or from the Actors sidebar. Show to players pops it open on everyone's screen.",
+  "kaiserkram.trader.help.trade": "Players pick the character they trade as at the top, then buy, haggle, or sell from their own inventory (or drag an item from their character sheet here). Coins move automatically; a GM must be online."
 }

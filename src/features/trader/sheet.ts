@@ -7,7 +7,7 @@ import { canHaggle, resetHaggling, startHaggle } from './haggle.js';
 import { bpToPrice, formatBP, parsePrice, purseOf, purseTotal } from './money.js';
 import { openRestockDialog, settlementChoices } from './restock.js';
 import { getBool, SETTINGS } from './settings.js';
-import { requestGM } from './socket.js';
+import { requestGM, showToPlayers } from './socket.js';
 import {
   asSettlement,
   bookPriceBP,
@@ -103,6 +103,7 @@ export class TraderSheet extends sheetBase() {
       openItem: TraderSheet.onOpenItem as ActionFn,
       removeItem: TraderSheet.onRemoveItem as ActionFn,
       toggleOpen: TraderSheet.onToggleOpen as ActionFn,
+      showPlayers: TraderSheet.onShowPlayers as ActionFn,
       restock: TraderSheet.onRestock as ActionFn,
       resetHaggle: TraderSheet.onResetHaggle as ActionFn,
       forgiveCustomer: TraderSheet.onForgiveCustomer as ActionFn,
@@ -428,6 +429,20 @@ export class TraderSheet extends sheetBase() {
     if (open && current < OWNERSHIP.LIMITED) update['ownership.default'] = OWNERSHIP.LIMITED;
     if (!open && current === OWNERSHIP.LIMITED) update['ownership.default'] = OWNERSHIP.NONE;
     await trader.update(update);
+  }
+
+  /** Open the shop if needed, then pop this sheet open on every connected player's screen. */
+  static async onShowPlayers(this: TraderSheet): Promise<void> {
+    const trader = this.trader;
+    if (!traderConfig(trader).open) await TraderSheet.onToggleOpen.call(this);
+    showToPlayers(trader.uuid);
+    const players = g().users.contents.filter((u) => u.active && !u.isGM).length;
+    notify(
+      'info',
+      players
+        ? fmt('kaiserkram.trader.gm.shownToPlayers', 'Showed {trader} to {count} player(s).', { trader: trader.name, count: players })
+        : loc('kaiserkram.trader.gm.noPlayers', 'No players are connected; they can open the shop from its token or the Actors sidebar.'),
+    );
   }
 
   static async onRestock(this: TraderSheet): Promise<void> {

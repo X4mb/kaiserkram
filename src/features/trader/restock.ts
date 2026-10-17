@@ -29,8 +29,15 @@ type TableResultLike = { documentUuid?: string | null; name?: string; text?: str
 type RollTableLike = {
   name: string;
   uuid: string;
+  results: { contents: TableResultLike[] };
   roll(): Promise<{ results: TableResultLike[] }>;
 };
+
+/**
+ * WFRP4e item types that are goods with a price. Skills, talents, conditions, spells and the
+ * like are Items too, which is why tables of them would otherwise show up as restock tables.
+ */
+const GOODS_TYPES = new Set(['weapon', 'armour', 'trapping', 'ammunition', 'container', 'cargo']);
 
 function worldTables(): RollTableLike[] {
   return (game as unknown as { tables: { contents: RollTableLike[] } }).tables.contents;
@@ -38,6 +45,26 @@ function worldTables(): RollTableLike[] {
 
 function worldItemNamed(name: string): WfrpItem | undefined {
   return (game as unknown as { items: { getName(n: string): WfrpItem | undefined } }).items.getName(name);
+}
+
+/** The item type a result points at, without loading anything (world items or compendium indexes). */
+function resultItemType(result: TableResultLike): string | null {
+  if (result.documentUuid) {
+    try {
+      const fromUuidSync = (foundry.utils as unknown as { fromUuidSync(u: string): unknown }).fromUuidSync;
+      const doc = fromUuidSync(result.documentUuid) as { type?: string; documentName?: string } | null;
+      if (doc?.type && (doc.documentName === undefined || doc.documentName === 'Item')) return doc.type;
+    } catch {
+      /* not resolvable without loading; treat as unknown */
+    }
+  }
+  const label = (result.name || result.text || result.description || '').trim();
+  return (label && worldItemNamed(label)?.type) || null;
+}
+
+/** Whether a table can give the trader anything to sell. */
+export function isRestockTable(table: RollTableLike): boolean {
+  return table.results.contents.some((r) => GOODS_TYPES.has(resultItemType(r) ?? ''));
 }
 
 async function itemFromResult(result: TableResultLike): Promise<WfrpItem | null> {
@@ -153,9 +180,13 @@ export async function restockFromTable(
 export async function openRestockDialog(trader: WfrpActor): Promise<void> {
   const last = String(trader.getFlag(MODULE_ID, FLAGS.RESTOCK_TABLE) ?? '');
   const settlement = traderConfig(trader).settlement;
-  const tables = worldTables().map((t) => ({ uuid: t.uuid, name: t.name, selected: t.uuid === last }));
+  const tables = worldTables()
+    .filter((t) => t.uuid === last || isRestockTable(t))
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((t) => ({ uuid: t.uuid, name: t.name, selected: t.uuid === last }));
   const content = await renderTemplate(TEMPLATES.RESTOCK_DIALOG, {
     tables,
+    hasTables: tables.length > 0,
     customUuid: tables.some((t) => t.selected) ? '' : last,
     settlements: settlementChoices(settlement),
   });
@@ -164,6 +195,7 @@ export async function openRestockDialog(trader: WfrpActor): Promise<void> {
     window: { title: fmt('kaiserkram.trader.restock.title', 'Restock {trader}', { trader: trader.name }) },
     content,
     rejectClose: false,
+    render: (_event: unknown, dialog: { element: HTMLElement }) => acceptTableDrops(dialog.element),
     buttons: [
       {
         action: 'restock',
@@ -205,6 +237,25 @@ export async function openRestockDialog(trader: WfrpActor): Promise<void> {
     console.error('[kaiserkram] trader: Restock failed', err);
     notify.error(loc('kaiserkram.trader.restock.failed', 'Restock failed: that RollTable could not be found.'));
   }
+}
+
+/** Dropping a RollTable (sidebar or compendium) anywhere on the restock dialog fills in its UUID. */
+function acceptTableDrops(root: HTMLElement): void {
+  const input = root.querySelector<HTMLInputElement>('input[name="customUuid"]');
+  if (!input) return;
+  root.addEventListener('dragover', (ev) => ev.preventDefault());
+  root.addEventListener('drop', (ev) => {
+    let data: { type?: string; uuid?: string };
+    try {
+      data = JSON.parse(ev.dataTransfer?.getData('text/plain') ?? '');
+    } catch {
+      return;
+    }
+    if (data.type !== 'RollTable' || !data.uuid) return;
+    ev.preventDefault();
+    input.value = data.uuid;
+    input.dispatchEvent(new Event('change'));
+  });
 }
 
 export function settlementChoices(current: Settlement): { value: string; label: string; selected: boolean }[] {

@@ -1,12 +1,16 @@
 <div class="kaiserkram trader-dialog">
-  <label>
-    {{localize "kaiserkram.trader.restock.table"}}
-    <select name="table">
-      {{#each tables}}
-        <option value="{{uuid}}" {{#if selected}}selected{{/if}}>{{name}}</option>
-      {{/each}}
-    </select>
-  </label>
+  {{#if hasTables}}
+    <label>
+      {{localize "kaiserkram.trader.restock.table"}}
+      <select name="table">
+        {{#each tables}}
+          <option value="{{uuid}}" {{#if selected}}selected{{/if}}>{{name}}</option>
+        {{/each}}
+      </select>
+    </label>
+  {{else}}
+    <p class="hint">{{localize "kaiserkram.trader.restock.noTables"}}</p>
+  {{/if}}
   <label>
     {{localize "kaiserkram.trader.restock.uuid"}}
     <input type="text" name="customUuid" value="{{customUuid}}" placeholder="Compendium.…RollTable.…" />

@@ -1,6 +1,6 @@
 import { emitSocket, registerSocketHandler } from '../../core/socket.js';
 import { loc } from '../../core/i18n.js';
-import { g, type FoundryUser } from './wfrp.js';
+import { g, resolveActor, type FoundryUser } from './wfrp.js';
 
 /**
  * Players don't own the trader, so every trade runs on the active GM's client.
@@ -26,6 +26,9 @@ type ResponseMessage = {
   result: ActionResult;
 };
 
+/** GM → players: open this trader's sheet on your screen. */
+type ShowMessage = { type: 'show'; traderUuid: string };
+
 const TIMEOUT_MS = 60_000;
 const handlers = new Map<string, ActionHandler>();
 const pending = new Map<string, (result: ActionResult) => void>();
@@ -36,8 +39,10 @@ export function registerHandler(action: string, handler: ActionHandler): void {
 
 export function registerSocket(): void {
   registerSocketHandler('trader', (raw: unknown) => {
-    const data = raw as RequestMessage | ResponseMessage | undefined;
-    if (data?.type === 'response') {
+    const data = raw as RequestMessage | ResponseMessage | ShowMessage | undefined;
+    if (data?.type === 'show') {
+      void showSheet(data.traderUuid);
+    } else if (data?.type === 'response') {
       if (data.userId !== g().user.id) return;
       pending.get(data.requestId)?.(data.result);
       pending.delete(data.requestId);
@@ -46,6 +51,19 @@ export function registerSocket(): void {
       void handleRequest(data);
     }
   });
+}
+
+async function showSheet(traderUuid: string): Promise<void> {
+  if (g().user.isGM) return;
+  const trader = await resolveActor(traderUuid);
+  if (!trader?.testUserPermission(g().user, 'LIMITED')) return;
+  trader.sheet?.render({ force: true });
+}
+
+/** GM: pop the trader's sheet open for every connected player who can see it. */
+export function showToPlayers(traderUuid: string): void {
+  const message: ShowMessage = { type: 'show', traderUuid };
+  emitSocket('trader', message);
 }
 
 async function run(action: string, payload: Record<string, unknown>, user: FoundryUser): Promise<ActionResult> {

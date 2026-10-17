@@ -163,6 +163,16 @@
 
     {{#if isGM}}
       <h2><i class="fa-solid fa-user-gear"></i> {{localize "kaiserkram.trader.gm.title"}}</h2>
+      <details class="trader-help" {{#unless hasStock}}open{{/unless}}>
+        <summary><i class="fa-solid fa-circle-question"></i> {{localize "kaiserkram.trader.help.title"}}</summary>
+        <ol>
+          <li>{{localize "kaiserkram.trader.help.stock"}}</li>
+          <li>{{localize "kaiserkram.trader.help.prices"}}</li>
+          <li>{{localize "kaiserkram.trader.help.open"}}</li>
+          <li>{{localize "kaiserkram.trader.help.players"}}</li>
+          <li>{{localize "kaiserkram.trader.help.trade"}}</li>
+        </ol>
+      </details>
       <div class="trader-gm">
         <div class="gm-row">
           <button type="button" data-action="toggleOpen">
@@ -172,6 +182,7 @@
               <i class="fa-solid fa-door-open"></i> {{localize "kaiserkram.trader.gm.open"}}
             {{/if}}
           </button>
+          <button type="button" data-action="showPlayers" data-tooltip="{{localize "kaiserkram.trader.gm.showPlayersHint"}}"><i class="fa-solid fa-bullhorn"></i> {{localize "kaiserkram.trader.gm.showPlayers"}}</button>
           <button type="button" data-action="restock"><i class="fa-solid fa-boxes-stacked"></i> {{localize "kaiserkram.trader.gm.restock"}}</button>
           <button type="button" data-action="openActorSheet"><i class="fa-solid fa-user"></i> {{localize "kaiserkram.trader.gm.npcSheet"}}</button>
         </div>
