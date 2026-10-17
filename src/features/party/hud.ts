@@ -33,7 +33,8 @@ export function registerTokenHudButton(): void {
   Hooks.on('renderTokenHUD', (hud: unknown, html: unknown) => {
     const token = (hud as { object?: Token }).object;
     const doc = token?.document;
-    if (!doc || !doc.isOwner) return;
+    // Players may own the marker (to move it), but deploying and recalling stay with the GM.
+    if (!doc || !game.user?.isGM) return;
 
     const isMarker = isPartyMarker(doc);
     const isMember = isDeployedMember(doc);

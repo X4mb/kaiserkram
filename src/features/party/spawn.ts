@@ -1,5 +1,6 @@
 import { MODULE_ID } from '../../core/constants.js';
-import { expandObject } from '../../core/foundryApi.js';
+import { expandObject, flags } from '../../core/foundryApi.js';
+import { FLAGS } from './constants.js';
 import { actorTokenSource, foldersOf, tokenCreator } from './views.js';
 import { getSpacing } from './settings.js';
 
@@ -10,7 +11,8 @@ export function collectActorsInFolder(folder: Folder, recursive: boolean): Actor
       actors.push(...(sub.contents as Actor[]));
     }
   }
-  return actors;
+  // The actors behind party markers are never deployed themselves.
+  return actors.filter((a) => !flags(a).getFlag(MODULE_ID, FLAGS.MARKER_ACTOR_FOR));
 }
 
 /** Lay `count` items out in a square-ish grid centered on the origin, in grid-cell units. */

@@ -7,7 +7,7 @@ Every feature is **off** until you enable it. A disabled feature registers nothi
 | Feature | Group | What it does | Replaces |
 |---|---|---|---|
 | **World Landing** | General | Right-click a scene → *Set as Default Scene*. It is activated whenever the world starts (GM only). | `world-landing-fvtt` |
-| **Deploy Party** | General | Drag an actor folder onto the canvas to get one party marker. From its Token HUD, *Deploy* drops every actor as its own token; *Recall* brings them back. | `deploy-party` |
+| **Deploy Party** | General | Drag an actor folder onto the canvas to get one party marker. Players can move the marker and see from it (it is backed by an actor every player owns, kept in a *Party Markers* actor folder; turn this off in the settings). From its Token HUD the GM *Deploys* every actor as its own token and *Recalls* them. | `deploy-party` |
 | **Within Earshot** | General | Proximity voice: how loud others are follows token distance and walls. Optional global GM voice, and a voice-token shortcut (default Ctrl+Shift+V). Replaces Foundry's A/V client. | `withinearshot` |
 | **Trader** | WFRP4e | Turns a WFRP4e NPC into a shop sheet: buy and sell with the coins on your character, restock from a RollTable with Availability tests, and haggle. Only offered in WFRP4e worlds. | `trader-wfrp4e` |
 
@@ -28,7 +28,7 @@ Each enabled feature adds its own settings under Configure Settings → Kaiserkr
 1. **Make a trader.** In the Actors sidebar, click **Create Trader** (GM only). Or open any NPC, go to *Sheet* in its title bar and pick the *Trader* sheet. **NPC sheet** on the trader sheet opens the normal WFRP4e sheet for stats and the trader's purse.
 2. **Stock it.** Drag items from the Items sidebar or a compendium onto the trader sheet, or click **Restock from table**. The restock dialog only lists world roll tables that give goods (weapons, armour, trappings…). For a compendium table, drag it onto the dialog. Each row has a count, an ∞ box for unlimited stock, a fixed-price box and a "for sale" tick.
 3. **Set prices.** *Markup* is what the trader charges, as a % of book price; *Buy-back rate* is what it pays players. A fixed price overrides one item.
-4. **Open the shop.** **Open shop** gives players Limited permission, so they can see the trader; **Close shop** takes that back. **Show to players** opens the shop if needed and pops the window up on every connected player's screen.
+4. **Open the shop.** The GM's buttons sit in a bar under the trader's name. **Open shop** gives players Limited permission, so they can see the trader; **Close shop** takes that back. **Show to players** opens the shop if needed and pops the window up on every connected player's screen.
 5. **Players trade.** They open the shop by double-clicking the trader's token or from the Actors sidebar, pick the character they trade as, and buy, haggle or sell (or drag an item from their character sheet onto the shop). Coins move automatically. A GM has to be online, because the trades run on the GM's client.
 
 The sheet has a collapsible **How this works** box with the same steps for the GM.

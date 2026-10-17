@@ -12,6 +12,10 @@ export const FLAGS = {
   ORIGIN_MARKER_ID: 'party.originMarkerId',
   ORIGIN_FOLDER_UUID: 'party.originFolderUuid',
   ORIGIN_FOLDER_NAME: 'party.originFolderName',
+
+  // Set on the actor that backs party markers for one folder, and on the folder holding those actors.
+  MARKER_ACTOR_FOR: 'party.markerActorFor',
+  MARKER_ACTOR_FOLDER: 'party.markerActorFolder',
 } as const;
 
 export const DEFAULT_TOKEN_IMAGE = `${MODULE_PATH}/assets/party-token.svg`;

@@ -10,6 +10,7 @@ export const SETTINGS = {
   SPACING: 'partyTokenSpacing',
   PARTY_TOKEN_SIZE: 'partyTokenSize',
   DEFAULT_IMAGE: 'partyDefaultTokenImage',
+  PLAYERS_CONTROL_MARKER: 'partyPlayersControlMarker',
 } as const;
 
 export const AFTER_DEPLOY_BEHAVIORS = {
@@ -84,6 +85,15 @@ export function registerPartySettings(): void {
     default: 1,
   });
 
+  s().register(MODULE_ID, SETTINGS.PLAYERS_CONTROL_MARKER, {
+    name: 'kaiserkram.party.SETTINGS.playersControlMarker.name',
+    hint: 'kaiserkram.party.SETTINGS.playersControlMarker.hint',
+    scope: 'world',
+    config: true,
+    type: Boolean,
+    default: true,
+  });
+
   s().register(MODULE_ID, SETTINGS.DEFAULT_IMAGE, {
     name: 'kaiserkram.party.SETTINGS.defaultTokenImage.name',
     hint: 'kaiserkram.party.SETTINGS.defaultTokenImage.hint',
@@ -119,6 +129,10 @@ export function getSpacing(): number {
 export function getPartyTokenSize(): number {
   const v = Number(s().get(MODULE_ID, SETTINGS.PARTY_TOKEN_SIZE));
   return Number.isFinite(v) && v > 0 ? v : 1;
+}
+
+export function getPlayersControlMarker(): boolean {
+  return Boolean(s().get(MODULE_ID, SETTINGS.PLAYERS_CONTROL_MARKER));
 }
 
 export function getDefaultTokenImage(): string {
