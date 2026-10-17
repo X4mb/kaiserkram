@@ -124,3 +124,30 @@ export function toElement(html: unknown): HTMLElement | null {
   const jq = html as { 0?: HTMLElement } | undefined;
   return jq?.[0] instanceof HTMLElement ? jq[0] : null;
 }
+
+/** One context-menu entry (Actors/Scenes sidebar, token menu). `target` is the clicked entry's element. */
+export type MenuEntry = {
+  /** Already localized. */
+  label: string;
+  icon: string;
+  visible?: (target: HTMLElement) => boolean;
+  onClick: (target: HTMLElement) => unknown;
+};
+
+/**
+ * The entry in both shapes: v14 reads label / visible / onClick, v13 name / condition / callback
+ * (v14 still accepts those, with a deprecation warning).
+ */
+export function contextEntry(entry: MenuEntry): Record<string, unknown> {
+  const visible = (target: unknown) => (entry.visible ? entry.visible(toElement(target) ?? (target as HTMLElement)) : true);
+  const run = (target: unknown) => entry.onClick(toElement(target) ?? (target as HTMLElement));
+  return {
+    label: entry.label,
+    icon: entry.icon,
+    visible,
+    onClick: (_event: unknown, target: unknown) => run(target),
+    name: entry.label,
+    condition: visible,
+    callback: run,
+  };
+}

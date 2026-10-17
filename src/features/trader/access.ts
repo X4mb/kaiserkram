@@ -1,5 +1,5 @@
 import { MODULE_ID } from '../../core/constants.js';
-import { dialogV2, expandObject, notify, on, toElement } from '../../core/foundryApi.js';
+import { contextEntry, dialogV2, expandObject, notify, on, toElement } from '../../core/foundryApi.js';
 import { fmt, loc } from '../../core/i18n.js';
 import { DEFAULT_TRADER_IMAGE, FLAGS } from './constants.js';
 import { openShop } from './shop.js';
@@ -102,56 +102,51 @@ function addDirectoryButtons(_app: unknown, html: unknown): void {
   }
 }
 
-type ContextOption = {
-  name: string;
-  icon: string;
-  condition: (li: HTMLElement) => boolean;
-  callback: (li: HTMLElement) => unknown;
-};
-
 function actorFromRow(li: HTMLElement): WfrpActor | undefined {
-  const id = li.dataset.entryId ?? li.dataset.documentId;
+  // The clicked element may be a child of the entry; look upward for the id carrier.
+  const entry = li.closest<HTMLElement>('[data-entry-id], [data-document-id]') ?? li;
+  const id = entry.dataset.entryId ?? entry.dataset.documentId;
   return id ? g().actors.get(id) : undefined;
 }
 
-function addActorContextOptions(_app: unknown, options: ContextOption[]): void {
+function addActorContextOptions(_app: unknown, options: Record<string, unknown>[]): void {
   options.push(
-    {
-      name: 'kaiserkram.trader.context.openShop',
+    contextEntry({
+      label: loc('kaiserkram.trader.context.openShop', 'Open Shop'),
       icon: '<i class="fa-solid fa-store"></i>',
-      condition: (li) => {
+      visible: (li) => {
         const a = actorFromRow(li);
         return !!a && isTrader(a) && (g().user.isGM || traderConfig(a).open);
       },
-      callback: (li) => {
+      onClick: (li) => {
         const a = actorFromRow(li);
         if (a) openShop(a);
       },
-    },
-    {
-      name: 'kaiserkram.trader.context.makeTrader',
+    }),
+    contextEntry({
+      label: loc('kaiserkram.trader.context.makeTrader', 'Make Trader'),
       icon: '<i class="fa-solid fa-scale-balanced"></i>',
-      condition: (li) => {
+      visible: (li) => {
         const a = actorFromRow(li);
         return g().user.isGM && !!a && a.type === 'npc' && !isTrader(a);
       },
-      callback: (li) => {
+      onClick: (li) => {
         const a = actorFromRow(li);
         if (a) void setTrader(a, true);
       },
-    },
-    {
-      name: 'kaiserkram.trader.context.stopTrader',
+    }),
+    contextEntry({
+      label: loc('kaiserkram.trader.context.stopTrader', 'Stop Being a Trader'),
       icon: '<i class="fa-solid fa-ban"></i>',
-      condition: (li) => {
+      visible: (li) => {
         const a = actorFromRow(li);
         return g().user.isGM && !!a && isTrader(a);
       },
-      callback: (li) => {
+      onClick: (li) => {
         const a = actorFromRow(li);
         if (a) void setTrader(a, false);
       },
-    },
+    }),
   );
 }
 

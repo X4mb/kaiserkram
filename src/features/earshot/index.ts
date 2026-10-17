@@ -1,13 +1,16 @@
 import { MODULE_ID } from '../../core/constants.js';
 import type { Feature } from '../../core/feature.js';
-import { on } from '../../core/foundryApi.js';
+import { notify, on } from '../../core/foundryApi.js';
 import { clearAvSessionLog, copyAvSessionLogToClipboard, getAvSessionLogSnapshot } from './avSessionLog.js';
 import { proximityClientClass } from './proximityClient.js';
 import { proximityRouter, scheduleProximityRefresh } from './proximityAudioRouter.js';
-import { registerEarshotKeybindings, registerEarshotSettings, SETTINGS } from './settings.js';
+import { registerVoiceEntryPoints } from './entryPoints.js';
+import { getDebug, registerEarshotDebugSetting, registerEarshotKeybindings, registerEarshotSettings, SETTINGS } from './settings.js';
+import { openVoiceAssignDialogForActor } from './voiceAssignDialog.js';
+import { voiceChangerProcessor } from './voiceChangerProcessor.js';
 import { destroyVoiceIndicatorLayer, redrawVoiceIndicator, scheduleVoiceIndicatorRedraw } from './voiceIndicatorLayer.js';
 import { getVoiceProfileForActor, persistVoiceProfileFlag, type VoiceProfile } from './voiceProfile.js';
-import { clearVoiceTokenFlagForCurrentUser } from './voiceToken.js';
+import { clearVoiceTokenFlagForCurrentUser, getVoiceTokenIdFromUser } from './voiceToken.js';
 import { registerVoiceTokenKeybinding } from './voiceTokenInput.js';
 
 /** Indicator follows the token every frame; gain updates are throttled inside the router. */
@@ -48,6 +51,10 @@ function registerHooks(): void {
   on('canvasReady', () => {
     refreshAll();
     registerCanvasPositionTicker();
+    // canvasTearDown only detaches the Web Audio graph; WebRTC peers survive a scene change and
+    // need to be re-wired, or remote voice stays silently dropped.
+    const client = (game as unknown as { webrtc?: { client?: unknown } }).webrtc?.client;
+    if (client instanceof proximityClientClass()) void client.reattachAllPeers();
   });
   on('canvasTearDown', () => {
     unregisterCanvasPositionTicker();
@@ -72,6 +79,13 @@ function registerHooks(): void {
       if (uid) {
         proximityRouter.updateProfileGainForUser(uid);
         scheduleProximityRefresh();
+      }
+      // The GM speaking as this actor: their outgoing voice follows the profile.
+      if (game.user?.isGM && voiceChangerProcessor.isInitialized()) {
+        const pinnedId = getVoiceTokenIdFromUser(game.user);
+        if (pinnedId && canvas?.scene?.tokens.get(pinnedId)?.actor?.id === doc.id) {
+          void voiceChangerProcessor.applyProfile(getVoiceProfileForActor(doc));
+        }
       }
     }
   }) as (...args: never[]) => unknown);
@@ -103,13 +117,19 @@ export const earshot: Feature = {
   init() {
     (CONFIG.WebRTC as { clientClass: unknown }).clientClass = proximityClientClass();
     registerEarshotSettings();
+    registerEarshotDebugSetting();
     // Foundry requires keybindings to be registered during init (not ready), or setup throws.
     registerEarshotKeybindings();
     registerVoiceTokenKeybinding();
     registerHooks();
+    registerVoiceEntryPoints();
   },
 
   async ready() {
+    if (game.user?.isGM && getDebug()) {
+      const version = (game.modules?.get(MODULE_ID) as { version?: string } | undefined)?.version ?? '?';
+      notify().info(`Kaiserkram v${version}: Within Earshot active`, { permanent: true });
+    }
     await clearVoiceTokenFlagForCurrentUser();
     window.addEventListener('pointerdown', () => void proximityRouter.ensureResumed(), { once: true });
     refreshAll();
@@ -119,6 +139,7 @@ export const earshot: Feature = {
     return {
       getVoiceProfileForActor,
       setVoiceProfileForActor,
+      openVoiceAssignDialogForActor,
       scheduleProximityRefresh,
       getAvSessionLog: getAvSessionLogSnapshot,
       clearAvSessionLog,

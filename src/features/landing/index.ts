@@ -1,6 +1,6 @@
 import { MODULE_ID, MODULE_PATH } from '../../core/constants.js';
 import type { Feature } from '../../core/feature.js';
-import { notify, on, settings, toElement } from '../../core/foundryApi.js';
+import { contextEntry, notify, on, settings, toElement } from '../../core/foundryApi.js';
 import { fmt, loc } from '../../core/i18n.js';
 
 export const SETTINGS = {
@@ -37,7 +37,8 @@ function defaultSceneId(): string {
 }
 
 function getSceneIdFromRow(li: HTMLElement): string | null {
-  return li.dataset.documentId ?? li.dataset.entryId ?? li.dataset.sceneId ?? null;
+  const row = li.closest<HTMLElement>('[data-document-id], [data-entry-id], [data-scene-id]') ?? li;
+  return row.dataset.documentId ?? row.dataset.entryId ?? row.dataset.sceneId ?? null;
 }
 
 function isDefaultScene(li: HTMLElement): boolean {
@@ -80,27 +81,20 @@ function showDefaultSceneInSettings(_app: unknown, html: unknown): void {
   input.disabled = true;
 }
 
-type ContextOption = {
-  name: string;
-  icon: string;
-  condition: (li: HTMLElement) => boolean;
-  callback: (li: HTMLElement) => unknown;
-};
-
-function addSceneContextOptions(_application: unknown, options: ContextOption[]): void {
+function addSceneContextOptions(_application: unknown, options: Record<string, unknown>[]): void {
   options.push(
-    {
-      name: 'kaiserkram.landing.ContextSet',
+    contextEntry({
+      label: loc('kaiserkram.landing.ContextSet', 'Set as Default Scene'),
       icon: '<i class="fa-solid fa-house"></i>',
-      condition: (li) => Boolean(game.user?.isGM) && !isDefaultScene(li),
-      callback: (li) => setDefaultScene(li),
-    },
-    {
-      name: 'kaiserkram.landing.ContextUnset',
+      visible: (li) => Boolean(game.user?.isGM) && !isDefaultScene(li),
+      onClick: (li) => setDefaultScene(li),
+    }),
+    contextEntry({
+      label: loc('kaiserkram.landing.ContextUnset', 'Unset Default Scene'),
       icon: '<i class="fa-solid fa-house-circle-check"></i>',
-      condition: (li) => Boolean(game.user?.isGM) && isDefaultScene(li),
-      callback: () => clearDefaultScene(),
-    },
+      visible: (li) => Boolean(game.user?.isGM) && isDefaultScene(li),
+      onClick: () => clearDefaultScene(),
+    }),
   );
 }
 

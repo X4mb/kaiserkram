@@ -24,7 +24,7 @@ const TEXT: Record<FeatureId, { name: [string, string]; hint: [string, string] }
     name: ['kaiserkram.features.earshot.name', 'Within Earshot'],
     hint: [
       'kaiserkram.features.earshot.hint',
-      'Proximity voice chat: how loud others are follows token distance and walls. Replaces the A/V client.',
+      'Proximity voice chat: how loud others are follows token distance and walls. GM voice changer per actor (Assign Voice). Replaces the A/V client.',
     ],
   },
   trader: {

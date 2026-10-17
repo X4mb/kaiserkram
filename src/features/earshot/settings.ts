@@ -12,6 +12,8 @@ export const SETTINGS = {
    * players (GM still hears everyone). When false (default), they are heard at full volume until a token exists.
    */
   MUTE_UNRESOLVED_SPEAKER: 'earshotMuteUnresolvedSpeaker',
+  /** Client (per-user): verbose console diagnostics + a "build active" banner for the GM. Off by default. */
+  DEBUG: 'earshotDebug',
 } as const;
 
 export const KEYBINDINGS = {
@@ -65,6 +67,25 @@ export function registerEarshotSettings(): void {
     default: false,
     onChange,
   });
+}
+
+export function registerEarshotDebugSetting(): void {
+  s().register(MODULE_ID, SETTINGS.DEBUG, {
+    name: 'kaiserkram.earshot.SETTINGS.debug.name',
+    hint: 'kaiserkram.earshot.SETTINGS.debug.hint',
+    scope: 'client',
+    config: true,
+    type: Boolean,
+    default: false,
+  });
+}
+
+export function getDebug(): boolean {
+  try {
+    return Boolean(s().get(MODULE_ID, SETTINGS.DEBUG));
+  } catch {
+    return false;
+  }
 }
 
 /** Must run from the `init` hook only — Foundry forbids registering keybindings after init. */

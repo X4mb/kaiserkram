@@ -15,8 +15,7 @@ export function clearClientGainStateForPeer(userId: string): void {
  * Priority (first match wins):
  *   1. muteAll          → 0  (global mute-all from client)
  *   2. muted || blocked → 0  (per-user dock mute or block)
- *   3. volume <= 0      → 1  (Foundry reports 0 before the dock applies its default — treat as full)
- *   4. otherwise        → volume (0–1)
+ *   3. otherwise        → volume (0–1; schema default is 1, so a persisted 0 is an explicit mute)
  */
 export function getFoundryClientGainForPeer(userId: string): number {
   let tag: string;
@@ -44,9 +43,6 @@ export function getFoundryClientGainForPeer(userId: string): number {
       const v = u.volume;
       if (typeof v !== 'number' || !Number.isFinite(v)) {
         tag = 'volume_invalid';
-        result = 1;
-      } else if (v <= 0) {
-        tag = 'volume_zero_as_full';
         result = 1;
       } else {
         tag = 'volume';

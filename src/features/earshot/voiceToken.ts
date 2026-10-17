@@ -2,6 +2,8 @@ import { MODULE_ID } from '../../core/constants.js';
 import { flags, notify } from '../../core/foundryApi.js';
 import { fmt, loc } from '../../core/i18n.js';
 import { FLAGS } from './constants.js';
+import { voiceChangerProcessor } from './voiceChangerProcessor.js';
+import { getVoiceProfileForActor } from './voiceProfile.js';
 
 export function canUserPickVoiceToken(user: User, token: Token): boolean {
   if (user.isGM) return true;
@@ -62,10 +64,17 @@ export function getVoiceSourceTokenForDisplay(user: User): Token | null {
   return getSpeakerTokenForUser(user);
 }
 
-/** Clear persisted voice-token pin when the world loads so stale ids cannot mute voice or mis-locate audio. */
+/**
+ * Clear the persisted voice-token pin only when it no longer resolves to any token in the world
+ * (e.g. the token was deleted), so a valid pin survives a reload instead of being wiped every time.
+ */
 export async function clearVoiceTokenFlagForCurrentUser(): Promise<void> {
   const user = game.user;
   if (!user) return;
+  const pinId = getVoiceTokenIdFromUser(user);
+  if (!pinId) return;
+  const stillExists = game.scenes?.some((scene) => scene.tokens.get(pinId) !== undefined) ?? false;
+  if (stillExists) return;
   try {
     await flags(user).unsetFlag(MODULE_ID, FLAGS.VOICE_TOKEN_ID);
   } catch {
@@ -92,6 +101,18 @@ export async function toggleVoiceTokenForCurrentUser(token: Token): Promise<void
     );
     return;
   }
+  if (game.user?.isGM) {
+    const actor = next !== null ? token.actor : null;
+    const profile = actor ? getVoiceProfileForActor(actor) : null;
+    void voiceChangerProcessor.applyProfile(profile).catch((err: unknown) => {
+      notify().warn(
+        fmt('kaiserkram.earshot.VOICE.cannotApplyProfile', 'Within Earshot: could not apply voice profile ({error})', {
+          error: String(err),
+        }),
+      );
+    });
+  }
+
   const name = token.name ?? token.document.name;
   const msg =
     next === null
