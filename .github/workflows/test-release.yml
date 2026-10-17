@@ -12,10 +12,6 @@ name: Test pre-release
 on:
   push:
     branches: [test]
-    paths-ignore:
-      - "README.md"
-      - "HANDOFF.md"
-      - ".github/dependabot.yml"
   workflow_dispatch:
 
 permissions:
