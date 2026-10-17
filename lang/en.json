@@ -191,5 +191,15 @@
   "kaiserkram.trader.notifications.noTradersGM": "There are no traders yet. Use Create Trader, or right-click an NPC → Make Trader.",
   "kaiserkram.trader.notifications.noOpenShops": "No shop is open right now.",
   "kaiserkram.migration.traderSheets": "Kaiserkram: {count} trader(s) now open with their normal NPC sheet. Their shop has its own window: right-click the trader in the Actors sidebar → Open Shop, or use the Shops button.",
-  "kaiserkram.party.notifications.itemMoved": "Moved {item} from {from} to {to}."
+  "kaiserkram.party.notifications.itemMoved": "Moved {item} from {from} to {to}.",
+  "kaiserkram.landing.CurrentDefaultSceneName": "Current default scene",
+  "kaiserkram.landing.CurrentDefaultSceneHint": "Read-only. Right-click a scene in the Scenes sidebar to change it.",
+  "kaiserkram.landing.NoDefaultScene": "None set",
+  "kaiserkram.party.SETTINGS.deployLayout.name": "Deploy layout",
+  "kaiserkram.party.SETTINGS.deployLayout.hint": "How deployed tokens are arranged around the party marker.",
+  "kaiserkram.party.SETTINGS.deployLayout.grid": "Grid",
+  "kaiserkram.party.SETTINGS.deployLayout.line": "Line",
+  "kaiserkram.party.SETTINGS.deployLayout.circle": "Circle",
+  "kaiserkram.party.SETTINGS.deployLayout.scatter": "Scatter",
+  "kaiserkram.party.notifications.allDeployed": "Everyone from \"{name}\" is already deployed."
 }

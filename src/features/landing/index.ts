@@ -1,12 +1,16 @@
-import { MODULE_ID } from '../../core/constants.js';
+import { MODULE_ID, MODULE_PATH } from '../../core/constants.js';
 import type { Feature } from '../../core/feature.js';
-import { notify, on, settings } from '../../core/foundryApi.js';
+import { notify, on, settings, toElement } from '../../core/foundryApi.js';
 import { fmt, loc } from '../../core/i18n.js';
 
 export const SETTINGS = {
   DEFAULT_SCENE: 'landingDefaultSceneId',
   LAST_BOOT: 'landingLastBootEpoch',
+  /** Shown read-only in Configure Settings (filled in on render), never written. */
+  DEFAULT_SCENE_INFO: 'landingDefaultSceneInfo',
 } as const;
+
+const BADGE_CLASS = `${MODULE_ID}-landing-default`;
 
 // If the server-reported boot time differs from what we last saw by more
 // than this, treat it as a genuine restart rather than clock/network jitter.
@@ -14,6 +18,10 @@ const BOOT_TOLERANCE_MS = 15000;
 
 type SceneLike = { id: string; name: string; activate(): Promise<unknown> };
 type ScenesView = { get(id: string): SceneLike | undefined; active?: SceneLike | null };
+
+function rerenderSceneDirectory(): void {
+  (ui as unknown as { scenes?: { render(): unknown } }).scenes?.render();
+}
 type UsersView = { filter(fn: (u: { active: boolean }) => boolean): unknown[] };
 
 function scenes(): ScenesView {
@@ -47,11 +55,29 @@ async function setDefaultScene(li: HTMLElement): Promise<void> {
       name: scene?.name ?? sceneId,
     }),
   );
+  rerenderSceneDirectory();
 }
 
 async function clearDefaultScene(): Promise<void> {
   await settings().set(MODULE_ID, SETTINGS.DEFAULT_SCENE, '');
   notify().info(loc('kaiserkram.landing.UnsetNotification', 'Default landing scene cleared.'));
+  rerenderSceneDirectory();
+}
+
+/** Mark the landing scene in the Scenes directory. */
+function markDefaultScene(_app: unknown, html: unknown): void {
+  const sceneId = defaultSceneId();
+  const rows = toElement(html)?.querySelectorAll<HTMLElement>('[data-document-id], [data-entry-id], [data-scene-id]') ?? [];
+  for (const li of rows) li.classList.toggle(BADGE_CLASS, !!sceneId && getSceneIdFromRow(li) === sceneId);
+}
+
+/** Fill in the read-only "current default scene" line in Configure Settings. */
+function showDefaultSceneInSettings(_app: unknown, html: unknown): void {
+  const input = toElement(html)?.querySelector<HTMLInputElement>(`[name="${MODULE_ID}.${SETTINGS.DEFAULT_SCENE_INFO}"]`);
+  if (!input) return;
+  const id = defaultSceneId();
+  input.value = (id && scenes().get(id)?.name) || loc('kaiserkram.landing.NoDefaultScene', 'None set');
+  input.disabled = true;
 }
 
 type ContextOption = {
@@ -126,6 +152,7 @@ export const landing: Feature = {
   group: 'general',
   legacyModuleId: 'world-landing-fvtt',
   legacyTitle: 'World Landing',
+  styles: [`${MODULE_PATH}/styles/landing.css`],
 
   init() {
     settings().register(MODULE_ID, SETTINGS.DEFAULT_SCENE, {
@@ -140,7 +167,17 @@ export const landing: Feature = {
       type: Number,
       default: 0,
     });
+    settings().register(MODULE_ID, SETTINGS.DEFAULT_SCENE_INFO, {
+      name: 'kaiserkram.landing.CurrentDefaultSceneName',
+      hint: 'kaiserkram.landing.CurrentDefaultSceneHint',
+      scope: 'world',
+      config: true,
+      type: String,
+      default: '',
+    });
     on('getSceneContextOptions', addSceneContextOptions as (...args: never[]) => unknown);
+    on('renderSceneDirectory', markDefaultScene);
+    on('renderSettingsConfig', showDefaultSceneInSettings);
   },
 
   ready: activateLandingScene,

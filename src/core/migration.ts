@@ -43,6 +43,7 @@ const SETTING_MAP: Record<FeatureId, Record<string, string>> = {
     shiftAfterDeployBehavior: PARTY.SHIFT_AFTER_DEPLOY,
     includeSubfolders: PARTY.INCLUDE_SUBFOLDERS,
     afterDeployBehavior: PARTY.AFTER_DEPLOY,
+    deployLayout: PARTY.LAYOUT,
     tokenSpacing: PARTY.SPACING,
     partyTokenSize: PARTY.PARTY_TOKEN_SIZE,
     defaultTokenImage: PARTY.DEFAULT_IMAGE,

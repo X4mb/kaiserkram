@@ -7,6 +7,7 @@ export const SETTINGS = {
   SHIFT_AFTER_DEPLOY: 'partyShiftAfterDeployBehavior',
   INCLUDE_SUBFOLDERS: 'partyIncludeSubfolders',
   AFTER_DEPLOY: 'partyAfterDeployBehavior',
+  LAYOUT: 'partyDeployLayout',
   SPACING: 'partyTokenSpacing',
   PARTY_TOKEN_SIZE: 'partyTokenSize',
   DEFAULT_IMAGE: 'partyDefaultTokenImage',
@@ -17,6 +18,13 @@ export const AFTER_DEPLOY_BEHAVIORS = {
   KEEP: 'keep',
   HIDE: 'hide',
   DELETE: 'delete',
+} as const;
+
+export const DEPLOY_LAYOUTS = {
+  GRID: 'grid',
+  LINE: 'line',
+  CIRCLE: 'circle',
+  SCATTER: 'scatter',
 } as const;
 
 const BEHAVIOR_CHOICES = {
@@ -63,6 +71,21 @@ export function registerPartySettings(): void {
     type: String,
     choices: BEHAVIOR_CHOICES,
     default: AFTER_DEPLOY_BEHAVIORS.DELETE,
+  });
+
+  s().register(MODULE_ID, SETTINGS.LAYOUT, {
+    name: 'kaiserkram.party.SETTINGS.deployLayout.name',
+    hint: 'kaiserkram.party.SETTINGS.deployLayout.hint',
+    scope: 'world',
+    config: true,
+    type: String,
+    choices: {
+      [DEPLOY_LAYOUTS.GRID]: 'kaiserkram.party.SETTINGS.deployLayout.grid',
+      [DEPLOY_LAYOUTS.LINE]: 'kaiserkram.party.SETTINGS.deployLayout.line',
+      [DEPLOY_LAYOUTS.CIRCLE]: 'kaiserkram.party.SETTINGS.deployLayout.circle',
+      [DEPLOY_LAYOUTS.SCATTER]: 'kaiserkram.party.SETTINGS.deployLayout.scatter',
+    },
+    default: DEPLOY_LAYOUTS.GRID,
   });
 
   s().register(MODULE_ID, SETTINGS.SPACING, {
@@ -119,6 +142,11 @@ export function getIncludeSubfolders(): boolean {
 
 export function getAfterDeployBehavior(): string {
   return String(s().get(MODULE_ID, SETTINGS.AFTER_DEPLOY) ?? AFTER_DEPLOY_BEHAVIORS.HIDE);
+}
+
+export function getDeployLayout(): string {
+  const v = String(s().get(MODULE_ID, SETTINGS.LAYOUT) ?? DEPLOY_LAYOUTS.GRID);
+  return (Object.values(DEPLOY_LAYOUTS) as string[]).includes(v) ? v : DEPLOY_LAYOUTS.GRID;
 }
 
 export function getSpacing(): number {

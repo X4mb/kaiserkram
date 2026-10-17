@@ -14,11 +14,11 @@ export function isDeployedMember(tokenDoc: TokenDocument): boolean {
 }
 
 /**
- * Finds the tokens a recall should act on. From the marker, that's every token still linked
+ * Finds the tokens linked to `tokenDoc`. From the marker, that's every token still linked
  * to it (across all its deploys, not just the latest); from a deployed member, it's just the
- * siblings from that one deploy.
+ * siblings from that one deploy. Used by both Recall and Deploy (to skip actors already out).
  */
-function findDeployedMembers(tokenDoc: TokenDocument, scene: Scene): TokenDocument[] {
+export function findDeployedMembers(tokenDoc: TokenDocument, scene: Scene): TokenDocument[] {
   if (isPartyMarker(tokenDoc)) {
     return sceneTokens(scene).tokens.contents.filter(
       (t) => flags(t).getFlag(MODULE_ID, FLAGS.ORIGIN_MARKER_ID) === tokenDoc.id,
