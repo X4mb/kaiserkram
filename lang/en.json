@@ -132,9 +132,9 @@
   "kaiserkram.trader.gm.buysFromPlayers": "Buys from players",
   "kaiserkram.trader.gm.purse": "Purse",
   "kaiserkram.trader.gm.purseUnlimited": "(not enforced: the trader can always pay)",
-  "kaiserkram.trader.gm.standings": "Haggled deals",
-  "kaiserkram.trader.gm.noStandings": "No deals yet.",
-  "kaiserkram.trader.gm.forgive": "Forget this character's deals",
+  "kaiserkram.trader.gm.standings": "Haggling",
+  "kaiserkram.trader.gm.noStandings": "Nobody has haggled with this trader yet.",
+  "kaiserkram.trader.gm.forgive": "Forget this character's deals and tries",
   "kaiserkram.trader.gm.resetHaggle": "Reset haggling",
   "kaiserkram.trader.gm.resetConfirm": "Forget every haggled deal this trader has made, and let everyone haggle again?",
   "kaiserkram.trader.gm.removeItem": "Remove from stock",
@@ -323,5 +323,7 @@
   "kaiserkram.trader.catalog.search": "Search…",
   "kaiserkram.trader.catalog.all": "All categories",
   "kaiserkram.trader.catalog.add": "Add to stock",
-  "kaiserkram.trader.catalog.none": "No trappings compendium found. Enable the WFRP4e Core Rulebook module to list its Trappings here, or drag items from any compendium."
+  "kaiserkram.trader.catalog.none": "No trappings compendium found. Enable the WFRP4e Core Rulebook module to list its Trappings here, or drag items from any compendium.",
+  "kaiserkram.trader.gm.tried": "Lost haggles over",
+  "kaiserkram.trader.gm.allowRetry": "Let them haggle again (their deals stay)"
 }

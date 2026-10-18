@@ -116,6 +116,7 @@ export class TraderShop extends appBase() {
       showPlayers: TraderShop.onShowPlayers as ActionFn,
       resetHaggle: TraderShop.onResetHaggle as ActionFn,
       forgiveCustomer: TraderShop.onForgiveCustomer as ActionFn,
+      allowRetry: TraderShop.onAllowRetry as ActionFn,
       openActorSheet: TraderShop.onOpenActorSheet as ActionFn,
       addFromCatalog: TraderShop.onAddFromCatalog as ActionFn,
     },
@@ -231,8 +232,14 @@ export class TraderShop extends appBase() {
           .filter(([, pct]) => pct > 0)
           .map(([itemId, pct]) => `${trader.items.get(itemId)?.name ?? '?'} −${pct}%`)
           .join(', '),
+        // Items haggled over without winning a deal: these block another try.
+        tried: (s.tried ?? [])
+          .filter((itemId) => !((s.deals ?? {})[itemId] > 0))
+          .map((itemId) => trader.items.get(itemId)?.name ?? '?')
+          .join(', '),
+        canRetry: (s.tried ?? []).length > 0,
       }))
-      .filter((s) => s.penalty > 0 || s.deals);
+      .filter((s) => s.penalty > 0 || s.deals || s.tried);
 
     const customerStanding = customer ? state[customer.id] : undefined;
     const catalog = isGM && this.tab === 'manage' ? await loadCatalog() : null;
@@ -570,6 +577,16 @@ export class TraderShop extends appBase() {
       rejectClose: false,
     });
     if (ok) await resetHaggling(this.trader);
+  }
+
+  /** GM: let this character haggle again over everything they have tried; their deals stay. */
+  static async onAllowRetry(this: TraderShop, _event: Event, target: HTMLElement): Promise<void> {
+    const actorId = target.closest<HTMLElement>('[data-actor-id]')?.dataset.actorId;
+    if (!actorId) return;
+    const state = haggleState(this.trader);
+    if (!state[actorId]) return;
+    state[actorId] = { ...state[actorId], tried: [] };
+    await saveHaggleState(this.trader, state);
   }
 
   static async onForgiveCustomer(this: TraderShop, _event: Event, target: HTMLElement): Promise<void> {

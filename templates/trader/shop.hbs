@@ -244,7 +244,11 @@
                       <td>{{name}}</td>
                       <td>{{#if penalty}}<span class="tag grudge">+{{penalty}}%</span>{{/if}}</td>
                       <td>{{deals}}</td>
+                      <td>{{#if tried}}<span class="hint">{{localize "kaiserkram.trader.gm.tried"}}: {{tried}}</span>{{/if}}</td>
                       <td class="col-actions">
+                        {{#if canRetry}}
+                          <button type="button" data-action="allowRetry" data-tooltip="{{localize "kaiserkram.trader.gm.allowRetry"}}"><i class="fa-solid fa-rotate-right"></i></button>
+                        {{/if}}
                         <button type="button" data-action="forgiveCustomer" data-tooltip="{{localize "kaiserkram.trader.gm.forgive"}}"><i class="fa-solid fa-handshake"></i></button>
                       </td>
                     </tr>
