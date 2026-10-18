@@ -13,7 +13,7 @@ import { registerSocketHandler } from '../../core/socket.js';
 import { onUserLeft } from './trade/authority.js';
 import { giveItems, initTradeClient, onTradeMessage, proposeTrade, refreshTradeWindows } from './trade/client.js';
 import { registerTradeEntryPoints } from './trade/entry.js';
-import { addStashHudButton, openStash, refreshStashWindows } from './stash.js';
+import { addStashHudButton, openStash, refreshStashWindows, routeMarkerDoubleClick } from './stash.js';
 
 /** Trading between characters: entry points, and keeping open trade windows current. */
 function registerTrading(): void {
@@ -29,6 +29,9 @@ function registerTrading(): void {
 /** The party stash window: its HUD button, and keeping open stash windows current. */
 function registerStash(): void {
   on('renderTokenHUD', addStashHudButton as (...args: never[]) => unknown);
+  // Before tokens are drawn: each token's mouse handler keeps the click function it was made with.
+  on('setup', routeMarkerDoubleClick);
+  on('canvasInit', routeMarkerDoubleClick);
   const refresh = foundry.utils.debounce(refreshStashWindows, 100);
   for (const hook of ['createItem', 'updateItem', 'deleteItem']) on(hook, refresh);
 }

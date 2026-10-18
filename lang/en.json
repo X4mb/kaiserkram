@@ -311,5 +311,6 @@
   "kaiserkram.party.give.hud": "Give (to your target, or someone nearby)",
   "kaiserkram.party.give.menu": "Give something",
   "kaiserkram.party.give.giveTo": "Give {name} something",
-  "kaiserkram.party.give.tool": "Give (to your target, or someone nearby)"
+  "kaiserkram.party.give.tool": "Give (to your target, or someone nearby)",
+  "kaiserkram.party.stash.sheet": "Party sheet"
 }

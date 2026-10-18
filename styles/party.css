@@ -273,3 +273,15 @@
   font-size: 0.9em;
   margin: 0 0 0.4rem;
 }
+.kaiserkram-stash .kk-stash-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+.kaiserkram-stash .kk-stash-top .hint {
+  flex: 1;
+}
+.kaiserkram-stash .kk-stash-top button {
+  width: auto;
+  flex: none;
+}

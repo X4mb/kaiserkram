@@ -93,9 +93,14 @@ function column(win: StashWindow, side: Side): string {
 
 function render(win: StashWindow): string {
   return `<div class="kk-stash">
-    <p class="hint">${escapeHtml(
-      loc('kaiserkram.party.stash.hint', 'Use the arrows to move an amount, or drag a whole stack to the other side.'),
-    )}</p>
+    <div class="kk-stash-top">
+      <p class="hint">${escapeHtml(
+        loc('kaiserkram.party.stash.hint', 'Use the arrows to move an amount, or drag a whole stack to the other side.'),
+      )}</p>
+      <button type="button" data-action="sheet"><i class="fa-solid fa-user"></i> ${escapeHtml(
+        loc('kaiserkram.party.stash.sheet', 'Party sheet'),
+      )}</button>
+    </div>
     <div class="kk-stash-cols">${column(win, 'stash')}${column(win, 'mine')}</div>
   </div>`;
 }
@@ -129,7 +134,7 @@ function stashClass(): new (party: ActorLike) => StashWindow {
       classes: [`${MODULE_ID}-stash`],
       position: { width: 720, height: 'auto' },
       window: { icon: 'fa-solid fa-box-open', resizable: true },
-      actions: { move: PartyStash.onMove },
+      actions: { move: PartyStash.onMove, sheet: PartyStash.onSheet },
     };
 
     constructor(party: ActorLike) {
@@ -174,6 +179,10 @@ function stashClass(): new (party: ActorLike) => StashWindow {
       if (!row?.dataset.itemId || !side) return;
       const amount = row.querySelector<HTMLInputElement>('input[data-amount]');
       await move(this, side, row.dataset.itemId, amount ? Number(amount.value) : undefined);
+    }
+
+    static onSheet(this: StashWindow): void {
+      void (this.party as ActorLike & { sheet?: { render(force: boolean): unknown } }).sheet?.render(true);
     }
 
     /** A whole stack dropped on the other column (from this window, or a sheet of the same actors). */
@@ -239,4 +248,27 @@ export function addStashHudButton(hud: unknown, html: unknown): void {
     openStash(actor);
   });
   column.appendChild(button);
+}
+
+type TokenProto = { _onClickLeft2?(event: unknown): unknown; actor?: ActorLike | null } & Record<symbol, unknown>;
+const PATCHED = Symbol('kaiserkramStashDoubleClick');
+
+/**
+ * A player double-clicking the party marker gets the stash rather than the actor sheet (the
+ * stash window has a button for the sheet). GMs keep the sheet. Patched on the token class in
+ * use (a system's own Token subclass included) before any token is drawn.
+ */
+export function routeMarkerDoubleClick(): void {
+  const proto = (CONFIG as unknown as { Token?: { objectClass?: { prototype: TokenProto } } }).Token?.objectClass?.prototype;
+  if (!proto || proto[PATCHED] || typeof proto._onClickLeft2 !== 'function') return;
+  const original = proto._onClickLeft2;
+  proto._onClickLeft2 = function (this: TokenProto, event: unknown) {
+    const actor = this.actor;
+    if (!game.user?.isGM && actor && actor.isOwner && isPartyActor(actor)) {
+      openStash(actor);
+      return;
+    }
+    return original.call(this, event);
+  };
+  proto[PATCHED] = true;
 }
