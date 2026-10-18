@@ -9,6 +9,7 @@ import { getDebug, registerEarshotDebugSetting, registerEarshotKeybindings, regi
 import { openVoiceAssignDialogForActor } from './voiceAssignDialog.js';
 import { voiceChangerProcessor } from './voiceChangerProcessor.js';
 import { clearLosCache } from './proximityLos.js';
+import { destroyWhisperBadges, hasWhisperers, refreshWhisperers, updateWhisperBadges } from './whisperBadges.js';
 import {
   clearVoiceIndicator,
   destroyVoiceIndicatorLayer,
@@ -32,9 +33,11 @@ function registerCanvasPositionTicker(): void {
     // A/V switched off for the world: no voices to place, nothing to draw.
     if ((game as unknown as { webrtc?: { mode?: number } }).webrtc?.mode === 0) {
       clearVoiceIndicator();
+      if (hasWhisperers()) destroyWhisperBadges();
       return;
     }
     redrawVoiceIndicator();
+    if (hasWhisperers()) updateWhisperBadges();
     /** Keep gains aligned with token positions every frame (no artificial 125ms delay). */
     proximityRouter.refreshAllGains();
   };
@@ -62,6 +65,7 @@ function registerHooks(): void {
   }
   on('canvasReady', () => {
     clearLosCache();
+    refreshWhisperers();
     refreshAll();
     registerCanvasPositionTicker();
     // canvasTearDown only detaches the Web Audio graph; WebRTC peers survive a scene change and
@@ -71,11 +75,14 @@ function registerHooks(): void {
   });
   on('canvasTearDown', () => {
     clearLosCache();
+    destroyWhisperBadges();
     unregisterCanvasPositionTicker();
     destroyVoiceIndicatorLayer();
     proximityRouter.detachAll();
   });
   on('rtcSettingsChanged', scheduleProximityRefresh);
+  // A whisperer who leaves stops showing a badge.
+  on('userConnected', refreshWhisperers);
   on('visibilityRefresh', scheduleProximityRefresh);
   for (const h of ['createWall', 'updateWall', 'deleteWall']) {
     on(h, () => {
@@ -86,6 +93,7 @@ function registerHooks(): void {
 
   on('updateUser', ((user: User, change: { flags?: Record<string, Record<string, unknown> | undefined> }) => {
     if (change.flags?.[MODULE_ID]?.earshot !== undefined) {
+      refreshWhisperers();
       scheduleProximityRefresh();
       if (user.id === game.user?.id) scheduleVoiceIndicatorRedraw();
     }

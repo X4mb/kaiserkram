@@ -50,6 +50,15 @@ function isGameMasterUser(user: User | null | undefined): boolean {
   }
 }
 
+/**
+ * Whether `user`'s whisper is in effect. A whisper needs a place to come from: a GM without a
+ * pinned voice token stays omnipresent.
+ */
+export function whisperApplies(user: User | null | undefined): boolean {
+  if (!user || !isWhispering(user)) return false;
+  return !isGameMasterUser(user) || !!getVoiceTokenIdFromUser(user);
+}
+
 export class ProximityAudioRouter {
   private audioContext: AudioContext | null = null;
   private readonly peers = new Map<string, PeerAudio>();
@@ -153,9 +162,8 @@ export class ProximityAudioRouter {
 
     if (isGameMasterUser(game.user)) return 1;
 
-    // A whisper needs a place to come from: a GM without a pinned voice token stays omnipresent.
     const gmSpeaker = isGameMasterUser(speaker);
-    const whisper = isWhispering(speaker) && (!gmSpeaker || !!getVoiceTokenIdFromUser(speaker));
+    const whisper = whisperApplies(speaker);
 
     if (!whisper && gmSpeaker && getGmVoiceGlobal()) return 1;
 
