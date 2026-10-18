@@ -18,6 +18,7 @@ import {
 import { getVoiceProfileForActor, persistVoiceProfileFlag, type VoiceProfile } from './voiceProfile.js';
 import { clearVoiceTokenFlagForCurrentUser, getVoiceTokenIdFromUser } from './voiceToken.js';
 import { registerVoiceTokenKeybinding } from './voiceTokenInput.js';
+import { clearWhisperForCurrentUser, isWhispering, registerWhisperControls, setWhisper, toggleWhisper } from './whisper.js';
 
 /** Indicator follows the token every frame; gain updates are throttled inside the router. */
 let canvasPositionTicker: ((dt?: number) => void) | undefined;
@@ -137,10 +138,11 @@ export const earshot: Feature = {
     registerEarshotSettings();
     registerEarshotDebugSetting();
     // Foundry requires keybindings to be registered during init (not ready), or setup throws.
-    registerEarshotKeybindings();
+    registerEarshotKeybindings(toggleWhisper);
     registerVoiceTokenKeybinding();
     registerHooks();
     registerVoiceEntryPoints();
+    registerWhisperControls();
   },
 
   async ready() {
@@ -149,6 +151,7 @@ export const earshot: Feature = {
       notify().info(`Kaiserkram v${version}: Within Earshot active`, { permanent: true });
     }
     await clearVoiceTokenFlagForCurrentUser();
+    await clearWhisperForCurrentUser();
     window.addEventListener('pointerdown', () => void proximityRouter.ensureResumed(), { once: true });
     refreshAll();
   },
@@ -158,6 +161,8 @@ export const earshot: Feature = {
       getVoiceProfileForActor,
       setVoiceProfileForActor,
       openVoiceAssignDialogForActor,
+      isWhispering,
+      setWhisper,
       scheduleProximityRefresh,
       getAvSessionLog: getAvSessionLogSnapshot,
       clearAvSessionLog,

@@ -12,12 +12,15 @@ export const SETTINGS = {
    * players (GM still hears everyone). When false (default), they are heard at full volume until a token exists.
    */
   MUTE_UNRESOLVED_SPEAKER: 'earshotMuteUnresolvedSpeaker',
+  /** World: how far (grid units) a whisper carries. 1.5 reaches the eight squares around the speaker. */
+  WHISPER_RANGE: 'earshotWhisperRange',
   /** Client (per-user): verbose console diagnostics + a "build active" banner for the GM. Off by default. */
   DEBUG: 'earshotDebug',
 } as const;
 
 export const KEYBINDINGS = {
   TOGGLE_GM_VOICE_GLOBAL: 'earshotToggleGMVoiceGlobal',
+  WHISPER: 'earshotToggleWhisper',
   VOICE_TOKEN: 'earshotVoiceToken',
 } as const;
 
@@ -58,6 +61,17 @@ export function registerEarshotSettings(): void {
     onChange,
   });
 
+  s().register(MODULE_ID, SETTINGS.WHISPER_RANGE, {
+    name: 'kaiserkram.earshot.SETTINGS.whisperRange.name',
+    hint: 'kaiserkram.earshot.SETTINGS.whisperRange.hint',
+    scope: 'world',
+    config: true,
+    type: Number,
+    range: { min: 1, max: 5, step: 0.5 },
+    default: 1.5,
+    onChange,
+  });
+
   s().register(MODULE_ID, SETTINGS.MUTE_UNRESOLVED_SPEAKER, {
     name: 'kaiserkram.earshot.SETTINGS.muteUnresolvedSpeaker.name',
     hint: 'kaiserkram.earshot.SETTINGS.muteUnresolvedSpeaker.hint',
@@ -89,7 +103,17 @@ export function getDebug(): boolean {
 }
 
 /** Must run from the `init` hook only — Foundry forbids registering keybindings after init. */
-export function registerEarshotKeybindings(): void {
+export function registerEarshotKeybindings(toggleWhisper: () => unknown): void {
+  keybindings().register(MODULE_ID, KEYBINDINGS.WHISPER, {
+    name: 'kaiserkram.earshot.SETTINGS.toggleWhisper.name',
+    hint: 'kaiserkram.earshot.SETTINGS.toggleWhisper.hint',
+    editable: [{ key: 'KeyW', modifiers: ['ALT'] }],
+    onDown: () => {
+      void toggleWhisper();
+      return true;
+    },
+  });
+
   keybindings().register(MODULE_ID, KEYBINDINGS.TOGGLE_GM_VOICE_GLOBAL, {
     name: 'kaiserkram.earshot.SETTINGS.toggleGMVoiceGlobal.name',
     hint: 'kaiserkram.earshot.SETTINGS.toggleGMVoiceGlobal.hint',
@@ -113,6 +137,11 @@ export function getGmVoiceGlobal(): boolean {
 
 export function setGmVoiceGlobal(v: boolean): Promise<unknown> {
   return s().set(MODULE_ID, SETTINGS.GM_VOICE_GLOBAL, v);
+}
+
+export function getWhisperRange(): number {
+  const n = Number(s().get(MODULE_ID, SETTINGS.WHISPER_RANGE));
+  return Number.isFinite(n) && n > 0 ? n : 1.5;
 }
 
 export function getThroughWallGain(): number {

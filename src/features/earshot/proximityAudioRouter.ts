@@ -8,7 +8,8 @@ import {
 } from './proximity.js';
 import { getVoiceLosMultiplier } from './proximityLos.js';
 import { getSpeakerTokenDocumentForUser, getVoiceTokenIdFromUser } from './voiceToken.js';
-import { getGmVoiceGlobal, getMaxRange, getMuteUnresolvedSpeaker } from './settings.js';
+import { getGmVoiceGlobal, getMaxRange, getMuteUnresolvedSpeaker, getWhisperRange } from './settings.js';
+import { isWhispering } from './whisper.js';
 import { clearClientGainStateForPeer, getFoundryClientGainForPeer } from './avClientGain.js';
 import { pushAvSessionLog } from './avSessionLog.js';
 
@@ -152,19 +153,25 @@ export class ProximityAudioRouter {
 
     if (isGameMasterUser(game.user)) return 1;
 
-    if (isGameMasterUser(speaker) && getGmVoiceGlobal()) return 1;
+    // A whisper needs a place to come from: a GM without a pinned voice token stays omnipresent.
+    const gmSpeaker = isGameMasterUser(speaker);
+    const whisper = isWhispering(speaker) && (!gmSpeaker || !!getVoiceTokenIdFromUser(speaker));
 
-    if (isGameMasterUser(speaker) && !getVoiceTokenIdFromUser(speaker)) return 1;
+    if (!whisper && gmSpeaker && getGmVoiceGlobal()) return 1;
+
+    if (!whisper && gmSpeaker && !getVoiceTokenIdFromUser(speaker)) return 1;
 
     const maxRange = getMaxRange();
 
-    if (!canvas?.scene) return 1;
+    // From here on, "can't place someone" means full volume normally, but silence for a whisper.
+    if (!canvas?.scene) return whisper ? 0 : 1;
 
     const listenerToken = getListenerTokenForProximity();
-    if (!listenerToken) return 1;
+    if (!listenerToken) return whisper ? 0 : 1;
 
     const speakerDoc = getSpeakerTokenDocumentForUser(speaker);
     if (!speakerDoc) {
+      if (whisper) return 0;
       if (isGameMasterUser(speaker)) return 1;
       if (getMuteUnresolvedSpeaker()) return canvas.ready ? 0 : 1;
       return 1;
@@ -175,6 +182,7 @@ export class ProximityAudioRouter {
     const listenerPoint = { x: lp.x, y: lp.y };
     const speakerPoint = { x: sp.x, y: sp.y };
     const distanceGrid = gridDistanceBetween(listenerPoint, speakerPoint);
+    if (whisper && distanceGrid > getWhisperRange()) return 0;
 
     const proximity = computeProximityGain(distanceGrid, maxRange);
     const los = getVoiceLosMultiplier(listenerToken, speakerDoc);

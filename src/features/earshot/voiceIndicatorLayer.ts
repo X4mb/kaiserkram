@@ -1,5 +1,10 @@
 import { VOICE_INDICATOR_LAYER } from './constants.js';
 import { getVoiceSourceTokenForDisplay } from './voiceToken.js';
+import { isWhispering } from './whisper.js';
+
+const DOT_COLOR = 0x33ffcc;
+/** While whispering. */
+const WHISPER_DOT_COLOR = 0xb388ff;
 
 let rafId = 0;
 /** What the dot was last drawn for; the per-frame redraw is skipped while this is unchanged. */
@@ -49,7 +54,9 @@ export function redrawVoiceIndicator(): void {
 
   positionOnTokenLayer(tokenLayer, g, token);
   const cellPx = canvas.dimensions?.size ?? 100;
-  const drawn = `${token.id}|${token.document.width}|${token.document.height}|${cellPx}`;
+  const whisper = isWhispering(user);
+  const color = whisper ? WHISPER_DOT_COLOR : DOT_COLOR;
+  const drawn = `${token.id}|${token.document.width}|${token.document.height}|${cellPx}|${whisper}`;
   // Position and rotation are set above every frame; the shape only needs redrawing when it changes.
   if (drawn === lastDrawn) return;
   lastDrawn = drawn;
@@ -68,7 +75,7 @@ export function redrawVoiceIndicator(): void {
       fill: (o: { color: number; alpha: number }) => void;
     };
     v8.circle(dx, dy, dotR);
-    v8.fill({ color: 0x33ffcc, alpha: 1 });
+    v8.fill({ color, alpha: 1 });
   } else {
     const leg = gfx as {
       beginFill?: (c: number, a?: number) => void;
@@ -76,7 +83,7 @@ export function redrawVoiceIndicator(): void {
       endFill?: () => void;
     };
     if (typeof leg.beginFill === 'function' && typeof leg.drawCircle === 'function') {
-      leg.beginFill(0x33ffcc, 1);
+      leg.beginFill(color, 1);
       leg.drawCircle(dx, dy, dotR);
       leg.endFill?.();
     }

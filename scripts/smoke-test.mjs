@@ -362,7 +362,11 @@ function ok(label) {
   for (const key of ['landingDefaultSceneId', 'partyDeployOnDrop', 'earshotMaxRange', 'traderDefaultMarkup']) {
     assert.ok(record.settings.includes(`${MODULE_ID}.${key}`), `setting ${key} not registered`);
   }
-  assert.deepEqual(record.keybindings.sort(), [`${MODULE_ID}.earshotToggleGMVoiceGlobal`, `${MODULE_ID}.earshotVoiceToken`]);
+  assert.deepEqual(record.keybindings.sort(), [
+    `${MODULE_ID}.earshotToggleGMVoiceGlobal`,
+    `${MODULE_ID}.earshotToggleWhisper`,
+    `${MODULE_ID}.earshotVoiceToken`,
+  ]);
   assert.deepEqual(record.menus, [`${MODULE_ID}.features`]);
   assert.deepEqual(record.sheets, [], 'traders keep the system sheet; nothing should register one');
   assert.deepEqual(record.styles, ['modules/kaiserkram/styles/landing.css?v=0.1.0', 'modules/kaiserkram/styles/trader.css?v=0.1.0']);

@@ -232,5 +232,12 @@
   "kaiserkram.earshot.ASSIGN.previewFailed": "Within Earshot: preview failed ({error})",
   "kaiserkram.earshot.ASSIGN.mutedHint": "Players cannot hear you while this window is open.",
   "kaiserkram.earshot.ASSIGN.save": "Save",
-  "kaiserkram.earshot.ASSIGN.cancel": "Cancel"
+  "kaiserkram.earshot.ASSIGN.cancel": "Cancel",
+  "kaiserkram.earshot.SETTINGS.whisperRange.name": "Whisper range (grid units)",
+  "kaiserkram.earshot.SETTINGS.whisperRange.hint": "How far a whisper carries. 1.5 reaches the eight squares around the speaker; beyond it, a whispering player can't be heard. The GM always hears everyone.",
+  "kaiserkram.earshot.SETTINGS.toggleWhisper.name": "Toggle whisper",
+  "kaiserkram.earshot.SETTINGS.toggleWhisper.hint": "Switch whispering on or off: while on, only those right next to you can hear you. Also in the token controls on the left.",
+  "kaiserkram.earshot.WHISPER.on": "Whispering: only those right next to you can hear you.",
+  "kaiserkram.earshot.WHISPER.off": "Speaking normally again.",
+  "kaiserkram.earshot.WHISPER.tool": "Whisper (only those next to you hear you)"
 }

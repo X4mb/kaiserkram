@@ -4,6 +4,8 @@ export const FLAGS = {
   VOICE_TOKEN_ID: 'earshot.voiceTokenId',
   /** Actor flag: per-actor {@link VoiceProfile}. */
   VOICE_PROFILE: 'earshot.voiceProfile',
+  /** User flag: true while the user whispers (heard only within the whisper range). */
+  WHISPER: 'earshot.whisper',
 } as const;
 
 /** Single PIXI.Graphics on canvas.tokens for voice source outline (persists across token.refresh). */
