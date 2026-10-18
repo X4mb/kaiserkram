@@ -121,6 +121,9 @@
     {{#if tabs.sell}}
       {{#if customer}}
         <p class="hint">{{localize "kaiserkram.trader.sheet.dropHint"}}</p>
+        {{#if enforcePurse}}
+          <p class="shop-trader-purse"><i class="fa-solid fa-sack-dollar"></i> {{localize "kaiserkram.trader.sheet.traderPurse"}}: <b>{{purse}}</b></p>
+        {{/if}}
         {{#if sellable.length}}
           <table class="trader-table trader-sell">
             <thead>
@@ -139,7 +142,12 @@
                   <td class="col-price">{{offer}}</td>
                   <td class="col-actions">
                     {{#if ../canTrade}}
-                      <button type="button" data-action="sell"><i class="fa-solid fa-hand-holding-dollar"></i> {{localize "kaiserkram.trader.sheet.sell"}}</button>
+                      {{#if cantAfford}}
+                        {{!-- Disabled buttons get no pointer events, so the tooltip sits on a wrapper. --}}
+                        <span data-tooltip="{{localize "kaiserkram.trader.sheet.cantAfford"}}"><button type="button" disabled><i class="fa-solid fa-hand-holding-dollar"></i> {{localize "kaiserkram.trader.sheet.sell"}}</button></span>
+                      {{else}}
+                        <button type="button" data-action="sell"><i class="fa-solid fa-hand-holding-dollar"></i> {{localize "kaiserkram.trader.sheet.sell"}}</button>
+                      {{/if}}
                     {{/if}}
                   </td>
                 </tr>

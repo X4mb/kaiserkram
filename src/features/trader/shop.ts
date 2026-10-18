@@ -193,15 +193,22 @@ export class TraderShop extends appBase() {
       }),
     );
 
+    // With the purse enforced, the trader can only pay for what its coins cover.
+    const traderCoins = purseTotal(purseOf(trader));
+    const enforcePurse = getBool(SETTINGS.ENFORCE_PURSE);
     const sellable =
       customer && config.buysFromPlayers
-        ? customer.items.contents.filter(isTradeable).map((item) => ({
-            id: item.id,
-            name: item.name,
-            img: item.img,
-            qty: stockQuantity(item),
-            offer: formatBP(sellQuote(trader, item, customer.id, state)),
-          }))
+        ? customer.items.contents.filter(isTradeable).map((item) => {
+            const offer = sellQuote(trader, item, customer.id, state);
+            return {
+              id: item.id,
+              name: item.name,
+              img: item.img,
+              qty: stockQuantity(item),
+              offer: formatBP(offer),
+              cantAfford: enforcePurse && offer > traderCoins,
+            };
+          })
         : [];
 
     const standings = Object.entries(state)
@@ -234,7 +241,7 @@ export class TraderShop extends appBase() {
       trader: { name: trader.name, img: trader.img },
       config,
       purse: formatBP(purseTotal(purseOf(trader))),
-      enforcePurse: getBool(SETTINGS.ENFORCE_PURSE),
+      enforcePurse,
       customers: this.customerChoices().map((a) => ({ id: a.id, name: a.name, selected: a.id === customer?.id })),
       customer: customer
         ? {
@@ -455,6 +462,7 @@ export class TraderShop extends appBase() {
     if (!open && current === OWNERSHIP.LIMITED) update['ownership.default'] = OWNERSHIP.NONE;
     await trader.update(update);
     if (open) await announceShop(trader);
+    else await announceClosed(trader);
   }
 
   /** Open the shop if needed, then pop this sheet open on every connected player's screen. */
@@ -510,6 +518,12 @@ export function refreshShops(): void {
 }
 
 /** Chat card telling everyone the shop is open, with a button that opens it. */
+/** Chat card when the GM closes the shop. */
+export async function announceClosed(trader: WfrpActor): Promise<void> {
+  const text = fmt('kaiserkram.trader.chat.closed', '{trader} has closed for business.', { trader: escapeHtml(trader.name) });
+  await postChat({ speaker: speakerFor(trader), content: `<div class="${CARD_CLASS}"><p>${text}</p></div>` });
+}
+
 export async function announceShop(trader: WfrpActor): Promise<void> {
   const text = fmt('kaiserkram.trader.chat.open', '{trader} is open for business.', { trader: escapeHtml(trader.name) });
   const button = escapeHtml(loc('kaiserkram.trader.chat.enter', 'Enter the shop'));

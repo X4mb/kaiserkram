@@ -12,10 +12,11 @@ import { ACTIONS, resolveParties } from './transactions.js';
 export const MAX_ASK = 80;
 
 /**
- * Test modifier for the player's Haggle, per 10% band of discount asked: up to 10% is a plain
- * test, then each band is harder, a little more so towards the top.
+ * Test modifier for the player's Haggle, per 5% of discount asked (5%, 10%, ... 80%). A small
+ * 5% ask is a little easier than a plain test; from there each step costs 5, and the steps
+ * grow towards the top (50% and 80% jump), so modest asks are worth making.
  */
-const BAND_MODIFIERS = [0, -10, -20, -30, -45, -55, -65, -80];
+const STEP_MODIFIERS = [10, 0, -5, -10, -15, -20, -25, -30, -35, -45, -50, -55, -60, -65, -70, -80];
 
 function haggleSkillName(): string {
   return loc('NAME.Haggle', 'Haggle');
@@ -26,8 +27,7 @@ export function clampAsk(ask: unknown): number {
 }
 
 export function askToModifier(ask: number): number {
-  const band = Math.min(BAND_MODIFIERS.length, Math.max(1, Math.ceil(clampAsk(ask) / 10)));
-  return BAND_MODIFIERS[band - 1];
+  return STEP_MODIFIERS[clampAsk(ask) / 5 - 1];
 }
 
 /** Whether `customerId` may haggle over `itemId` with this trader right now. */
