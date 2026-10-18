@@ -5,7 +5,8 @@ import { clearAvSessionLog, copyAvSessionLogToClipboard, getAvSessionLogSnapshot
 import { proximityClientClass } from './proximityClient.js';
 import { proximityRouter, scheduleProximityRefresh } from './proximityAudioRouter.js';
 import { registerVoiceEntryPoints } from './entryPoints.js';
-import { getDebug, registerEarshotDebugSetting, registerEarshotKeybindings, registerEarshotSettings, SETTINGS } from './settings.js';
+import { getDebug, registerEarshotClientSettings, registerEarshotKeybindings, registerEarshotSettings, SETTINGS } from './settings.js';
+import { destroySpeakingRings, updateSpeakingRings } from './speakingRings.js';
 import { openVoiceAssignDialogForActor } from './voiceAssignDialog.js';
 import { voiceChangerProcessor } from './voiceChangerProcessor.js';
 import { clearLosCache } from './proximityLos.js';
@@ -34,10 +35,12 @@ function registerCanvasPositionTicker(): void {
     if ((game as unknown as { webrtc?: { mode?: number } }).webrtc?.mode === 0) {
       clearVoiceIndicator();
       if (hasWhisperers()) destroyWhisperBadges();
+      destroySpeakingRings();
       return;
     }
     redrawVoiceIndicator();
     if (hasWhisperers()) updateWhisperBadges();
+    updateSpeakingRings();
     /** Keep gains aligned with token positions every frame (no artificial 125ms delay). */
     proximityRouter.refreshAllGains();
   };
@@ -76,6 +79,7 @@ function registerHooks(): void {
   on('canvasTearDown', () => {
     clearLosCache();
     destroyWhisperBadges();
+    destroySpeakingRings();
     unregisterCanvasPositionTicker();
     destroyVoiceIndicatorLayer();
     proximityRouter.detachAll();
@@ -144,7 +148,7 @@ export const earshot: Feature = {
   init() {
     (CONFIG.WebRTC as { clientClass: unknown }).clientClass = proximityClientClass();
     registerEarshotSettings();
-    registerEarshotDebugSetting();
+    registerEarshotClientSettings();
     // Foundry requires keybindings to be registered during init (not ready), or setup throws.
     registerEarshotKeybindings(toggleWhisper);
     registerVoiceTokenKeybinding();

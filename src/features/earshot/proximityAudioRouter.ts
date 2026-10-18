@@ -19,6 +19,9 @@ interface PeerAudio {
   /** Foundry dock volume / mute / block (replaces video-element volume on the default client). */
   clientGain: GainNode;
   proximityGain: GainNode;
+  /** After every gain stage: how loud this peer is *to this listener* (drives the speaking ring). */
+  analyser: AnalyserNode;
+  samples: Float32Array<ArrayBuffer>;
   stream: MediaStream;
 }
 
@@ -85,12 +88,16 @@ export class ProximityAudioRouter {
     profileGain.connect(clientGain);
     clientGain.connect(proximityGain);
     proximityGain.connect(ctx.destination);
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 512;
+    proximityGain.connect(analyser);
 
     const remoteUser = game.users?.get(userId);
     const mult = getVoiceProfileForActor(remoteUser?.character ?? null)?.gainMultiplier ?? 1;
     profileGain.gain.value = Math.min(2, Math.max(0, mult));
 
-    this.peers.set(userId, { source, profileGain, clientGain, proximityGain, stream });
+    const samples = new Float32Array(new ArrayBuffer(analyser.fftSize * 4));
+    this.peers.set(userId, { source, profileGain, clientGain, proximityGain, analyser, samples, stream });
     this.lastStableEnvGain.delete(userId);
     pushAvSessionLog('peer:attach', { userId });
     this.refreshGain(userId);
@@ -107,6 +114,7 @@ export class ProximityAudioRouter {
       p.profileGain.disconnect();
       p.clientGain.disconnect();
       p.proximityGain.disconnect();
+      p.analyser.disconnect();
     } catch {
       /* already disconnected */
     }
@@ -138,6 +146,21 @@ export class ProximityAudioRouter {
   /** Recompute all remote peer gains (no artificial throttle — canvas ticker + hooks drive rate). */
   refreshAllGains(_force = true): void {
     for (const id of this.peers.keys()) this.refreshGain(id);
+  }
+
+  /** RMS level (0–1) of what this listener hears from `userId` right now; 0 when not attached. */
+  levelOf(userId: string): number {
+    const p = this.peers.get(userId);
+    if (!p) return 0;
+    p.analyser.getFloatTimeDomainData(p.samples);
+    let sum = 0;
+    for (const v of p.samples) sum += v * v;
+    return Math.sqrt(sum / p.samples.length);
+  }
+
+  /** Users with an attached audio graph. */
+  peerIds(): string[] {
+    return [...this.peers.keys()];
   }
 
   hasPeer(userId: string): boolean {

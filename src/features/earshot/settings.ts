@@ -16,6 +16,8 @@ export const SETTINGS = {
   WHISPER_RANGE: 'earshotWhisperRange',
   /** Client (per-user): verbose console diagnostics + a "build active" banner for the GM. Off by default. */
   DEBUG: 'earshotDebug',
+  /** Client (per-user): show a ring around tokens whose player is talking. */
+  SPEAKING_RINGS: 'earshotSpeakingRings',
 } as const;
 
 export const KEYBINDINGS = {
@@ -83,7 +85,27 @@ export function registerEarshotSettings(): void {
   });
 }
 
-export function registerEarshotDebugSetting(): void {
+export function registerEarshotClientSettings(): void {
+  s().register(MODULE_ID, SETTINGS.SPEAKING_RINGS, {
+    name: 'kaiserkram.earshot.SETTINGS.speakingRings.name',
+    hint: 'kaiserkram.earshot.SETTINGS.speakingRings.hint',
+    scope: 'client',
+    config: true,
+    type: Boolean,
+    default: true,
+  });
+  registerEarshotDebugSetting();
+}
+
+export function getSpeakingRings(): boolean {
+  try {
+    return Boolean(s().get(MODULE_ID, SETTINGS.SPEAKING_RINGS));
+  } catch {
+    return false;
+  }
+}
+
+function registerEarshotDebugSetting(): void {
   s().register(MODULE_ID, SETTINGS.DEBUG, {
     name: 'kaiserkram.earshot.SETTINGS.debug.name',
     hint: 'kaiserkram.earshot.SETTINGS.debug.hint',
