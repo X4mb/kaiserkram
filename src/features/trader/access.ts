@@ -44,14 +44,16 @@ async function basicSkills(): Promise<ItemData[]> {
   return [...found.values()];
 }
 
+function withoutId(item: ItemData): ItemData {
+  const data = { ...item };
+  delete data._id;
+  return data;
+}
+
 /** Give `actor` every basic skill it lacks, so its tests (Haggle above all) use real skills. */
 async function ensureBasicSkills(actor: WfrpActor): Promise<void> {
   const have = new Set(actor.items.contents.filter((i) => i.type === 'skill').map((i) => i.name));
-  const missing = (await basicSkills()).filter((s) => !have.has(s.name)).map((s) => {
-    const data = { ...s };
-    delete data._id;
-    return data;
-  });
+  const missing = (await basicSkills()).filter((s) => !have.has(s.name)).map(withoutId);
   if (missing.length) await actor.createEmbeddedDocuments('Item', missing);
 }
 
@@ -122,8 +124,15 @@ export async function createTrader(
   data: Record<string, unknown> = {},
   options: { haggle?: number; purseBP?: number } = {},
 ): Promise<WfrpActor | null> {
-  const cls = (CONFIG as unknown as { Actor: { documentClass: { create(d: unknown): Promise<unknown> } } }).Actor
-    .documentClass;
+  const cls = (CONFIG as unknown as {
+    Actor: { documentClass: { create(d: unknown, o?: Record<string, unknown>): Promise<unknown> } };
+  }).Actor.documentClass;
+  // The skills go in with the actor: WFRP4e asks "Add basic skills?" when an NPC is created
+  // without items, unless told to skip that.
+  const skills = await basicSkills().catch((err) => {
+    console.error('[kaiserkram] trader: reading the basic skills failed', err);
+    return [] as ItemData[];
+  });
   const actor = (await cls.create(
     foundry.utils.mergeObject(
       {
@@ -132,9 +141,11 @@ export async function createTrader(
         img: DEFAULT_TRADER_IMAGE,
         prototypeToken: { texture: { src: DEFAULT_TRADER_IMAGE } },
         flags: { [MODULE_ID]: expandObject({ [FLAGS.IS_TRADER]: true }) },
+        items: skills.map(withoutId),
       },
       data,
     ),
+    { skipItems: true },
   )) as WfrpActor | null;
   if (!actor) return null;
   try {

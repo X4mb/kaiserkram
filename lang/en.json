@@ -323,5 +323,11 @@
   "kaiserkram.trader.sheet.traderPurse": "The trader's coins",
   "kaiserkram.trader.sheet.cantAfford": "The trader hasn't got the coins to pay for this. The GM can add coins on its NPC sheet.",
   "kaiserkram.trader.SETTINGS.haggleStep.name": "Haggle difficulty",
-  "kaiserkram.trader.SETTINGS.haggleStep.hint": "How much harder the player's Haggle test gets for every 5% of discount they ask for. At 5 (the default), 10% off is −10 and 80% is −80; at 3, 80% is −48; at 10, 50% is already −100. 0 makes every ask a plain test."
+  "kaiserkram.trader.SETTINGS.haggleStep.hint": "How much harder the player's Haggle test gets for every 5% of discount they ask for. At 5 (the default), 10% off is −10 and 80% is −80; at 3, 80% is −48; at 10, 50% is already −100. 0 makes every ask a plain test.",
+  "kaiserkram.trader.catalog.title": "Trappings to stock",
+  "kaiserkram.trader.catalog.hint": "Drag an item onto this window, or click + to add one (adding it again raises the count). From:",
+  "kaiserkram.trader.catalog.search": "Search…",
+  "kaiserkram.trader.catalog.all": "All categories",
+  "kaiserkram.trader.catalog.add": "Add to stock",
+  "kaiserkram.trader.catalog.none": "No trappings compendium found. Enable the WFRP4e Core Rulebook module to list its Trappings here, or drag items from any compendium."
 }

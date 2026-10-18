@@ -242,6 +242,41 @@
       {{/if}}
       <p class="hint">{{localize "kaiserkram.trader.sheet.dropHintGM"}}</p>
 
+      {{#if catalog}}
+        <details class="trader-catalog" {{#if catalog.open}}open{{/if}}>
+          <summary><i class="fa-solid fa-book-open"></i> {{localize "kaiserkram.trader.catalog.title"}} <span class="count">{{catalog.count}}</span></summary>
+          {{#if catalog.count}}
+            <p class="hint">{{localize "kaiserkram.trader.catalog.hint"}} <i>{{catalog.source}}</i></p>
+            <div class="catalog-filters">
+              <input type="search" value="{{catalog.query}}" placeholder="{{localize "kaiserkram.trader.catalog.search"}}" data-catalog-search />
+              <select data-catalog-category>
+                <option value="">{{localize "kaiserkram.trader.catalog.all"}}</option>
+                {{#each catalog.categories}}<option value="{{name}}" {{#if selected}}selected{{/if}}>{{name}}</option>{{/each}}
+              </select>
+            </div>
+            <div class="catalog-list">
+              {{#each catalog.categories}}
+                <section class="catalog-group">
+                  <h4>{{name}}</h4>
+                  <ul>
+                    {{#each items}}
+                      <li class="catalog-item" draggable="true" data-uuid="{{uuid}}" data-name="{{search}}" data-category="{{category}}">
+                        <img src="{{img}}" alt="" />
+                        <span class="name">{{name}}</span>
+                        <span class="price">{{price}}</span>
+                        <button type="button" data-action="addFromCatalog" data-tooltip="{{localize "kaiserkram.trader.catalog.add"}}"><i class="fa-solid fa-plus"></i></button>
+                      </li>
+                    {{/each}}
+                  </ul>
+                </section>
+              {{/each}}
+            </div>
+          {{else}}
+            <p class="hint">{{localize "kaiserkram.trader.catalog.none"}}</p>
+          {{/if}}
+        </details>
+      {{/if}}
+
       {{#if haggleOn}}
         <h2><i class="fa-solid fa-scale-balanced"></i> {{localize "kaiserkram.trader.gm.standings"}}</h2>
         {{#if standings.length}}

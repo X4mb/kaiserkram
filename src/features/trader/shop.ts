@@ -23,6 +23,7 @@ import {
   type TraderConfig,
 } from './trader.js';
 import { ACTIONS } from './transactions.js';
+import { loadCatalog } from './catalog.js';
 
 /** The slice of ApplicationV2 this window relies on. */
 type AppInstance = {
@@ -112,6 +113,7 @@ export class TraderShop extends appBase() {
       resetHaggle: TraderShop.onResetHaggle as ActionFn,
       forgiveCustomer: TraderShop.onForgiveCustomer as ActionFn,
       openActorSheet: TraderShop.onOpenActorSheet as ActionFn,
+      addFromCatalog: TraderShop.onAddFromCatalog as ActionFn,
     },
   };
 
@@ -123,6 +125,11 @@ export class TraderShop extends appBase() {
   customerId: string | null = null;
 
   tab: ShopTab = 'buy';
+
+  /** The Manage tab's trappings list: open or not, and what it's filtered to, across re-renders. */
+  catalogOpen = false;
+  catalogQuery = '';
+  catalogCategory = '';
 
   readonly trader: WfrpActor;
 
@@ -224,6 +231,7 @@ export class TraderShop extends appBase() {
       .filter((s) => s.penalty > 0 || s.deals);
 
     const customerStanding = customer ? state[customer.id] : undefined;
+    const catalog = isGM && this.tab === 'manage' ? await loadCatalog() : null;
 
     const forSale = stock.filter((s) => s.forSale && (isGM || !s.soldOut));
     return {
@@ -258,6 +266,19 @@ export class TraderShop extends appBase() {
       sellableCount: sellable.length,
       standings,
       haggleOn,
+      catalog: catalog
+        ? {
+            source: catalog.source,
+            count: catalog.categories.reduce((n, c) => n + c.items.length, 0),
+            open: this.catalogOpen,
+            query: this.catalogQuery,
+            categories: catalog.categories.map((c) => ({
+              ...c,
+              selected: c.name === this.catalogCategory,
+              items: c.items.map((i) => ({ ...i, search: i.name.toLowerCase() })),
+            })),
+          }
+        : null,
     };
   }
 
@@ -280,6 +301,8 @@ export class TraderShop extends appBase() {
       );
     }
 
+    if (this.isGM) this.bindCatalog(root);
+
     // The window frame outlives re-renders, so only bind the drop target once.
     const content = root.querySelector<HTMLElement>('.window-content') ?? root;
     if (!content.dataset.traderDrop) {
@@ -287,6 +310,61 @@ export class TraderShop extends appBase() {
       content.addEventListener('dragover', (ev) => ev.preventDefault());
       content.addEventListener('drop', (ev) => void this.onDropItem(ev));
     }
+  }
+
+  /** The trappings list: remember open state and filters, filter rows in place, drag rows out. */
+  private bindCatalog(root: HTMLElement): void {
+    const box = root.querySelector<HTMLDetailsElement>('details.trader-catalog');
+    if (!box) return;
+    box.addEventListener('toggle', () => (this.catalogOpen = box.open));
+    const search = box.querySelector<HTMLInputElement>('input[data-catalog-search]');
+    const category = box.querySelector<HTMLSelectElement>('select[data-catalog-category]');
+    const apply = () => {
+      const q = this.catalogQuery.trim().toLowerCase();
+      box.querySelectorAll<HTMLElement>('.catalog-item').forEach((row) => {
+        const match =
+          (!q || (row.dataset.name ?? '').includes(q)) &&
+          (!this.catalogCategory || row.dataset.category === this.catalogCategory);
+        row.hidden = !match;
+      });
+      box.querySelectorAll<HTMLElement>('.catalog-group').forEach((group) => {
+        group.hidden = !group.querySelector('.catalog-item:not([hidden])');
+      });
+    };
+    search?.addEventListener('input', () => {
+      this.catalogQuery = search.value;
+      apply();
+    });
+    category?.addEventListener('change', () => {
+      this.catalogCategory = category.value;
+      apply();
+    });
+    box.querySelectorAll<HTMLElement>('.catalog-item[draggable="true"]').forEach((row) =>
+      row.addEventListener('dragstart', (ev) => {
+        ev.dataTransfer?.setData('text/plain', JSON.stringify({ type: 'Item', uuid: row.dataset.uuid }));
+      }),
+    );
+    apply();
+  }
+
+  /** Add `item` to the stock: onto a same-named stack if there is one, else as a new item. */
+  private async addToStock(item: WfrpItem): Promise<void> {
+    const qty = Math.max(1, stockQuantity(item));
+    const stack = this.trader.items.contents.find((i) => i.name === item.name && i.type === item.type && isTradeable(i));
+    if (stack && stack.type !== 'container') {
+      await stack.update({ 'system.quantity.value': stockQuantity(stack) + qty });
+      return;
+    }
+    const copy = item.toObject();
+    delete copy._id;
+    if (copy.flags) delete copy.flags[MODULE_ID];
+    await this.trader.createEmbeddedDocuments('Item', [copy]);
+  }
+
+  static async onAddFromCatalog(this: TraderShop, _event: Event, target: HTMLElement): Promise<void> {
+    const uuid = target.closest<HTMLElement>('[data-uuid]')?.dataset.uuid;
+    const item = uuid ? await resolveDocument<WfrpItem>(uuid) : null;
+    if (item && isTradeable(item)) await this.addToStock(item);
   }
 
   async close(options?: unknown): Promise<unknown> {
@@ -357,10 +435,7 @@ export class TraderShop extends appBase() {
     // on the Sell tab selling as a character. For anyone else, an item from their own
     // inventory is an offer to sell it.
     if (this.isGM && (!owner || this.tab !== 'sell')) {
-      const copy = item.toObject();
-      delete copy._id;
-      if (copy.flags) delete copy.flags[MODULE_ID];
-      await this.trader.createEmbeddedDocuments('Item', [copy]);
+      await this.addToStock(item);
       return;
     }
     if (owner?.isOwner) {

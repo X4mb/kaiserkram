@@ -390,3 +390,74 @@
 .kaiserkram-trader-card button {
   margin-top: 0.3rem;
 }
+
+/* Manage tab: trappings to stock the trader with */
+.kaiserkram .trader-catalog {
+  margin: 0.5rem 0 1rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--color-border-light-tertiary, #8884);
+  border-radius: 4px;
+}
+.kaiserkram .trader-catalog summary {
+  cursor: pointer;
+  font-weight: bold;
+}
+.kaiserkram .trader-catalog summary .count {
+  opacity: 0.6;
+  font-weight: normal;
+}
+.kaiserkram .catalog-filters {
+  display: flex;
+  gap: 0.4rem;
+  margin: 0.35rem 0;
+}
+.kaiserkram .catalog-filters input[type='search'] {
+  flex: 1;
+}
+.kaiserkram .catalog-filters select {
+  flex: none;
+  width: 14rem;
+}
+.kaiserkram .catalog-list {
+  max-height: 22rem;
+  overflow-y: auto;
+}
+.kaiserkram .catalog-group h4 {
+  margin: 0.4rem 0 0.15rem;
+  font-size: 0.9em;
+  opacity: 0.8;
+}
+.kaiserkram .catalog-group ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.kaiserkram .catalog-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.1rem 0;
+  cursor: grab;
+}
+.kaiserkram .catalog-item img {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  border: none;
+}
+.kaiserkram .catalog-item .name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.kaiserkram .catalog-item .price {
+  opacity: 0.75;
+  white-space: nowrap;
+}
+.kaiserkram .catalog-item button {
+  width: auto;
+  flex: none;
+  padding: 0 0.4rem;
+  line-height: 1.6;
+}
