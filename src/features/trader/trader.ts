@@ -131,9 +131,9 @@ export function buyQuote(trader: WfrpActor, item: WfrpItem, buyerId: string | nu
 }
 
 /** Per-unit price the trader pays `sellerId` for `item`; a grudge lowers that offer, too. */
-export function sellQuote(trader: WfrpActor, item: WfrpItem, sellerId: string | null): number {
+export function sellQuote(trader: WfrpActor, item: WfrpItem, sellerId: string | null, state?: HaggleState): number {
   const book = bookPriceBP(item);
-  const penalty = sellerId ? standingOf(haggleState(trader), sellerId).penalty : 0;
+  const penalty = sellerId ? standingOf(state ?? haggleState(trader), sellerId).penalty : 0;
   const rate = traderConfig(trader).sellRate / 100;
   return Math.max(0, Math.floor((book * rate) / (1 + penalty / 100)));
 }

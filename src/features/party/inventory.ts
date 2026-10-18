@@ -66,7 +66,7 @@ function involvesParty(source: ActorLike | null | undefined, target: ActorLike |
  * bubbles to the document, so it can be read here whichever sheet started the drag.
  */
 let dragged: { uuid: string; at: number } | null = null;
-const DRAG_WINDOW_MS = 30_000;
+const DRAG_WINDOW_MS = 10_000;
 
 function onDragStart(event: DragEvent): void {
   try {

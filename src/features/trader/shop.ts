@@ -187,7 +187,8 @@ export class TraderShop extends appBase() {
           cheaper: quote.unit < quote.list,
           override: override === null ? '' : formatBP(override),
           canHaggle: Boolean(customer) && haggleOn && canHaggle(state, customer?.id ?? '', item.id),
-          description: await enrich(item.system?.description?.value ?? ''),
+          // Only the Buy tab shows descriptions; enriching is the slow part of a render.
+          description: this.tab === 'buy' ? await enrich(item.system?.description?.value ?? '') : '',
         };
       }),
     );
@@ -199,7 +200,7 @@ export class TraderShop extends appBase() {
             name: item.name,
             img: item.img,
             qty: stockQuantity(item),
-            offer: formatBP(sellQuote(trader, item, customer.id)),
+            offer: formatBP(sellQuote(trader, item, customer.id, state)),
           }))
         : [];
 

@@ -2,6 +2,8 @@ import { VOICE_INDICATOR_LAYER } from './constants.js';
 import { getVoiceSourceTokenForDisplay } from './voiceToken.js';
 
 let rafId = 0;
+/** What the dot was last drawn for; the per-frame redraw is skipped while this is unchanged. */
+let lastDrawn = '';
 
 /**
  * Never parent to `canvas.tokens.objects` — on dnd5e, that container only accepts Token5e
@@ -36,16 +38,23 @@ export function redrawVoiceIndicator(): void {
   if (!canvas?.ready || !canvas.tokens) return;
   const tokenLayer = canvas.tokens;
   const g = ensureGraphics(tokenLayer);
-  g.clear();
 
   const user = game.user;
-  if (!user) return;
-  const token = getVoiceSourceTokenForDisplay(user);
-  if (!token) return;
+  const token = user ? getVoiceSourceTokenForDisplay(user) : null;
+  if (!token) {
+    if (lastDrawn) g.clear();
+    lastDrawn = '';
+    return;
+  }
 
   positionOnTokenLayer(tokenLayer, g, token);
-
   const cellPx = canvas.dimensions?.size ?? 100;
+  const drawn = `${token.id}|${token.document.width}|${token.document.height}|${cellPx}`;
+  // Position and rotation are set above every frame; the shape only needs redrawing when it changes.
+  if (drawn === lastDrawn) return;
+  lastDrawn = drawn;
+  g.clear();
+
   const dotR = Math.max(5, cellPx * 0.08);
   const tw = token.document.width * cellPx;
   const th = token.document.height * cellPx;
@@ -74,7 +83,16 @@ export function redrawVoiceIndicator(): void {
   }
 }
 
+/** Hide the dot (e.g. while A/V is off). */
+export function clearVoiceIndicator(): void {
+  if (!lastDrawn) return;
+  lastDrawn = '';
+  const g = canvas?.tokens?.getChildByName(VOICE_INDICATOR_LAYER) as PIXI.Graphics | undefined;
+  g?.clear();
+}
+
 export function scheduleVoiceIndicatorRedraw(): void {
+  lastDrawn = '';
   if (rafId) cancelAnimationFrame(rafId);
   rafId = requestAnimationFrame(() => {
     rafId = 0;
@@ -83,6 +101,7 @@ export function scheduleVoiceIndicatorRedraw(): void {
 }
 
 export function destroyVoiceIndicatorLayer(): void {
+  lastDrawn = '';
   if (rafId) {
     cancelAnimationFrame(rafId);
     rafId = 0;

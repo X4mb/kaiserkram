@@ -53,6 +53,18 @@ type SoundBackend = {
 };
 
 /**
+ * Wall results by listener/speaker position. Gains refresh every frame, but the collision test
+ * only needs to run again when someone moves or a wall changes ({@link clearLosCache}).
+ */
+const losCache = new Map<string, number>();
+const LOS_CACHE_MAX = 512;
+
+/** Call when walls or doors change, or the scene does. */
+export function clearLosCache(): void {
+  losCache.clear();
+}
+
+/**
  * Single center ray only. Multiple offset rays + averaging still oscillated with wall edge tests;
  * env gain is quantized + sticky in the router; one ray is enough for stable “through wall” feel.
  */
@@ -78,6 +90,26 @@ export function getVoiceLosMultiplier(listenerToken: Token, speakerDoc: TokenDoc
   const elL = l.elevation;
   const elS = g.elevation;
 
+  const key = `${lx},${ly},${elL}|${sx},${sy},${elS}|${wallVolumeBase}`;
+  const cached = losCache.get(key);
+  if (cached !== undefined) return cached;
+  if (losCache.size >= LOS_CACHE_MAX) losCache.clear();
+  const result = testLos(SoundPoly, dim.maxR, wallVolumeBase, lx, ly, elL, sx, sy, elS);
+  losCache.set(key, result);
+  return result;
+}
+
+function testLos(
+  SoundPoly: SoundBackend,
+  maxR: number,
+  wallVolumeBase: number,
+  lx: number,
+  ly: number,
+  elL: number,
+  sx: number,
+  sy: number,
+  elS: number,
+): number {
   const origin: Canvas.PossiblyElevatedPoint = { x: lx, y: ly, elevation: elL };
   const destination: Canvas.PossiblyElevatedPoint = { x: sx, y: sy, elevation: elS };
 
@@ -87,7 +119,7 @@ export function getVoiceLosMultiplier(listenerToken: Token, speakerDoc: TokenDoc
     const vertices = test.call(SoundPoly, origin, destination, {
       type: 'sound',
       mode: 'all',
-      radius: dim.maxR,
+      radius: maxR,
       useThreshold: true,
     });
     if (!Array.isArray(vertices) || vertices.length === 0) return 1;

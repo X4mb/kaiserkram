@@ -66,7 +66,19 @@ export function showToPlayers(traderUuid: string): void {
   emitSocket('trader', message);
 }
 
-async function run(action: string, payload: Record<string, unknown>, user: FoundryUser): Promise<ActionResult> {
+/**
+ * Trades run one at a time on the GM's client. Each reads stock and coins, then writes them; two
+ * at once (two players buying the last item) could both pass the checks and sell it twice.
+ */
+let queue: Promise<unknown> = Promise.resolve();
+
+function run(action: string, payload: Record<string, unknown>, user: FoundryUser): Promise<ActionResult> {
+  const next = queue.then(() => runNow(action, payload, user));
+  queue = next.catch(() => undefined);
+  return next;
+}
+
+async function runNow(action: string, payload: Record<string, unknown>, user: FoundryUser): Promise<ActionResult> {
   const handler = handlers.get(action);
   if (!handler) return { ok: false, message: `Unknown action ${action}` };
   try {

@@ -8,7 +8,13 @@ import { registerVoiceEntryPoints } from './entryPoints.js';
 import { getDebug, registerEarshotDebugSetting, registerEarshotKeybindings, registerEarshotSettings, SETTINGS } from './settings.js';
 import { openVoiceAssignDialogForActor } from './voiceAssignDialog.js';
 import { voiceChangerProcessor } from './voiceChangerProcessor.js';
-import { destroyVoiceIndicatorLayer, redrawVoiceIndicator, scheduleVoiceIndicatorRedraw } from './voiceIndicatorLayer.js';
+import { clearLosCache } from './proximityLos.js';
+import {
+  clearVoiceIndicator,
+  destroyVoiceIndicatorLayer,
+  redrawVoiceIndicator,
+  scheduleVoiceIndicatorRedraw,
+} from './voiceIndicatorLayer.js';
 import { getVoiceProfileForActor, persistVoiceProfileFlag, type VoiceProfile } from './voiceProfile.js';
 import { clearVoiceTokenFlagForCurrentUser, getVoiceTokenIdFromUser } from './voiceToken.js';
 import { registerVoiceTokenKeybinding } from './voiceTokenInput.js';
@@ -22,6 +28,11 @@ function registerCanvasPositionTicker(): void {
   if (!app?.ticker) return;
   canvasPositionTicker = () => {
     if (!canvas?.ready) return;
+    // A/V switched off for the world: no voices to place, nothing to draw.
+    if ((game as unknown as { webrtc?: { mode?: number } }).webrtc?.mode === 0) {
+      clearVoiceIndicator();
+      return;
+    }
     redrawVoiceIndicator();
     /** Keep gains aligned with token positions every frame (no artificial 125ms delay). */
     proximityRouter.refreshAllGains();
@@ -49,6 +60,7 @@ function registerHooks(): void {
     on(h, refreshAll);
   }
   on('canvasReady', () => {
+    clearLosCache();
     refreshAll();
     registerCanvasPositionTicker();
     // canvasTearDown only detaches the Web Audio graph; WebRTC peers survive a scene change and
@@ -57,13 +69,19 @@ function registerHooks(): void {
     if (client instanceof proximityClientClass()) void client.reattachAllPeers();
   });
   on('canvasTearDown', () => {
+    clearLosCache();
     unregisterCanvasPositionTicker();
     destroyVoiceIndicatorLayer();
     proximityRouter.detachAll();
   });
   on('rtcSettingsChanged', scheduleProximityRefresh);
   on('visibilityRefresh', scheduleProximityRefresh);
-  for (const h of ['createWall', 'updateWall', 'deleteWall']) on(h, scheduleProximityRefresh);
+  for (const h of ['createWall', 'updateWall', 'deleteWall']) {
+    on(h, () => {
+      clearLosCache();
+      scheduleProximityRefresh();
+    });
+  }
 
   on('updateUser', ((user: User, change: { flags?: Record<string, Record<string, unknown> | undefined> }) => {
     if (change.flags?.[MODULE_ID]?.earshot !== undefined) {
