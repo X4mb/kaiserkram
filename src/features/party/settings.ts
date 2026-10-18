@@ -12,6 +12,7 @@ export const SETTINGS = {
   PARTY_TOKEN_SIZE: 'partyTokenSize',
   DEFAULT_IMAGE: 'partyDefaultTokenImage',
   PLAYERS_CONTROL_MARKER: 'partyPlayersControlMarker',
+  TRADING: 'partyTrading',
 } as const;
 
 export const AFTER_DEPLOY_BEHAVIORS = {
@@ -117,6 +118,15 @@ export function registerPartySettings(): void {
     default: true,
   });
 
+  s().register(MODULE_ID, SETTINGS.TRADING, {
+    name: 'kaiserkram.party.SETTINGS.trading.name',
+    hint: 'kaiserkram.party.SETTINGS.trading.hint',
+    scope: 'world',
+    config: true,
+    type: Boolean,
+    default: true,
+  });
+
   s().register(MODULE_ID, SETTINGS.DEFAULT_IMAGE, {
     name: 'kaiserkram.party.SETTINGS.defaultTokenImage.name',
     hint: 'kaiserkram.party.SETTINGS.defaultTokenImage.hint',
@@ -161,6 +171,10 @@ export function getPartyTokenSize(): number {
 
 export function getPlayersControlMarker(): boolean {
   return Boolean(s().get(MODULE_ID, SETTINGS.PLAYERS_CONTROL_MARKER));
+}
+
+export function getTrading(): boolean {
+  return Boolean(s().get(MODULE_ID, SETTINGS.TRADING));
 }
 
 export function getDefaultTokenImage(): string {

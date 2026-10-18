@@ -369,7 +369,11 @@ function ok(label) {
   ]);
   assert.deepEqual(record.menus, [`${MODULE_ID}.features`]);
   assert.deepEqual(record.sheets, [], 'traders keep the system sheet; nothing should register one');
-  assert.deepEqual(record.styles, ['modules/kaiserkram/styles/landing.css?v=0.1.0', 'modules/kaiserkram/styles/trader.css?v=0.1.0']);
+  assert.deepEqual(record.styles, [
+    'modules/kaiserkram/styles/landing.css?v=0.1.0',
+    'modules/kaiserkram/styles/party.css?v=0.1.0',
+    'modules/kaiserkram/styles/trader.css?v=0.1.0',
+  ]);
   assert.equal(record.templates.length, 3);
   assert.equal(record.socketOn, 1);
   assert.notEqual(CONFIG.WebRTC.clientClass, OriginalClient, 'WebRTC client not replaced');
@@ -479,7 +483,7 @@ function ok(label) {
   const { record, game } = await run({ label: 'dnd5e', systemId: 'dnd5e', enabled: all });
   assert.deepEqual(record.errors, []);
   assert.deepEqual(record.sheets, []);
-  assert.equal(record.socketOn, 0);
+  assert.equal(record.socketOn, 1, 'only the party trade channel');
   assert.ok(!record.settings.some((k) => k.startsWith(`${MODULE_ID}.trader`)), 'trader settings registered');
   assert.deepEqual(Object.keys(game.modules.get(MODULE_ID).api.features).sort(), ['earshot', 'landing', 'party']);
   ok('non-WFRP world: Trader stays off');
