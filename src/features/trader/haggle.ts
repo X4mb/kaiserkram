@@ -3,19 +3,13 @@ import { fmt, loc } from '../../core/i18n.js';
 import { CARD_CLASS, TEMPLATES } from './constants.js';
 import { type FoundryUser, type WfrpActor, type WfrpItem } from './wfrp.js';
 import { formatBP } from './money.js';
-import { getBool, SETTINGS } from './settings.js';
+import { getBool, getNumber, SETTINGS } from './settings.js';
 import { registerHandler, requestGM, type ActionResult } from './socket.js';
 import { buyQuote, haggleState, isForSale, saveHaggleState, standingOf, type HaggleState } from './trader.js';
 import { ACTIONS, resolveParties } from './transactions.js';
 
 /** Largest discount a player can ask for, in %. */
 export const MAX_ASK = 80;
-
-/**
- * Test modifier for the player's Haggle, per 5% of discount asked (5%, 10%, ... 80%): never a
- * bonus, −5 for each 5% step, so the modifier is simply minus the discount asked.
- */
-const STEP_MODIFIERS = [-5, -10, -15, -20, -25, -30, -35, -40, -45, -50, -55, -60, -65, -70, -75, -80];
 
 function haggleSkillName(): string {
   return loc('NAME.Haggle', 'Haggle');
@@ -25,8 +19,13 @@ export function clampAsk(ask: unknown): number {
   return Math.min(MAX_ASK, Math.max(5, Math.round((Number(ask) || 0) / 5) * 5));
 }
 
+/**
+ * Test modifier for the player's Haggle: never a bonus, minus the GM's difficulty for every 5%
+ * of discount asked (5 by default, so 10% off is −10 and 80% is −80).
+ */
 export function askToModifier(ask: number): number {
-  return STEP_MODIFIERS[clampAsk(ask) / 5 - 1];
+  const perStep = Math.max(0, getNumber(SETTINGS.HAGGLE_STEP) || 0);
+  return -(clampAsk(ask) / 5) * perStep || 0;
 }
 
 /** Whether `customerId` may haggle over `itemId` with this trader right now. */

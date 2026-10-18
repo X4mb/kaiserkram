@@ -34,7 +34,7 @@ A trader is an ordinary WFRP4e NPC that keeps its normal NPC sheet (for stats an
    The bar also has **NPC sheet** for the trader's stats and coins.
 5. **Players trade.** They get in through the chat card's **Enter the shop** button, the **Shops** button at the top of the Actors sidebar, or by double-clicking the trader's token. They pick the character they trade as, then buy or haggle in **Buy** and sell in **Sell** (or drag an item from their character sheet onto the shop). Coins move automatically. A GM has to be online, because the trades run on the GM's client.
 
-**Haggling** is an opposed Haggle test against the trader. The player picks a discount up to 80%; their test gets harder the more they ask, the trader's has no modifier:
+**Haggling** is an opposed Haggle test against the trader. The player picks a discount up to 80%, in 5% steps; their test gets harder the more they ask, the trader's has no modifier. The *Haggle difficulty* setting is the penalty per 5% asked (default 5, from 0 to 10); at the default:
 
 | Discount asked | 5% | 10% | 15% | 20% | 25% | 30% | 35% | 40% | 45% | 50% | 55% | 60% | 65% | 70% | 75% | 80% |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
