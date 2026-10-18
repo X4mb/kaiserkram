@@ -163,142 +163,135 @@
     {{/if}}
 
     {{#if tabs.manage}}
-      <details class="trader-help" {{#unless hasStock}}open{{/unless}}>
-        <summary><i class="fa-solid fa-circle-question"></i> {{localize "kaiserkram.trader.help.title"}}</summary>
-        <ol>
-          <li>{{localize "kaiserkram.trader.help.stock"}}</li>
-          <li>{{localize "kaiserkram.trader.help.prices"}}</li>
-          <li>{{localize "kaiserkram.trader.help.open"}}</li>
-          <li>{{localize "kaiserkram.trader.help.players"}}</li>
-          <li>{{localize "kaiserkram.trader.help.trade"}}</li>
-        </ol>
-      </details>
-
-      <fieldset class="shop-config">
-        <legend>{{localize "kaiserkram.trader.gm.title"}}</legend>
-        <div class="gm-row">
-          <label>{{localize "kaiserkram.trader.gm.markup"}}
-            <input type="number" min="0" step="5" value="{{config.markup}}" data-config="markup" /> %
-          </label>
-          <label>{{localize "kaiserkram.trader.gm.sellRate"}}
-            <input type="number" min="0" step="5" value="{{config.sellRate}}" data-config="sellRate" /> %
-          </label>
-          <label class="inline">
-            <input type="checkbox" data-config="buysFromPlayers" {{#if config.buysFromPlayers}}checked{{/if}} />
-            {{localize "kaiserkram.trader.gm.buysFromPlayers"}}
-          </label>
-        </div>
-        <div class="gm-row">
-          <span><i class="fa-solid fa-sack-dollar"></i> {{localize "kaiserkram.trader.gm.purse"}}: <b>{{purse}}</b></span>
-          {{#unless enforcePurse}}<span class="hint">{{localize "kaiserkram.trader.gm.purseUnlimited"}}</span>{{/unless}}
-        </div>
-      </fieldset>
-
-      <h2><i class="fa-solid fa-boxes-stacked"></i> {{localize "kaiserkram.trader.gm.stock"}}</h2>
-      {{#if hasStock}}
-        <table class="trader-table trader-stock">
-          <thead>
-            <tr>
-              <th class="col-name">{{localize "kaiserkram.trader.sheet.item"}}</th>
-              <th class="col-qty">{{localize "kaiserkram.trader.sheet.qty"}}</th>
-              <th class="col-price">{{localize "kaiserkram.trader.sheet.book"}}</th>
-              <th class="col-price">{{localize "kaiserkram.trader.sheet.override"}}</th>
-              <th class="col-price">{{localize "kaiserkram.trader.sheet.price"}}</th>
-              <th class="col-actions"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {{#each stock}}
-              <tr class="{{#if soldOut}}sold-out{{/if}} {{#unless forSale}}not-for-sale{{/unless}}" data-item-id="{{id}}">
-                <td class="col-name">
-                  <img src="{{img}}" alt="" /> {{name}}
-                  {{#unless forSale}}<span class="tag">{{localize "kaiserkram.trader.sheet.notForSale"}}</span>{{/unless}}
-                </td>
-                <td class="col-qty">
-                  <input type="number" min="0" step="1" value="{{qty}}" data-item-field="qty" {{#if infinite}}disabled{{/if}} />
-                  <label class="inline" data-tooltip="{{localize "kaiserkram.trader.sheet.infiniteHint"}}">
-                    <input type="checkbox" data-item-field="infinite" {{#if infinite}}checked{{/if}} /> ∞
-                  </label>
-                </td>
-                <td class="col-price"><input type="text" value="{{book}}" data-item-field="book" /></td>
-                <td class="col-price">
-                  <input type="text" value="{{override}}" placeholder="{{list}}" data-item-field="override"
-                    data-tooltip="{{localize "kaiserkram.trader.sheet.overrideHint"}}" />
-                </td>
-                <td class="col-price">{{list}}</td>
-                <td class="col-actions">
-                  <label class="inline" data-tooltip="{{localize "kaiserkram.trader.sheet.forSaleHint"}}">
-                    <input type="checkbox" data-item-field="forSale" {{#if forSale}}checked{{/if}} />
-                  </label>
-                  <button type="button" data-action="openItem" data-tooltip="{{localize "kaiserkram.trader.sheet.edit"}}"><i class="fa-solid fa-pen"></i></button>
-                  <button type="button" data-action="removeItem" data-tooltip="{{localize "kaiserkram.trader.gm.removeItem"}}"><i class="fa-solid fa-trash"></i></button>
-                </td>
-              </tr>
-            {{/each}}
-          </tbody>
-        </table>
-      {{else}}
-        <p class="shop-empty">{{localize "kaiserkram.trader.sheet.empty"}}</p>
-      {{/if}}
-      <p class="hint">{{localize "kaiserkram.trader.sheet.dropHintGM"}}</p>
-
-      {{#if catalog}}
-        <details class="trader-catalog" {{#if catalog.open}}open{{/if}}>
-          <summary><i class="fa-solid fa-book-open"></i> {{localize "kaiserkram.trader.catalog.title"}} <span class="count">{{catalog.count}}</span></summary>
-          {{#if catalog.count}}
-            <p class="hint">{{localize "kaiserkram.trader.catalog.hint"}} <i>{{catalog.source}}</i></p>
-            <div class="catalog-filters">
-              <input type="search" value="{{catalog.query}}" placeholder="{{localize "kaiserkram.trader.catalog.search"}}" data-catalog-search />
-              <select data-catalog-category>
-                <option value="">{{localize "kaiserkram.trader.catalog.all"}}</option>
-                {{#each catalog.categories}}<option value="{{name}}" {{#if selected}}selected{{/if}}>{{name}}</option>{{/each}}
-              </select>
+      <div class="manage-layout">
+        <div class="manage-main">
+          <fieldset class="shop-config">
+            <legend>{{localize "kaiserkram.trader.gm.title"}}</legend>
+            <div class="gm-row">
+              <label>{{localize "kaiserkram.trader.gm.markup"}}
+                <input type="number" min="0" step="5" value="{{config.markup}}" data-config="markup" /> %
+              </label>
+              <label>{{localize "kaiserkram.trader.gm.sellRate"}}
+                <input type="number" min="0" step="5" value="{{config.sellRate}}" data-config="sellRate" /> %
+              </label>
+              <label class="inline">
+                <input type="checkbox" data-config="buysFromPlayers" {{#if config.buysFromPlayers}}checked{{/if}} />
+                {{localize "kaiserkram.trader.gm.buysFromPlayers"}}
+              </label>
             </div>
-            <div class="catalog-list">
-              {{#each catalog.categories}}
-                <section class="catalog-group">
-                  <h4>{{name}}</h4>
-                  <ul>
-                    {{#each items}}
-                      <li class="catalog-item" draggable="true" data-uuid="{{uuid}}" data-name="{{search}}" data-category="{{category}}">
-                        <img src="{{img}}" alt="" />
-                        <span class="name">{{name}}</span>
-                        <span class="price">{{price}}</span>
-                        <button type="button" data-action="addFromCatalog" data-tooltip="{{localize "kaiserkram.trader.catalog.add"}}"><i class="fa-solid fa-plus"></i></button>
-                      </li>
-                    {{/each}}
-                  </ul>
-                </section>
-              {{/each}}
+            <div class="gm-row">
+              <span><i class="fa-solid fa-sack-dollar"></i> {{localize "kaiserkram.trader.gm.purse"}}: <b>{{purse}}</b></span>
+              {{#unless enforcePurse}}<span class="hint">{{localize "kaiserkram.trader.gm.purseUnlimited"}}</span>{{/unless}}
             </div>
-          {{else}}
-            <p class="hint">{{localize "kaiserkram.trader.catalog.none"}}</p>
-          {{/if}}
-        </details>
-      {{/if}}
+          </fieldset>
 
-      {{#if haggleOn}}
-        <h2><i class="fa-solid fa-scale-balanced"></i> {{localize "kaiserkram.trader.gm.standings"}}</h2>
-        {{#if standings.length}}
-          <table class="trader-table trader-standings">
-            <tbody>
-              {{#each standings}}
-                <tr data-actor-id="{{actorId}}">
-                  <td>{{name}}</td>
-                  <td>{{#if penalty}}<span class="tag grudge">+{{penalty}}%</span>{{/if}}</td>
-                  <td>{{deals}}</td>
-                  <td class="col-actions">
-                    <button type="button" data-action="forgiveCustomer" data-tooltip="{{localize "kaiserkram.trader.gm.forgive"}}"><i class="fa-solid fa-handshake"></i></button>
-                  </td>
+          <h2><i class="fa-solid fa-boxes-stacked"></i> {{localize "kaiserkram.trader.gm.stock"}}</h2>
+          {{#if hasStock}}
+            <table class="trader-table trader-stock">
+              <thead>
+                <tr>
+                  <th class="col-name">{{localize "kaiserkram.trader.sheet.item"}}</th>
+                  <th class="col-qty">{{localize "kaiserkram.trader.sheet.qty"}}</th>
+                  <th class="col-price">{{localize "kaiserkram.trader.sheet.book"}}</th>
+                  <th class="col-price">{{localize "kaiserkram.trader.sheet.override"}}</th>
+                  <th class="col-price">{{localize "kaiserkram.trader.sheet.price"}}</th>
+                  <th class="col-actions"></th>
                 </tr>
-              {{/each}}
-            </tbody>
-          </table>
-          <button type="button" data-action="resetHaggle"><i class="fa-solid fa-rotate-left"></i> {{localize "kaiserkram.trader.gm.resetHaggle"}}</button>
-        {{else}}
-          <p class="hint">{{localize "kaiserkram.trader.gm.noStandings"}}</p>
+              </thead>
+              <tbody>
+                {{#each stock}}
+                  <tr class="{{#if soldOut}}sold-out{{/if}} {{#unless forSale}}not-for-sale{{/unless}}" data-item-id="{{id}}">
+                    <td class="col-name">
+                      <img src="{{img}}" alt="" /> {{name}}
+                      {{#unless forSale}}<span class="tag">{{localize "kaiserkram.trader.sheet.notForSale"}}</span>{{/unless}}
+                    </td>
+                    <td class="col-qty">
+                      <input type="number" min="0" step="1" value="{{qty}}" data-item-field="qty" {{#if infinite}}disabled{{/if}} />
+                      <label class="inline" data-tooltip="{{localize "kaiserkram.trader.sheet.infiniteHint"}}">
+                        <input type="checkbox" data-item-field="infinite" {{#if infinite}}checked{{/if}} /> ∞
+                      </label>
+                    </td>
+                    <td class="col-price"><input type="text" value="{{book}}" data-item-field="book" /></td>
+                    <td class="col-price">
+                      <input type="text" value="{{override}}" placeholder="{{list}}" data-item-field="override"
+                        data-tooltip="{{localize "kaiserkram.trader.sheet.overrideHint"}}" />
+                    </td>
+                    <td class="col-price">{{list}}</td>
+                    <td class="col-actions">
+                      <label class="inline" data-tooltip="{{localize "kaiserkram.trader.sheet.forSaleHint"}}">
+                        <input type="checkbox" data-item-field="forSale" {{#if forSale}}checked{{/if}} />
+                      </label>
+                      <button type="button" data-action="openItem" data-tooltip="{{localize "kaiserkram.trader.sheet.edit"}}"><i class="fa-solid fa-pen"></i></button>
+                      <button type="button" data-action="removeItem" data-tooltip="{{localize "kaiserkram.trader.gm.removeItem"}}"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                  </tr>
+                {{/each}}
+              </tbody>
+            </table>
+          {{else}}
+            <p class="shop-empty">{{localize "kaiserkram.trader.sheet.empty"}}</p>
+          {{/if}}
+          <p class="hint">{{localize "kaiserkram.trader.sheet.dropHintGM"}}</p>
+
+
+          {{#if haggleOn}}
+            <h2><i class="fa-solid fa-scale-balanced"></i> {{localize "kaiserkram.trader.gm.standings"}}</h2>
+            {{#if standings.length}}
+              <table class="trader-table trader-standings">
+                <tbody>
+                  {{#each standings}}
+                    <tr data-actor-id="{{actorId}}">
+                      <td>{{name}}</td>
+                      <td>{{#if penalty}}<span class="tag grudge">+{{penalty}}%</span>{{/if}}</td>
+                      <td>{{deals}}</td>
+                      <td class="col-actions">
+                        <button type="button" data-action="forgiveCustomer" data-tooltip="{{localize "kaiserkram.trader.gm.forgive"}}"><i class="fa-solid fa-handshake"></i></button>
+                      </td>
+                    </tr>
+                  {{/each}}
+                </tbody>
+              </table>
+              <button type="button" data-action="resetHaggle"><i class="fa-solid fa-rotate-left"></i> {{localize "kaiserkram.trader.gm.resetHaggle"}}</button>
+            {{else}}
+              <p class="hint">{{localize "kaiserkram.trader.gm.noStandings"}}</p>
+            {{/if}}
+          {{/if}}
+        </div>
+        {{#if catalog}}
+          <aside class="trader-catalog">
+            <h2><i class="fa-solid fa-book-open"></i> {{localize "kaiserkram.trader.catalog.title"}} <span class="count">{{catalog.count}}</span></h2>
+            {{#if catalog.count}}
+              <p class="hint">{{localize "kaiserkram.trader.catalog.hint"}} <i>{{catalog.source}}</i></p>
+              <div class="catalog-filters">
+                <input type="search" value="{{catalog.query}}" placeholder="{{localize "kaiserkram.trader.catalog.search"}}" data-catalog-search />
+                <select data-catalog-category>
+                  <option value="">{{localize "kaiserkram.trader.catalog.all"}}</option>
+                  {{#each catalog.categories}}<option value="{{name}}" {{#if selected}}selected{{/if}}>{{name}}</option>{{/each}}
+                </select>
+              </div>
+              <div class="catalog-list">
+                {{#each catalog.categories}}
+                  <section class="catalog-group">
+                    <h4>{{name}}</h4>
+                    <ul>
+                      {{#each items}}
+                        <li class="catalog-item" draggable="true" data-uuid="{{uuid}}" data-name="{{search}}" data-category="{{category}}">
+                          <img src="{{img}}" alt="" />
+                          <span class="name">{{name}}</span>
+                          <span class="price">{{price}}</span>
+                          <button type="button" data-action="addFromCatalog" data-tooltip="{{localize "kaiserkram.trader.catalog.add"}}"><i class="fa-solid fa-plus"></i></button>
+                        </li>
+                      {{/each}}
+                    </ul>
+                  </section>
+                {{/each}}
+              </div>
+            {{else}}
+              <p class="hint">{{localize "kaiserkram.trader.catalog.none"}}</p>
+            {{/if}}
+          </aside>
         {{/if}}
-      {{/if}}
+      </div>
     {{/if}}
   </div>
 </section>

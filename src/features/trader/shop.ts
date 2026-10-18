@@ -93,6 +93,9 @@ async function askQuantity(title: string, max: number, unitLabel: string): Promi
  * The shop window for one trader. It is a plain window, not the trader's actor sheet: the trader
  * stays an ordinary NPC with the system's own sheet, and players need no permission on it to shop.
  */
+/** Window width for the Manage tab, with the trappings list beside the stock. */
+const MANAGE_WIDTH = 1180;
+
 export class TraderShop extends appBase() {
   /** One window per trader on this client. */
   static readonly open = new Map<string, TraderShop>();
@@ -126,9 +129,9 @@ export class TraderShop extends appBase() {
 
   tab: ShopTab = 'buy';
 
-  /** The Manage tab's trappings list: open or not, and what it's filtered to, across re-renders. */
-  catalogOpen = false;
+  /** What the Manage tab's trappings list is filtered to, across re-renders. */
   catalogQuery = '';
+  private widened = false;
   catalogCategory = '';
 
   readonly trader: WfrpActor;
@@ -270,7 +273,6 @@ export class TraderShop extends appBase() {
         ? {
             source: catalog.source,
             count: catalog.categories.reduce((n, c) => n + c.items.length, 0),
-            open: this.catalogOpen,
             query: this.catalogQuery,
             categories: catalog.categories.map((c) => ({
               ...c,
@@ -312,11 +314,16 @@ export class TraderShop extends appBase() {
     }
   }
 
-  /** The trappings list: remember open state and filters, filter rows in place, drag rows out. */
+  /** The trappings list: remember the filters, filter rows in place, drag rows out. */
   private bindCatalog(root: HTMLElement): void {
-    const box = root.querySelector<HTMLDetailsElement>('details.trader-catalog');
+    const box = root.querySelector<HTMLElement>('.trader-catalog');
     if (!box) return;
-    box.addEventListener('toggle', () => (this.catalogOpen = box.open));
+    // The side panel needs room; widen the window once when the GM first sees it.
+    const pos = (this as unknown as { position?: { width?: number }; setPosition?(p: Record<string, unknown>): void });
+    if (!this.widened && (pos.position?.width ?? 0) < MANAGE_WIDTH) {
+      this.widened = true;
+      pos.setPosition?.({ width: Math.min(MANAGE_WIDTH, window.innerWidth - 40) });
+    }
     const search = box.querySelector<HTMLInputElement>('input[data-catalog-search]');
     const category = box.querySelector<HTMLSelectElement>('select[data-catalog-category]');
     const apply = () => {

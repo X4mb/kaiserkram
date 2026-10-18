@@ -1,6 +1,7 @@
 import { MODULE_ID } from '../../core/constants.js';
 import { contextEntry, dialogV2, escapeHtml, expandObject, notify, on, toElement } from '../../core/foundryApi.js';
 import { applyPurse, parsePrice, planCredit, purseOf } from './money.js';
+import { getNumber, SETTINGS } from './settings.js';
 import { fmt, loc } from '../../core/i18n.js';
 import { DEFAULT_TRADER_IMAGE, FLAGS } from './constants.js';
 import { openShop } from './shop.js';
@@ -140,7 +141,14 @@ export async function createTrader(
         type: 'npc',
         img: DEFAULT_TRADER_IMAGE,
         prototypeToken: { texture: { src: DEFAULT_TRADER_IMAGE } },
-        flags: { [MODULE_ID]: expandObject({ [FLAGS.IS_TRADER]: true }) },
+        // Prices are set on the trader itself, so changing the defaults later leaves it alone.
+        flags: {
+          [MODULE_ID]: expandObject({
+            [FLAGS.IS_TRADER]: true,
+            [`${FLAGS.CONFIG}.markup`]: getNumber(SETTINGS.DEFAULT_MARKUP),
+            [`${FLAGS.CONFIG}.sellRate`]: getNumber(SETTINGS.DEFAULT_SELL_RATE),
+          }),
+        },
         items: skills.map(withoutId),
       },
       data,

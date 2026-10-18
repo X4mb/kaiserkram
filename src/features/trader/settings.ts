@@ -25,7 +25,7 @@ const NUMBER_SETTINGS: NumberSetting[] = [
     key: SETTINGS.DEFAULT_SELL_RATE,
     name: 'kaiserkram.trader.SETTINGS.defaultSellRate.name',
     hint: 'kaiserkram.trader.SETTINGS.defaultSellRate.hint',
-    def: 50, min: 0, max: 200, step: 5,
+    def: 90, min: 0, max: 200, step: 5,
   },
   {
     key: SETTINGS.HAGGLE_STEP,

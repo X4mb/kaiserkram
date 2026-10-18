@@ -28,8 +28,8 @@ Each enabled feature adds its own settings under Configure Settings → Kaiserkr
 A trader is an ordinary WFRP4e NPC that keeps its normal NPC sheet (for stats and the trader's coins). Its shop opens in a window of its own, with **Buy**, **Sell** and, for the GM, **Manage** tabs.
 
 1. **Make a trader.** In the Actors sidebar, click **Create Trader** and give its name, Haggle skill and starting coins, or right-click an NPC → **Make Trader**. Either way the trader gets every basic skill, and the shop window opens on the Manage tab. A trader pays players from its own coins (unless *Enforce purse* is off), so give it some before it buys.
-2. **Stock it.** The Manage tab lists the Core Rulebook's **Trappings** (from the `wfrp4e-core` Items compendium, by category, with a search): drag one onto the window or click **+**. You can also drag items from the Items sidebar, any compendium or an actor. Adding an item the trader already has raises its count. In Manage, set each item's count, ∞ for unlimited stock, a fixed price, and whether it is for sale.
-3. **Set prices.** *Prices* is what the trader charges, as a % of book price (100% = book price by default; raise or lower it per trader); *Buy-back rate* is what it pays players.
+2. **Stock it.** Beside the stock, the Manage tab lists the Core Rulebook's **Trappings** (from the `wfrp4e-core` Items compendium, by category, with a search): drag one onto the window or click **+**. You can also drag items from the Items sidebar, any compendium or an actor. Adding an item the trader already has raises its count. In Manage, set each item's count, ∞ for unlimited stock, a fixed price, and whether it is for sale.
+3. **Set prices.** *Prices* is what the trader charges, as a % of book price (100% = book price by default; raise or lower it per trader); *Buy-back rate* is what it pays players (90% by default). New traders take both from the module settings when they are created.
 4. **Open the shop.** The GM's buttons sit in a bar under the trader's name. **Open shop** lets players in and posts an *open for business* card in chat; **Close shop** shuts them out and posts a *closed for business* card; players double-clicking the trader are told it's closed. **Show to players** opens the shop if needed and pops the window up on every connected player's screen.
    The bar also has **NPC sheet** for the trader's stats and coins.
 5. **Players trade.** They get in through the chat card's **Enter the shop** button, the **Shops** button at the top of the Actors sidebar, or by double-clicking the trader's token. They pick the character they trade as, then buy or haggle in **Buy** and sell in **Sell** (or drag an item from their character sheet onto the shop). Coins move automatically. A GM has to be online, because the trades run on the GM's client.
@@ -42,7 +42,7 @@ A trader is an ordinary WFRP4e NPC that keeps its normal NPC sheet (for stats an
 
 Higher SL wins (on a tie, the higher skill). Win, and the next purchase of that item gets exactly the discount asked for; lose, and the price stays. Each character gets one try per item unless *Haggle: allow repeat attempts* is on; **Reset haggling** in Manage clears all tries and deals.
 
-The GM can also open any shop from the trader's Token HUD, from right-click → **Open Shop**, or from **Shops**. The Manage tab has a collapsible **How this works** box with these steps.
+The GM can also open any shop from the trader's Token HUD, from right-click → **Open Shop**, or from **Shops**.
 
 ## Moving from the old modules
 
