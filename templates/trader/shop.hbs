@@ -54,16 +54,16 @@
   {{/if}}
 
   <nav class="shop-tabs">
-    <a class="shop-tab {{#if tabs.buy}}active{{/if}}" data-action="tab" data-tab="buy">
+    <a class="shop-tab {{#if tabs.buy}}active{{/if}}" data-action="shopTab" data-shop-tab="buy">
       <i class="fa-solid fa-cart-shopping"></i> {{localize "kaiserkram.trader.tabs.buy"}} <span class="count">{{forSaleCount}}</span>
     </a>
     {{#if config.buysFromPlayers}}
-      <a class="shop-tab {{#if tabs.sell}}active{{/if}}" data-action="tab" data-tab="sell">
+      <a class="shop-tab {{#if tabs.sell}}active{{/if}}" data-action="shopTab" data-shop-tab="sell">
         <i class="fa-solid fa-hand-holding-dollar"></i> {{localize "kaiserkram.trader.tabs.sell"}} <span class="count">{{sellableCount}}</span>
       </a>
     {{/if}}
     {{#if isGM}}
-      <a class="shop-tab {{#if tabs.manage}}active{{/if}}" data-action="tab" data-tab="manage">
+      <a class="shop-tab {{#if tabs.manage}}active{{/if}}" data-action="shopTab" data-shop-tab="manage">
         <i class="fa-solid fa-user-gear"></i> {{localize "kaiserkram.trader.tabs.manage"}}
       </a>
     {{/if}}

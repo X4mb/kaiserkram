@@ -105,7 +105,8 @@ export class TraderShop extends appBase() {
     position: { width: 820, height: 760 },
     window: { resizable: true, icon: 'fa-solid fa-store' },
     actions: {
-      tab: TraderShop.onTab as ActionFn,
+      // Not `tab`: ApplicationV2 handles that action itself (its own tab groups) before ours.
+      shopTab: TraderShop.onTab as ActionFn,
       buy: TraderShop.onBuy as ActionFn,
       haggle: TraderShop.onHaggle as ActionFn,
       sell: TraderShop.onSell as ActionFn,
@@ -380,7 +381,7 @@ export class TraderShop extends appBase() {
   }
 
   static onTab(this: TraderShop, _event: Event, target: HTMLElement): void {
-    const tab = target.dataset.tab as ShopTab | undefined;
+    const tab = target.dataset.shopTab as ShopTab | undefined;
     if (!tab || tab === this.tab) return;
     this.tab = tab;
     void this.render();
