@@ -86,6 +86,9 @@ function handleUpdate(msg: TradeUpdate): void {
     if (mine === 1) void answerInvite(session);
     return;
   }
+  // Until the invitation is answered, only the side that asked has a window ("Waiting for …").
+  // The partner sees just the invitation; their window opens once they accept.
+  if (session.status === 'pending' && mine === 1) return;
   openTradeWindow(session, mine as 0 | 1);
 }
 
@@ -161,20 +164,6 @@ function renderSide(win: TradeWindow, index: 0 | 1): string {
       </li>`,
     )
     .join('');
-  let add = '';
-  if (isMine && win.session.status === 'open') {
-    const offered = new Set(side.items.map((i) => i.id));
-    const options = (myActor(win)?.items.contents ?? [])
-      .filter((i) => isTradeableItem(i) && quantityOf(i) > 0 && !offered.has(i.id))
-      .sort((a, b) => a.name.localeCompare(b.name))
-      .map((i) => `<option value="${escapeHtml(i.id)}">${escapeHtml(i.name)} (${quantityOf(i)})</option>`)
-      .join('');
-    add = options
-      ? `<div class="kk-trade-add"><select data-add>${options}</select>
-           <button type="button" data-action="add"><i class="fa-solid fa-plus"></i> ${escapeHtml(loc('kaiserkram.party.trade.add', 'Add'))}</button></div>
-         <p class="hint">${escapeHtml(loc('kaiserkram.party.trade.dropHint', 'Or drag items from your character sheet onto this window.'))}</p>`
-      : '';
-  }
   const status = side.accepted
     ? `<span class="kk-trade-accepted"><i class="fa-solid fa-check"></i> ${escapeHtml(loc('kaiserkram.party.trade.accepted', 'Accepted'))}</span>`
     : '';
@@ -182,7 +171,54 @@ function renderSide(win: TradeWindow, index: 0 | 1): string {
     <header><img src="${escapeHtml(side.actorImg)}" alt="" /><div><h3>${escapeHtml(title)}</h3>
       <span class="hint">${escapeHtml(side.actorName)} · ${escapeHtml(side.userName)}</span></div>${status}</header>
     <ul class="kk-trade-list">${rows || `<li class="empty">${escapeHtml(loc('kaiserkram.party.trade.empty', 'Nothing yet.'))}</li>`}</ul>
-    ${add}
+  </section>`;
+}
+
+/** Coins are items of type `money` (WFRP4e); they get amount boxes instead of drag rows. */
+function isMoney(item: { type: string }): boolean {
+  return item.type === 'money';
+}
+
+/** Your inventory beside the offer: goods to drag (or click) in, and money to type an amount of. */
+function renderInventory(win: TradeWindow): string {
+  const offered = offerMap(win);
+  const items = (myActor(win)?.items.contents ?? []).filter((i) => isTradeableItem(i) && quantityOf(i) > 0);
+  const goods = items
+    .filter((i) => !isMoney(i))
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((i) => {
+      const left = quantityOf(i) - (offered[i.id] ?? 0);
+      return `<li class="kk-trade-item kk-trade-good ${left <= 0 ? 'all-offered' : ''}" draggable="true"
+          data-item-id="${escapeHtml(i.id)}" data-uuid="${escapeHtml((i as { uuid?: string }).uuid ?? '')}"
+          data-action="addOne" data-tooltip="${escapeHtml(loc('kaiserkram.party.trade.addOne', 'Click to add one, or drag into your offer'))}">
+        <img src="${escapeHtml(i.img)}" alt="" />
+        <span class="name">${escapeHtml(i.name)}</span>
+        <span class="qty">${left}</span>
+      </li>`;
+    })
+    .join('');
+  const money = items
+    .filter(isMoney)
+    .sort((a, b) => Number(b.system?.coinValue?.value ?? 0) - Number(a.system?.coinValue?.value ?? 0))
+    .map(
+      (i) => `<li class="kk-trade-item kk-trade-coin" data-item-id="${escapeHtml(i.id)}">
+        <img src="${escapeHtml(i.img)}" alt="" />
+        <span class="name">${escapeHtml(i.name)}</span>
+        <input type="number" min="0" max="${quantityOf(i)}" step="1" value="${offered[i.id] ?? 0}" data-coin />
+        <span class="max">/ ${quantityOf(i)}</span>
+      </li>`,
+    )
+    .join('');
+  return `<section class="kk-trade-side kk-trade-inventory">
+    <header><div><h3>${escapeHtml(loc('kaiserkram.party.trade.inventory', 'Your inventory'))}</h3>
+      <span class="hint">${escapeHtml(loc('kaiserkram.party.trade.dropHint', 'Drag items into your offer, or click one to add it.'))}</span></div></header>
+    <ul class="kk-trade-list kk-trade-goods">${goods || `<li class="empty">${escapeHtml(loc('kaiserkram.party.trade.noGoods', 'Nothing to trade.'))}</li>`}</ul>
+    ${
+      money
+        ? `<h4 class="kk-trade-money-title"><i class="fa-solid fa-coins"></i> ${escapeHtml(loc('kaiserkram.party.trade.money', 'Money'))}</h4>
+           <ul class="kk-trade-list kk-trade-money">${money}</ul>`
+        : ''
+    }
   </section>`;
 }
 
@@ -205,8 +241,9 @@ function renderWindow(win: TradeWindow): string {
                : loc('kaiserkram.party.trade.accept', 'Accept trade'),
            )}</button>
          <button type="button" data-action="cancel"><i class="fa-solid fa-ban"></i> ${escapeHtml(loc('kaiserkram.party.trade.cancel', 'Cancel'))}</button>`;
+  const inventory = session.status === 'open' ? renderInventory(win) : '';
   return `<div class="kk-trade">
-    <div class="kk-trade-sides">${renderSide(win, mine)}${renderSide(win, mine === 0 ? 1 : 0)}</div>
+    <div class="kk-trade-sides ${inventory ? 'with-inventory' : ''}">${inventory}${renderSide(win, mine)}${renderSide(win, mine === 0 ? 1 : 0)}</div>
     <footer class="kk-trade-footer">${footer}</footer>
   </div>`;
 }
@@ -222,10 +259,10 @@ function tradeWindowClass(): new (session: TradeSession, mine: 0 | 1) => TradeWi
 
     static DEFAULT_OPTIONS = {
       classes: [`${MODULE_ID}-trade`],
-      position: { width: 640, height: 'auto' },
+      position: { width: 900, height: 'auto' },
       window: { icon: 'fa-solid fa-handshake', resizable: true },
       actions: {
-        add: TradeWindowApp.onAdd,
+        addOne: TradeWindowApp.onAddOne,
         remove: TradeWindowApp.onRemove,
         accept: TradeWindowApp.onAccept,
         cancel: TradeWindowApp.onCancel,
@@ -258,6 +295,24 @@ function tradeWindowClass(): new (session: TradeSession, mine: 0 | 1) => TradeWi
           sendOffer(win, { ...offerMap(win), [id]: Number(input.value) || 1 });
         }),
       );
+      content.querySelectorAll<HTMLInputElement>('input[data-coin]').forEach((input) =>
+        input.addEventListener('change', () => {
+          const id = input.closest<HTMLElement>('[data-item-id]')?.dataset.itemId;
+          if (!id) return;
+          const items = offerMap(win);
+          const qty = Math.max(0, Math.floor(Number(input.value) || 0));
+          if (qty > 0) items[id] = qty;
+          else delete items[id];
+          sendOffer(win, items);
+        }),
+      );
+      // Rows are the browser's own drag sources; the drop below (or a character sheet) takes them.
+      content.querySelectorAll<HTMLElement>('.kk-trade-good[draggable="true"]').forEach((row) =>
+        row.addEventListener('dragstart', (ev) => {
+          const uuid = row.dataset.uuid;
+          if (uuid) ev.dataTransfer?.setData('text/plain', JSON.stringify({ type: 'Item', uuid }));
+        }),
+      );
       if (!content.dataset.tradeDrop) {
         content.dataset.tradeDrop = '1';
         content.addEventListener('dragover', (ev) => ev.preventDefault());
@@ -265,9 +320,14 @@ function tradeWindowClass(): new (session: TradeSession, mine: 0 | 1) => TradeWi
       }
     }
 
-    static onAdd(this: TradeWindow): void {
-      const id = this.element.querySelector<HTMLSelectElement>('select[data-add]')?.value;
-      if (id) sendOffer(this, { ...offerMap(this), [id]: 1 });
+    /** Click a good in your inventory: offer one more of it (up to what you have). */
+    static onAddOne(this: TradeWindow, _event: Event, target: HTMLElement): void {
+      const id = target.closest<HTMLElement>('[data-item-id]')?.dataset.itemId;
+      const item = id ? myActor(this)?.items.get(id) : undefined;
+      if (!id || !item) return;
+      const items = offerMap(this);
+      items[id] = Math.min(quantityOf(item), (items[id] ?? 0) + 1);
+      sendOffer(this, items);
     }
 
     static onRemove(this: TradeWindow, _event: Event, target: HTMLElement): void {
@@ -298,7 +358,9 @@ function tradeWindowClass(): new (session: TradeSession, mine: 0 | 1) => TradeWi
       const item = actor?.items.contents.find((i) => (i as unknown as { uuid?: string }).uuid === data.uuid);
       if (!item || !isTradeableItem(item)) return;
       event.preventDefault();
-      sendOffer(win, { ...offerMap(win), [item.id]: Math.max(1, offerMap(win)[item.id] ?? 1) });
+      const items = offerMap(win);
+      items[item.id] = Math.min(quantityOf(item), (items[item.id] ?? 0) + 1);
+      sendOffer(win, items);
     }
 
     async close(options?: unknown): Promise<unknown> {

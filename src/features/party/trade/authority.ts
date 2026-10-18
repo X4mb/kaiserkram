@@ -42,12 +42,20 @@ async function actorOf(uuid: string): Promise<ActorLike | null> {
   return doc?.documentName === 'Actor' ? doc : null;
 }
 
-/** Who answers for `actor`: its player (their own character first), else the GM. */
-function deciderFor(actor: ActorLike): UserLike | null {
-  const players = users().filter((u) => u.active && !u.isGM && actor.testUserPermission(u, 'OWNER'));
-  const own = players.find((u) => u.character?.id === actor.id);
-  if (own ?? players[0]) return own ?? players[0];
-  return (game.users as unknown as { activeGM?: UserLike | null }).activeGM ?? null;
+/**
+ * Who answers for `actor`. A player-owned actor is answered only by its owning players (whoever
+ * has it as their character first) and never falls back to the GM: if none of them is online,
+ * there is nobody to ask. Only actors no player owns (NPCs) are answered by the GM.
+ */
+function deciderFor(actor: ActorLike): { user: UserLike } | { offline: true } | { nobody: true } {
+  const owners = users().filter((u) => !u.isGM && actor.testUserPermission(u, 'OWNER'));
+  if (owners.length) {
+    const online = owners.filter((u) => u.active);
+    const user = online.find((u) => u.character?.id === actor.id) ?? online[0];
+    return user ? { user } : { offline: true };
+  }
+  const gm = (game.users as unknown as { activeGM?: UserLike | null }).activeGM ?? null;
+  return gm ? { user: gm } : { nobody: true };
 }
 
 async function viewOf(side: SideState): Promise<TradeSide> {
@@ -139,8 +147,12 @@ export async function handleRequest(msg: TradeRequest): Promise<void> {
     if (!from.testUserPermission(sender, 'OWNER')) {
       return fail(loc('kaiserkram.party.trade.notYours', 'You can only trade as a character you own.'));
     }
-    const decider = deciderFor(to);
-    if (!decider) return fail(loc('kaiserkram.party.trade.nobody', 'Nobody is online to answer for that character.'));
+    const answer = deciderFor(to);
+    if ('offline' in answer) {
+      return fail(fmt('kaiserkram.party.trade.offline', "{name}'s player isn't online.", { name: to.name }));
+    }
+    if ('nobody' in answer) return fail(loc('kaiserkram.party.trade.nobody', 'Nobody is online to answer for that character.'));
+    const decider = answer.user;
     if (decider.id === sender.id) {
       return fail(loc('kaiserkram.party.trade.self', 'You answer for both characters; just drag the items across.'));
     }

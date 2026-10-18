@@ -155,3 +155,42 @@
   width: auto;
   white-space: nowrap;
 }
+
+/* Trade window: inventory column beside the two offers. */
+.kaiserkram-trade .kk-trade-sides.with-inventory {
+  grid-template-columns: 0.9fr 1fr 1fr;
+}
+
+.kaiserkram-trade .kk-trade-inventory {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.kaiserkram-trade .kk-trade-good {
+  cursor: grab;
+  border-radius: 4px;
+  padding: 0.15rem 0.25rem;
+}
+
+.kaiserkram-trade .kk-trade-good:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.kaiserkram-trade .kk-trade-good.all-offered {
+  opacity: 0.45;
+}
+
+.kaiserkram-trade .kk-trade-good .qty,
+.kaiserkram-trade .kk-trade-item .max {
+  opacity: 0.75;
+  font-size: 0.9em;
+}
+
+.kaiserkram-trade .kk-trade-goods {
+  max-height: 22rem;
+  overflow-y: auto;
+}
+
+.kaiserkram-trade .kk-trade-money-title {
+  margin: 0.4rem 0 0.1rem;
+  border: none;
+}

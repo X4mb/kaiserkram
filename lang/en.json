@@ -256,8 +256,7 @@
   "kaiserkram.party.trade.youOffer": "You offer",
   "kaiserkram.party.trade.theyOffer": "{name} offers",
   "kaiserkram.party.trade.remove": "Take back",
-  "kaiserkram.party.trade.add": "Add",
-  "kaiserkram.party.trade.dropHint": "Or drag items from your character sheet onto this window.",
+  "kaiserkram.party.trade.dropHint": "Drag items into your offer, or click one to add it.",
   "kaiserkram.party.trade.accepted": "Accepted",
   "kaiserkram.party.trade.empty": "Nothing yet.",
   "kaiserkram.party.trade.waiting": "Waiting for {user} to answer…",
@@ -281,5 +280,10 @@
   "kaiserkram.party.trade.closed.left": "{by} left, so the trade was cancelled.",
   "kaiserkram.party.trade.closed.unknown": "That trade is no longer open.",
   "kaiserkram.party.trade.offerTo": "Offer {name} a trade",
-  "kaiserkram.party.trade.tool": "Trade (with your target, or someone nearby)"
+  "kaiserkram.party.trade.tool": "Trade (with your target, or someone nearby)",
+  "kaiserkram.party.trade.inventory": "Your inventory",
+  "kaiserkram.party.trade.addOne": "Click to add one, or drag into your offer",
+  "kaiserkram.party.trade.noGoods": "Nothing to trade.",
+  "kaiserkram.party.trade.money": "Money",
+  "kaiserkram.party.trade.offline": "{name}'s player isn't online."
 }
