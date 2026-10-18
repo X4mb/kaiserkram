@@ -68,6 +68,14 @@ function involvesParty(source: ActorLike | null | undefined, target: ActorLike |
 let dragged: { uuid: string; at: number } | null = null;
 const DRAG_WINDOW_MS = 10_000;
 
+/**
+ * Code that moves an item itself (the stash window, a trade, a gift) calls this first, so the
+ * createItem below doesn't take the item off its source a second time.
+ */
+export function forgetDrag(): void {
+  dragged = null;
+}
+
 function onDragStart(event: DragEvent): void {
   try {
     const data = JSON.parse(event.dataTransfer?.getData('text/plain') ?? '') as DropData;

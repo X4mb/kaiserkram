@@ -28,17 +28,20 @@ export type TradeRequest =
   | { kind: 'trade'; op: 'respond'; userId: string; id: string; accept: boolean }
   | { kind: 'trade'; op: 'offer'; userId: string; id: string; items: Record<string, number> }
   | { kind: 'trade'; op: 'accept'; userId: string; id: string; accepted: boolean }
-  | { kind: 'trade'; op: 'cancel'; userId: string; id: string };
+  | { kind: 'trade'; op: 'cancel'; userId: string; id: string }
+  /** A one-way handover: no session, no answer; it happens at once. */
+  | { kind: 'trade'; op: 'give'; userId: string; from: string; to: string; items: Record<string, number> };
 
 /** GM → clients. */
 export type TradeUpdate =
   | { kind: 'trade'; op: 'invite'; session: TradeSession }
   | { kind: 'trade'; op: 'state'; session: TradeSession }
-  | { kind: 'trade'; op: 'closed'; id: string; users: string[]; reason: CloseReason; by?: string; message?: string };
+  | { kind: 'trade'; op: 'closed'; id: string; users: string[]; reason: CloseReason; by?: string; message?: string }
+  | { kind: 'trade'; op: 'given'; users: string[]; text: string; failed?: boolean };
 
 export type TradeMessage = TradeRequest | TradeUpdate;
 
-export const REQUEST_OPS = new Set(['propose', 'respond', 'offer', 'accept', 'cancel']);
+export const REQUEST_OPS = new Set(['propose', 'respond', 'offer', 'accept', 'cancel', 'give']);
 
 /** A request without the fields the sender fills in itself. */
 export type RequestBody = {

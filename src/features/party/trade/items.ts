@@ -1,3 +1,5 @@
+import { forgetDrag } from '../inventory.js';
+
 /**
  * System-agnostic item quantities. WFRP4e keeps them in `system.quantity.value`, dnd5e in
  * `system.quantity`; items without either (spells, skills, talents...) aren't tradeable.
@@ -5,6 +7,7 @@
 
 export type ItemLike = {
   id: string;
+  uuid?: string;
   name: string;
   type: string;
   img: string;
@@ -52,6 +55,8 @@ function quantityPath(item: { system?: Record<string, any> }): string {
 
 /** Move `qty` of `item` onto `target`: stacked onto a same-named item there, or as a new one. */
 export async function transferItem(item: ItemLike, qty: number, target: ActorLike): Promise<void> {
+  // This removes the item from its source itself; the party-move tracker must not as well.
+  forgetDrag();
   const had = quantityOf(item);
   const stack = target.items.contents.find(
     (i) => i.name === item.name && i.type === item.type && i.type !== 'container' && isTradeableItem(i),

@@ -2,7 +2,7 @@ import { escapeHtml, dialogV2, notify, on, toElement } from '../../../core/found
 import { fmt, loc } from '../../../core/i18n.js';
 import { getTrading } from '../settings.js';
 import type { ActorLike } from './items.js';
-import { proposeTrade } from './client.js';
+import { giveItems, proposeTrade } from './client.js';
 
 /**
  * Ways to start a trade:
@@ -11,7 +11,16 @@ import { proposeTrade } from './client.js';
  *  - the Trade tool in the token controls, and the Trade button on your own token's HUD, which
  *    trade with your target or a token standing nearby;
  *  - the v14 token context menu, where a core build offers one.
+ * Each also offers Give: a one-way handover the receiver doesn't have to accept.
  */
+
+type Mode = 'trade' | 'give';
+
+/** Start `mode` between your `from` and `to`. */
+function act(mode: Mode, from: ActorLike, to: ActorLike): void {
+  if (mode === 'give') void giveItems(from, to);
+  else proposeTrade(from, to);
+}
 
 type TokenLike = {
   id: string;
@@ -39,14 +48,14 @@ function myTradingActor(exclude?: ActorLike | null): ActorLike | null {
   return character && character.id !== exclude?.id ? character : null;
 }
 
-function startTrade(target: ActorLike | null | undefined): void {
+function startTrade(target: ActorLike | null | undefined, mode: Mode = 'trade'): void {
   if (!target) return;
   const mine = myTradingActor(target);
   if (!mine) {
     notify().warn(loc('kaiserkram.party.trade.noActor', 'Select your token first (or have a character assigned) to trade.'));
     return;
   }
-  proposeTrade(mine, target);
+  act(mode, mine, target);
 }
 
 function center(t: TokenLike, size: number): { x: number; y: number } {
@@ -54,7 +63,7 @@ function center(t: TokenLike, size: number): { x: number; y: number } {
 }
 
 /** Pick a partner for `token`: your target, the only token nearby, or one from a list. */
-async function pickPartner(token: TokenLike): Promise<ActorLike | null> {
+async function pickPartner(token: TokenLike, mode: Mode = 'trade'): Promise<ActorLike | null> {
   const own = token.actor ?? null;
   const targets = [...((game.user as unknown as { targets?: Set<TokenLike> }).targets ?? [])];
   const targeted = targets.map((t) => t.actor).find((a) => a && a.id !== own?.id);
@@ -76,35 +85,63 @@ async function pickPartner(token: TokenLike): Promise<ActorLike | null> {
     return null;
   }
   if (nearby.length === 1) return nearby[0].actor ?? null;
+  const give = mode === 'give';
   const id = await dialogV2().wait({
-    window: { title: loc('kaiserkram.party.trade.pickTitle', 'Trade with whom?'), icon: 'fa-solid fa-handshake' },
-    content: `<p>${escapeHtml(loc('kaiserkram.party.trade.pick', 'Choose who to offer a trade to.'))}</p>`,
+    window: {
+      title: give
+        ? loc('kaiserkram.party.give.pickTitle', 'Give to whom?')
+        : loc('kaiserkram.party.trade.pickTitle', 'Trade with whom?'),
+      icon: give ? 'fa-solid fa-gift' : 'fa-solid fa-handshake',
+    },
+    content: `<p>${escapeHtml(
+      give
+        ? loc('kaiserkram.party.give.pick', 'Choose who to give something to.')
+        : loc('kaiserkram.party.trade.pick', 'Choose who to offer a trade to.'),
+    )}</p>`,
     rejectClose: false,
     buttons: nearby.map((t) => ({ action: t.id, label: t.name })),
   });
   return nearby.find((t) => t.id === id)?.actor ?? null;
 }
 
-/** Your own token's HUD: a Trade button. */
+const HUD_BUTTONS: { mode: Mode; cls: string; icon: string; title: () => string }[] = [
+  {
+    mode: 'trade',
+    cls: 'kaiserkram-party-trade',
+    icon: 'fa-handshake',
+    title: () => loc('kaiserkram.party.trade.hud', 'Trade (with your target, or someone nearby)'),
+  },
+  {
+    mode: 'give',
+    cls: 'kaiserkram-party-give',
+    icon: 'fa-gift',
+    title: () => loc('kaiserkram.party.give.hud', 'Give (to your target, or someone nearby)'),
+  },
+];
+
+/** Your own token's HUD: Trade and Give buttons. */
 function addHudButton(hud: unknown, html: unknown): void {
   const token = (hud as { object?: TokenLike }).object;
   if (!token?.actor?.isOwner) return;
   const root = toElement(html);
   const column = root?.querySelector('.col.left') ?? root?.querySelector('.col.right') ?? root;
-  if (!column || column.querySelector('.kaiserkram-party-trade')) return;
-  const button = document.createElement('div');
-  button.classList.add('control-icon', 'kaiserkram-party-trade');
-  button.setAttribute('role', 'button');
-  button.title = loc('kaiserkram.party.trade.hud', 'Trade (with your target, or someone nearby)');
-  button.innerHTML = '<i class="fa-solid fa-handshake"></i>';
-  button.addEventListener('click', (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    void pickPartner(token).then((partner) => {
-      if (partner) proposeTrade(token.actor!, partner);
+  if (!column) return;
+  for (const { mode, cls, icon, title } of HUD_BUTTONS) {
+    if (column.querySelector(`.${cls}`)) continue;
+    const button = document.createElement('div');
+    button.classList.add('control-icon', cls);
+    button.setAttribute('role', 'button');
+    button.title = title();
+    button.innerHTML = `<i class="fa-solid ${icon}"></i>`;
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      void pickPartner(token, mode).then((partner) => {
+        if (partner) act(mode, token.actor!, partner);
+      });
     });
-  });
-  column.appendChild(button);
+    column.appendChild(button);
+  }
 }
 
 /** v14 token right-click menu: "Offer trade" on someone else's token. */
@@ -118,20 +155,25 @@ function addTokenMenuEntry(_app: unknown, options: Record<string, unknown>[]): v
     const t = target as { actor?: ActorLike | null; document?: { actor?: ActorLike | null } } | null;
     return t?.actor ?? t?.document?.actor ?? null;
   };
-  const label = loc('kaiserkram.party.trade.offer', 'Offer trade');
   const visible = (target: unknown) => {
     const actor = resolve(target);
     return !!actor && !!myTradingActor(actor) && !(actor.isOwner && !game.user?.isGM);
   };
-  options.push({
-    label,
-    name: label,
-    icon: '<i class="fa-solid fa-handshake"></i>',
-    visible,
-    condition: visible,
-    onClick: (_event: unknown, target: unknown) => startTrade(resolve(target)),
-    callback: (target: unknown) => startTrade(resolve(target)),
-  });
+  const entries: [Mode, string, string][] = [
+    ['trade', loc('kaiserkram.party.trade.offer', 'Offer trade'), 'fa-handshake'],
+    ['give', loc('kaiserkram.party.give.menu', 'Give something'), 'fa-gift'],
+  ];
+  for (const [mode, label, icon] of entries) {
+    options.push({
+      label,
+      name: label,
+      icon: `<i class="fa-solid ${icon}"></i>`,
+      visible,
+      condition: visible,
+      onClick: (_event: unknown, target: unknown) => startTrade(resolve(target), mode),
+      callback: (target: unknown) => startTrade(resolve(target), mode),
+    });
+  }
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -153,16 +195,20 @@ function showMenu(clientX: number, clientY: number, target: ActorLike): void {
   menu.className = MENU_ID;
   menu.style.left = `${clientX}px`;
   menu.style.top = `${clientY}px`;
-  const button = document.createElement('button');
-  button.type = 'button';
-  button.innerHTML = `<i class="fa-solid fa-handshake"></i> ${escapeHtml(
-    fmt('kaiserkram.party.trade.offerTo', 'Offer {name} a trade', { name: target.name }),
-  )}`;
-  button.addEventListener('click', () => {
-    removeMenu();
-    startTrade(target);
-  });
-  menu.append(button);
+  const entries: [Mode, string, string][] = [
+    ['trade', fmt('kaiserkram.party.trade.offerTo', 'Offer {name} a trade', { name: target.name }), 'fa-handshake'],
+    ['give', fmt('kaiserkram.party.give.giveTo', 'Give {name} something', { name: target.name }), 'fa-gift'],
+  ];
+  for (const [mode, label, icon] of entries) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.innerHTML = `<i class="fa-solid ${icon}"></i> ${escapeHtml(label)}`;
+    button.addEventListener('click', () => {
+      removeMenu();
+      startTrade(target, mode);
+    });
+    menu.append(button);
+  }
   document.body.append(menu);
   // Any other click, or the wheel (zoom), closes it.
   const dismiss = (ev: Event) => {
@@ -229,14 +275,14 @@ function myToken(): TokenLike | null {
   return character ? (placeables().find((t) => t.actor?.id === character.id) ?? null) : null;
 }
 
-function tradeFromToolbar(): void {
+function tradeFromToolbar(mode: Mode = 'trade'): void {
   const token = myToken();
   if (!token?.actor) {
     notify().warn(loc('kaiserkram.party.trade.noActor', 'Select your token first (or have a character assigned) to trade.'));
     return;
   }
-  void pickPartner(token).then((partner) => {
-    if (partner) proposeTrade(token.actor!, partner);
+  void pickPartner(token, mode).then((partner) => {
+    if (partner) act(mode, token.actor!, partner);
   });
 }
 
@@ -249,18 +295,24 @@ function addTradeTool(controls: Record<string, Control> | Control[]): void {
     ? controls.find((c) => c.name === 'token' || c.name === 'tokens')
     : (controls.tokens ?? controls.token);
   if (!tokens) return;
-  const tool: Tool = {
-    name: 'kaiserkramPartyTrade',
-    title: loc('kaiserkram.party.trade.tool', 'Trade (with your target, or someone nearby)'),
-    icon: 'fa-solid fa-handshake',
-    order: 101,
-    button: true,
-    visible: true,
-    // v13+: onChange(event, active); older cores: onClick().
-    onChange: () => tradeFromToolbar(),
-  };
-  if (Array.isArray(tokens.tools)) tokens.tools.push({ ...tool, onClick: () => tradeFromToolbar() });
-  else tokens.tools[tool.name as string] = tool;
+  const tools: [Mode, string, string, string][] = [
+    ['trade', 'kaiserkramPartyTrade', loc('kaiserkram.party.trade.tool', 'Trade (with your target, or someone nearby)'), 'fa-handshake'],
+    ['give', 'kaiserkramPartyGive', loc('kaiserkram.party.give.tool', 'Give (to your target, or someone nearby)'), 'fa-gift'],
+  ];
+  tools.forEach(([mode, name, title, icon], i) => {
+    const tool: Tool = {
+      name,
+      title,
+      icon: `fa-solid ${icon}`,
+      order: 101 + i,
+      button: true,
+      visible: true,
+      // v13+: onChange(event, active); older cores: onClick().
+      onChange: () => tradeFromToolbar(mode),
+    };
+    if (Array.isArray(tokens.tools)) tokens.tools.push({ ...tool, onClick: () => tradeFromToolbar(mode) });
+    else tokens.tools[name] = tool;
+  });
 }
 
 export function registerTradeEntryPoints(): void {

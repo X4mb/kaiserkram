@@ -1,6 +1,6 @@
 import { escapeHtml, postChat, resolveDocument } from '../../../core/foundryApi.js';
 import { fmt, loc } from '../../../core/i18n.js';
-import { isTradeableItem, quantityOf, transferItem, type ActorLike } from './items.js';
+import { isTradeableItem, quantityOf, transferItem, type ActorLike, type ItemLike } from './items.js';
 import type { CloseReason, TradeRequest, TradeSession, TradeSide, TradeUpdate } from './types.js';
 
 /**
@@ -134,9 +134,79 @@ async function execute(s: Session): Promise<void> {
   close(s, 'done');
 }
 
-export async function handleRequest(msg: TradeRequest): Promise<void> {
+/** Trades and gifts run through here one at a time, so two can't spend the same item. */
+let queue: Promise<void> = Promise.resolve();
+
+export function handleRequest(msg: TradeRequest): Promise<void> {
+  const run = queue.then(() => handleOne(msg));
+  queue = run.catch(() => {});
+  return run;
+}
+
+/** Hand items over at once. Only the giver has to agree; whoever plays the receiver is told. */
+async function give(sender: UserLike, msg: Extract<TradeRequest, { op: 'give' }>): Promise<void> {
+  const fail = (text: string) => broadcast({ kind: 'trade', op: 'given', users: [sender.id], text, failed: true });
+  const from = await actorOf(msg.from);
+  const to = await actorOf(msg.to);
+  if (!from || !to || from.uuid === to.uuid) return fail(loc('kaiserkram.party.trade.gone', 'One of the traders no longer exists.'));
+  if (!from.testUserPermission(sender, 'OWNER')) {
+    return fail(loc('kaiserkram.party.give.notYours', 'You can only give from a character you own.'));
+  }
+  const items: [ItemLike, number][] = [];
+  for (const [id, raw] of Object.entries(msg.items ?? {})) {
+    const item = from.items.get(id);
+    const qty = Math.floor(Number(raw) || 0);
+    if (qty < 1) continue;
+    if (!item || !isTradeableItem(item) || qty > quantityOf(item)) {
+      return fail(fmt('kaiserkram.party.trade.changed', '{actor} no longer has what they offered.', { actor: from.name }));
+    }
+    items.push([item, qty]);
+  }
+  if (!items.length) return fail(loc('kaiserkram.party.give.nothing', 'Choose something to give.'));
+  const what = items.map(([item, qty]) => `${qty}× ${escapeHtml(item.name)}`).join(', ');
+  for (const [item, qty] of items) await transferItem(item, qty, to);
+  await postChat({
+    content: `<div class="kaiserkram-trade-card">${fmt('kaiserkram.party.give.chat', '<b>{a}</b> gave {what} to <b>{b}</b>.', {
+      a: escapeHtml(from.name),
+      b: escapeHtml(to.name),
+      what,
+    })}</div>`,
+  });
+  const receivers = users().filter((u) => u.active && u.id !== sender.id && !u.isGM && to.testUserPermission(u, 'OWNER'));
+  const plain = items.map(([item, qty]) => `${qty}× ${item.name}`).join(', ');
+  broadcast({
+    kind: 'trade',
+    op: 'given',
+    users: receivers.map((u) => u.id),
+    text: fmt('kaiserkram.party.give.received', '{a} gave {b} {what}.', { a: from.name, b: to.name, what: plain }),
+  });
+  broadcast({
+    kind: 'trade',
+    op: 'given',
+    users: [sender.id],
+    text: fmt('kaiserkram.party.give.done', 'You gave {b} {what}.', { b: to.name, what: plain }),
+  });
+}
+
+async function handleOne(msg: TradeRequest): Promise<void> {
   const sender = userById(msg.userId);
   if (!sender) return;
+
+  if (msg.op === 'give') {
+    try {
+      await give(sender, msg);
+    } catch (err) {
+      console.error('[kaiserkram] party: give failed', err);
+      broadcast({
+        kind: 'trade',
+        op: 'given',
+        users: [sender.id],
+        text: loc('kaiserkram.party.give.error', "Giving failed; see the GM's console."),
+        failed: true,
+      });
+    }
+    return;
+  }
 
   if (msg.op === 'propose') {
     const from = await actorOf(msg.from);

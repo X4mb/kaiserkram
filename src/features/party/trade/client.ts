@@ -54,6 +54,67 @@ export function proposeTrade(from: ActorLike, to: ActorLike): void {
   notify().info(fmt('kaiserkram.party.trade.proposed', 'Asking {name} to trade…', { name: to.name }));
 }
 
+/**
+ * Give `to` something from `from` (yours), no questions asked of the receiver: pick goods and
+ * amounts in a dialog, and the GM hands them over at once.
+ */
+export async function giveItems(from: ActorLike, to: ActorLike): Promise<void> {
+  const items = from.items.contents.filter((i) => isTradeableItem(i) && quantityOf(i) > 0);
+  if (!items.length) {
+    notify().warn(fmt('kaiserkram.party.give.empty', '{name} has nothing to give.', { name: from.name }));
+    return;
+  }
+  const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name);
+  const row = (i: (typeof items)[number]) => `<li class="kk-give-item ${isMoney(i) ? 'coin' : ''}" data-item-id="${escapeHtml(i.id)}">
+      <img src="${escapeHtml(i.img)}" alt="" />
+      <span class="name">${escapeHtml(i.name)}</span>
+      <input type="number" name="${escapeHtml(i.id)}" min="0" max="${quantityOf(i)}" step="1" value="0" />
+      <span class="max">/ ${quantityOf(i)}</span>
+    </li>`;
+  const goods = items.filter((i) => !isMoney(i)).sort(byName).map(row).join('');
+  const money = items
+    .filter(isMoney)
+    .sort((a, b) => Number(b.system?.coinValue?.value ?? 0) - Number(a.system?.coinValue?.value ?? 0))
+    .map(row)
+    .join('');
+  const content = `<div class="kk-give">
+    <p class="hint">${escapeHtml(
+      fmt('kaiserkram.party.give.hint', 'Set how much of each to give {name}. It changes hands at once.', { name: to.name }),
+    )}</p>
+    ${goods ? `<ul class="kk-give-list">${goods}</ul>` : ''}
+    ${money ? `<h4><i class="fa-solid fa-coins"></i> ${escapeHtml(loc('kaiserkram.party.trade.money', 'Money'))}</h4><ul class="kk-give-list">${money}</ul>` : ''}
+  </div>`;
+  const chosen = await dialogV2().wait({
+    window: {
+      title: fmt('kaiserkram.party.give.title', 'Give to {name}', { name: to.name }),
+      icon: 'fa-solid fa-gift',
+    },
+    position: { width: 420 },
+    classes: [`${MODULE_ID}-give`],
+    content,
+    rejectClose: false,
+    buttons: [
+      {
+        action: 'give',
+        label: loc('kaiserkram.party.give.button', 'Give'),
+        icon: 'fa-solid fa-gift',
+        default: true,
+        callback: (_event: Event, button: HTMLButtonElement) => {
+          const result: Record<string, number> = {};
+          button.form?.querySelectorAll<HTMLInputElement>('.kk-give-item input').forEach((input) => {
+            const qty = Math.min(Number(input.getAttribute('max')) || 0, Math.max(0, Math.floor(Number(input.value) || 0)));
+            if (qty > 0) result[input.name] = qty;
+          });
+          return result;
+        },
+      },
+      { action: 'cancel', label: loc('kaiserkram.party.trade.cancel', 'Cancel'), icon: 'fa-solid fa-ban' },
+    ],
+  });
+  if (!chosen || typeof chosen !== 'object' || !Object.keys(chosen).length) return;
+  sendRequest({ op: 'give', from: from.uuid, to: to.uuid, items: chosen as Record<string, number> });
+}
+
 const CLOSE_TEXT: Record<CloseReason, [string, string]> = {
   declined: ['kaiserkram.party.trade.closed.declined', '{by} declined the trade.'],
   cancelled: ['kaiserkram.party.trade.closed.cancelled', '{by} cancelled the trade.'],
@@ -66,6 +127,12 @@ const CLOSE_TEXT: Record<CloseReason, [string, string]> = {
 
 function handleUpdate(msg: TradeUpdate): void {
   const myId = me().id;
+  if (msg.op === 'given') {
+    if (!msg.users.includes(myId)) return;
+    if (msg.failed) notify().warn(msg.text);
+    else notify().info(msg.text);
+    return;
+  }
   if (msg.op === 'closed') {
     if (!msg.users.includes(myId)) return;
     const window = windows.get(msg.id);

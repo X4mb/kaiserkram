@@ -11,8 +11,9 @@ import { MODULE_PATH } from '../../core/constants.js';
 import { on } from '../../core/foundryApi.js';
 import { registerSocketHandler } from '../../core/socket.js';
 import { onUserLeft } from './trade/authority.js';
-import { initTradeClient, onTradeMessage, proposeTrade, refreshTradeWindows } from './trade/client.js';
+import { giveItems, initTradeClient, onTradeMessage, proposeTrade, refreshTradeWindows } from './trade/client.js';
 import { registerTradeEntryPoints } from './trade/entry.js';
+import { addStashHudButton, openStash, refreshStashWindows } from './stash.js';
 
 /** Trading between characters: entry points, and keeping open trade windows current. */
 function registerTrading(): void {
@@ -23,6 +24,13 @@ function registerTrading(): void {
   on('userConnected', ((user: { id: string }, connected: boolean) => {
     if (!connected) onUserLeft(user.id);
   }) as (...args: never[]) => unknown);
+}
+
+/** The party stash window: its HUD button, and keeping open stash windows current. */
+function registerStash(): void {
+  on('renderTokenHUD', addStashHudButton as (...args: never[]) => unknown);
+  const refresh = foundry.utils.debounce(refreshStashWindows, 100);
+  for (const hook of ['createItem', 'updateItem', 'deleteItem']) on(hook, refresh);
 }
 
 export const party: Feature = {
@@ -37,6 +45,7 @@ export const party: Feature = {
     registerCanvasDrop();
     registerTokenHudButton();
     registerPartyInventory();
+    registerStash();
     on('canvasReady', () => {
       if (game.user?.isGM && getPlayersControlMarker()) void upgradeMarkers(canvas?.scene as never);
     });
@@ -48,6 +57,6 @@ export const party: Feature = {
   },
 
   api() {
-    return { deployParty, deployFolderDirectly, createPartyTokenFromFolder, recallParty, proposeTrade };
+    return { deployParty, deployFolderDirectly, createPartyTokenFromFolder, recallParty, proposeTrade, giveItems, openStash };
   },
 };
