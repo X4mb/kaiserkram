@@ -12,11 +12,10 @@ import { ACTIONS, resolveParties } from './transactions.js';
 export const MAX_ASK = 80;
 
 /**
- * Test modifier for the player's Haggle, per 5% of discount asked (5%, 10%, ... 80%). A small
- * 5% ask is a little easier than a plain test; from there each step costs 5, and the steps
- * grow towards the top (50% and 80% jump), so modest asks are worth making.
+ * Test modifier for the player's Haggle, per 5% of discount asked (5%, 10%, ... 80%): never a
+ * bonus, −5 for each 5% step, so the modifier is simply minus the discount asked.
  */
-const STEP_MODIFIERS = [10, 0, -5, -10, -15, -20, -25, -30, -35, -45, -50, -55, -60, -65, -70, -80];
+const STEP_MODIFIERS = [-5, -10, -15, -20, -25, -30, -35, -40, -45, -50, -55, -60, -65, -70, -75, -80];
 
 function haggleSkillName(): string {
   return loc('NAME.Haggle', 'Haggle');

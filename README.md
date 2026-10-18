@@ -38,7 +38,7 @@ A trader is an ordinary WFRP4e NPC that keeps its normal NPC sheet (for stats an
 
 | Discount asked | 5% | 10% | 15% | 20% | 25% | 30% | 35% | 40% | 45% | 50% | 55% | 60% | 65% | 70% | 75% | 80% |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Player's modifier | +10 | ±0 | −5 | −10 | −15 | −20 | −25 | −30 | −35 | −45 | −50 | −55 | −60 | −65 | −70 | −80 |
+| Player's modifier | −5 | −10 | −15 | −20 | −25 | −30 | −35 | −40 | −45 | −50 | −55 | −60 | −65 | −70 | −75 | −80 |
 
 Higher SL wins (on a tie, the higher skill). Win, and the next purchase of that item gets exactly the discount asked for; lose, and the price stays. Each character gets one try per item unless *Haggle: allow repeat attempts* is on; **Reset haggling** in Manage clears all tries and deals.
 
