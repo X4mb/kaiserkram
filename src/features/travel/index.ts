@@ -3,13 +3,15 @@ import type { Feature } from '../../core/feature.js';
 import { contextEntry, on, settings } from '../../core/foundryApi.js';
 import { loc } from '../../core/i18n.js';
 import { registerSocketHandler } from '../../core/socket.js';
+import { registerAutoSetting, startAutoTravel } from './auto.js';
 import { refreshTravel } from './panel.js';
 import { onTravelMessage, request, SETTING, settleIfActive } from './state.js';
 
 /**
  * Travel vote: a player looking at another scene (through a map tile, or the scene navigation)
  * can propose travelling there; everyone online says Ready or Not yet, and the GM makes it the
- * active scene with one click. The GM can also start a vote from the Scenes sidebar.
+ * active scene with one click. The GM can also start a vote from the Scenes sidebar. Without a
+ * vote, everyone (GM included) simply going to look at the same scene makes it active too.
  */
 
 function sceneIdOf(li: HTMLElement): string | null {
@@ -44,8 +46,12 @@ export const travel: Feature = {
       default: {},
       onChange: () => refreshTravel(),
     });
+    registerAutoSetting();
     on('getSceneContextOptions', addSceneContextOptions as (...args: never[]) => unknown);
-    on('canvasReady', refreshTravel);
+    on('canvasReady', () => {
+      refreshTravel();
+      startAutoTravel();
+    });
     // Who is online changes who counts.
     on('userConnected', refreshTravel);
     // A vote is settled once its scene becomes active, however that happened.

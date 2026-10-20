@@ -385,5 +385,8 @@
   "kaiserkram.travel.noGM": "A GM needs to be online for a travel vote.",
   "kaiserkram.travel.travelled": "The party travels to {scene}.",
   "kaiserkram.features.travel.name": "Travel Vote",
-  "kaiserkram.features.travel.hint": "Players looking at another scene can propose travelling there; once everyone is ready, the GM makes it active with one click."
+  "kaiserkram.features.travel.hint": "Players looking at another scene can propose travelling there; once everyone is ready, the GM makes it active with one click.",
+  "kaiserkram.travel.autoTravelled": "Everyone is at {scene}, so it is now the active scene.",
+  "kaiserkram.travel.SETTINGS.auto.name": "Travel Vote: travel when everyone is there",
+  "kaiserkram.travel.SETTINGS.auto.hint": "When the GM and every player online are all viewing the same scene (through a map tile, the scene navigation, or Look) for a couple of seconds, it becomes the active scene, no vote needed. Needs at least one player online."
 }
