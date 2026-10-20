@@ -6,6 +6,13 @@ import { FEATURES } from './registry.js';
 import { enabledFeatures, isAvailable, setEnabledFeatures, type EnabledMap } from './toggles.js';
 
 const TEXT: Record<FeatureId, { name: [string, string]; hint: [string, string] }> = {
+  grudges: {
+    name: ['kaiserkram.features.grudges.name', 'Grudges'],
+    hint: [
+      'kaiserkram.features.grudges.hint',
+      'Favour and grudge points between characters and NPCs, changed from a right-click, with a decision roll whose odds follow them.',
+    ],
+  },
   containers: {
     name: ['kaiserkram.features.containers.name', 'Container Limits'],
     hint: [

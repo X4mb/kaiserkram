@@ -1,0 +1,22 @@
+/* Right-click menu on tokens you don't own (core/tokenMenu.ts) */
+.kaiserkram-token-menu {
+  position: fixed;
+  z-index: 10000;
+  padding: 0.25rem;
+  border: 1px solid var(--color-border-highlight, #c9a227);
+  border-radius: 6px;
+  background: var(--color-bg-option, rgba(20, 20, 20, 0.95));
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+.kaiserkram-token-menu button {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: auto;
+  white-space: nowrap;
+}
+.kaiserkram-token-menu hr {
+  margin: 0.2rem 0;
+  border: none;
+  border-top: 1px solid var(--color-border-light-tertiary, #8884);
+}

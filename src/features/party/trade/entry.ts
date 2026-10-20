@@ -1,13 +1,14 @@
 import { escapeHtml, dialogV2, notify, on, toElement } from '../../../core/foundryApi.js';
 import { fmt, loc } from '../../../core/i18n.js';
 import { getTrading } from '../settings.js';
+import { addTokenMenuEntries, type MenuToken, type TokenMenuEntry } from '../../../core/tokenMenu.js';
 import type { ActorLike } from './items.js';
 import { giveItems, proposeTrade } from './client.js';
 
 /**
  * Ways to start a trade:
  *  - right-click someone else's token: Foundry opens neither the Token HUD nor a context menu on
- *    tokens a player doesn't own, so the canvas right-click is caught here and a small menu shown;
+ *    tokens a player doesn't own, so these go in the shared token menu (core/tokenMenu.ts);
  *  - the Trade tool in the token controls, and the Trade button on your own token's HUD, which
  *    trade with your target or a token standing nearby;
  *  - the v14 token context menu, where a core build offers one.
@@ -177,91 +178,27 @@ function addTokenMenuEntry(_app: unknown, options: Record<string, unknown>[]): v
 }
 
 // ---------------------------------------------------------------------------------------------
-// Right-click on a token you don't own
+// Right-click on a token you don't own (the shared token menu)
 
-const MENU_ID = 'kaiserkram-trade-menu';
-/** A right-drag pans the canvas; only a click (little movement) opens the menu. */
-const CLICK_SLOP_PX = 6;
-let rightDown: { x: number; y: number } | null = null;
-
-function removeMenu(): void {
-  document.getElementById(MENU_ID)?.remove();
-}
-
-function showMenu(clientX: number, clientY: number, target: ActorLike): void {
-  removeMenu();
-  const menu = document.createElement('nav');
-  menu.id = MENU_ID;
-  menu.className = MENU_ID;
-  menu.style.left = `${clientX}px`;
-  menu.style.top = `${clientY}px`;
-  const entries: [Mode, string, string][] = [
-    ['trade', fmt('kaiserkram.party.trade.offerTo', 'Offer {name} a trade', { name: target.name }), 'fa-handshake'],
-    ['give', fmt('kaiserkram.party.give.giveTo', 'Give {name} something', { name: target.name }), 'fa-gift'],
+function tokenMenuEntries(): TokenMenuEntry[] {
+  // Offered only while trading is on, and when you have a character to trade as.
+  const can = (t: MenuToken) => getTrading() && !!t.actor && !!myTradingActor(t.actor as ActorLike);
+  return [
+    {
+      id: 'trade',
+      icon: 'fa-handshake',
+      label: (t) => fmt('kaiserkram.party.trade.offerTo', 'Offer {name} a trade', { name: t.actor?.name ?? t.name }),
+      visible: can,
+      onClick: (t) => startTrade(t.actor as ActorLike, 'trade'),
+    },
+    {
+      id: 'give',
+      icon: 'fa-gift',
+      label: (t) => fmt('kaiserkram.party.give.giveTo', 'Give {name} something', { name: t.actor?.name ?? t.name }),
+      visible: can,
+      onClick: (t) => startTrade(t.actor as ActorLike, 'give'),
+    },
   ];
-  for (const [mode, label, icon] of entries) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.innerHTML = `<i class="fa-solid ${icon}"></i> ${escapeHtml(label)}`;
-    button.addEventListener('click', () => {
-      removeMenu();
-      startTrade(target, mode);
-    });
-    menu.append(button);
-  }
-  document.body.append(menu);
-  // Any other click, or the wheel (zoom), closes it.
-  const dismiss = (ev: Event) => {
-    if (menu.contains(ev.target as Node)) return;
-    removeMenu();
-    document.removeEventListener('pointerdown', dismiss, true);
-    document.removeEventListener('wheel', dismiss, true);
-  };
-  setTimeout(() => {
-    document.addEventListener('pointerdown', dismiss, true);
-    document.addEventListener('wheel', dismiss, true);
-  }, 0);
-}
-
-/** The visible token under the pointer that you don't own, if any. */
-function foreignTokenAt(clientX: number, clientY: number): TokenLike | null {
-  const c = canvas as unknown as {
-    ready?: boolean;
-    canvasCoordinatesFromClient?(p: { x: number; y: number }): { x: number; y: number };
-  } | null;
-  if (!c?.ready || !c.canvasCoordinatesFromClient) return null;
-  const { x, y } = c.canvasCoordinatesFromClient({ x: clientX, y: clientY });
-  const hits = placeables().filter(
-    (t) =>
-      t.visible !== false &&
-      !!t.actor &&
-      !t.actor.isOwner &&
-      (t as TokenLike & { bounds?: { contains(x: number, y: number): boolean } }).bounds?.contains(x, y),
-  );
-  return hits.at(-1) ?? null;
-}
-
-function onCanvasPointerDown(ev: PointerEvent): void {
-  if (ev.button === 2) rightDown = { x: ev.clientX, y: ev.clientY };
-}
-
-function onCanvasContextMenu(ev: MouseEvent): void {
-  if (!getTrading()) return;
-  const start = rightDown;
-  rightDown = null;
-  if (start && Math.hypot(ev.clientX - start.x, ev.clientY - start.y) > CLICK_SLOP_PX) return;
-  const token = foreignTokenAt(ev.clientX, ev.clientY);
-  if (!token?.actor || !myTradingActor(token.actor)) return;
-  showMenu(ev.clientX, ev.clientY, token.actor);
-}
-
-/** The canvas element survives scene changes; bind once. */
-function bindCanvasRightClick(): void {
-  const view = (canvas as unknown as { app?: { view?: HTMLCanvasElement & { dataset: DOMStringMap } } } | null)?.app?.view;
-  if (!view || view.dataset.kaiserkramTrade) return;
-  view.dataset.kaiserkramTrade = '1';
-  view.addEventListener('pointerdown', onCanvasPointerDown);
-  view.addEventListener('contextmenu', onCanvasContextMenu);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -319,7 +256,6 @@ export function registerTradeEntryPoints(): void {
   on('renderTokenHUD', addHudButton);
   on('getTokenPlaceableContextOptions', addTokenMenuEntry as (...args: never[]) => unknown);
   on('getSceneControlButtons', addTradeTool as (...args: never[]) => unknown);
-  on('canvasReady', bindCanvasRightClick);
-  on('canvasTearDown', removeMenu);
+  addTokenMenuEntries(tokenMenuEntries());
 }
 

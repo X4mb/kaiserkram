@@ -349,7 +349,7 @@ function ok(label) {
 
 // 1. Everything on, WFRP4e world with data from the old modules.
 {
-  const all = { landing: true, party: true, earshot: true, trader: true };
+  const all = { landing: true, party: true, earshot: true, grudges: true, trader: true, containers: true };
   const { record, featureHooks, hookFns, game, CONFIG, OriginalClient, values, world } = await run({
     label: 'all-on',
     systemId: 'wfrp4e',
@@ -372,13 +372,15 @@ function ok(label) {
   assert.deepEqual(record.styles, [
     'modules/kaiserkram/styles/landing.css?v=0.1.0',
     'modules/kaiserkram/styles/party.css?v=0.1.0',
+    'modules/kaiserkram/styles/token-menu.css?v=0.1.0',
+    'modules/kaiserkram/styles/grudges.css?v=0.1.0',
     'modules/kaiserkram/styles/trader.css?v=0.1.0',
   ]);
   assert.equal(record.templates.length, 3);
   assert.equal(record.socketOn, 1);
   assert.notEqual(CONFIG.WebRTC.clientClass, OriginalClient, 'WebRTC client not replaced');
   const api = game.modules.get(MODULE_ID).api;
-  assert.deepEqual(Object.keys(api.features).sort(), ['earshot', 'landing', 'party', 'trader']);
+  assert.deepEqual(Object.keys(api.features).sort(), ['earshot', 'grudges', 'landing', 'party', 'trader']);
   assert.equal(typeof api.migrate, 'function');
   ok('all features on (WFRP4e): registers in init, exposes api');
 
@@ -479,13 +481,13 @@ function ok(label) {
 
 // 3. Everything on in a non-WFRP world: Trader stays off.
 {
-  const all = { landing: true, party: true, earshot: true, trader: true };
+  const all = { landing: true, party: true, earshot: true, grudges: true, trader: true, containers: true };
   const { record, game } = await run({ label: 'dnd5e', systemId: 'dnd5e', enabled: all });
   assert.deepEqual(record.errors, []);
   assert.deepEqual(record.sheets, []);
   assert.equal(record.socketOn, 1, 'only the party trade channel');
   assert.ok(!record.settings.some((k) => k.startsWith(`${MODULE_ID}.trader`)), 'trader settings registered');
-  assert.deepEqual(Object.keys(game.modules.get(MODULE_ID).api.features).sort(), ['earshot', 'landing', 'party']);
+  assert.deepEqual(Object.keys(game.modules.get(MODULE_ID).api.features).sort(), ['earshot', 'grudges', 'landing', 'party']);
   ok('non-WFRP world: Trader stays off');
 }
 

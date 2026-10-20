@@ -65,7 +65,7 @@ export async function resolveDocument<T>(uuid: string): Promise<T | null> {
   return ((await foundry.utils.fromUuid(uuid)) as unknown as T) ?? null;
 }
 
-type ChatData = { content: string; speaker?: unknown; whisper?: string[] };
+type ChatData = { content: string; speaker?: unknown; whisper?: string[]; rolls?: unknown[] };
 
 type ChatMessageClass = {
   create(d: ChatData): Promise<unknown>;

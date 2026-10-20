@@ -138,23 +138,7 @@
 }
 
 /* Right-click menu on a token you don't own. */
-.kaiserkram-trade-menu {
-  position: fixed;
-  z-index: 10000;
-  padding: 0.25rem;
-  border: 1px solid var(--color-border-highlight, #c9a227);
-  border-radius: 6px;
-  background: var(--color-bg-option, rgba(20, 20, 20, 0.95));
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
-}
 
-.kaiserkram-trade-menu button {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  width: auto;
-  white-space: nowrap;
-}
 
 /* Trade window: inventory column beside the two offers. */
 .kaiserkram-trade .kk-trade-sides.with-inventory {
