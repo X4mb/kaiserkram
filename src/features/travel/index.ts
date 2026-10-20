@@ -1,3 +1,4 @@
+import { MODULE_ID } from '../../core/constants.js';
 import type { Feature } from '../../core/feature.js';
 import { notify, on } from '../../core/foundryApi.js';
 import { fmt } from '../../core/i18n.js';
@@ -77,8 +78,20 @@ function evaluate(): void {
   };
 }
 
+function sceneName(id: string | null): string {
+  return (id && (game.scenes as unknown as { get(id: string): SceneLike | undefined }).get(id)?.name) || '—';
+}
+
 function record(userId: string, sceneId: string | null): void {
+  const changed = viewing.get(userId) !== sceneId;
   viewing.set(userId, sceneId);
+  if (changed) {
+    // One line per change, so the GM's console shows what this feature sees.
+    const where = onlineUsers()
+      .map((u) => `${u.name}: ${viewing.has(u.id) ? sceneName(viewing.get(u.id) ?? null) : '(no report)'}`)
+      .join(', ');
+    console.info(`${MODULE_ID} | travel | ${where} | active: ${sceneName(activeSceneId())}`);
+  }
   evaluate();
 }
 
