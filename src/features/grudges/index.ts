@@ -5,7 +5,9 @@ import { fmt, loc } from '../../core/i18n.js';
 import { addTokenMenuEntries, type MenuToken } from '../../core/tokenMenu.js';
 import { defaultHolder, holderChoices, targetOf, type TokenLike } from './people.js';
 import { openQuick, refreshQuickWindows, setTrackerOpener } from './quick.js';
-import { adjust, chanceOf, decide, relationTo, type HolderLike, type Kind, type TargetLike } from './store.js';
+import { changePoint } from './points.js';
+import { registerGrudgeSettings } from './settings.js';
+import { chanceOf, decide, relationTo, type HolderLike, type Kind, type TargetLike } from './store.js';
 import { openTracker, refreshTracker } from './tracker.js';
 
 /**
@@ -21,7 +23,7 @@ function asToken(t: MenuToken): TokenLike {
 
 /** One point from the token menu, confirmed with where things now stand. */
 async function quickAdjust(holder: HolderLike, target: TargetLike, kind: Kind): Promise<void> {
-  await adjust(holder, target, kind, 1);
+  if (!(await changePoint(holder, target, kind, 1))) return;
   const rel = relationTo(holder, target.uuid);
   notify().info(
     fmt('kaiserkram.grudges.changed', '{holder} → {target}: {good} favour / {bad} grudge ({chance}%).', {
@@ -139,6 +141,10 @@ export const grudges: Feature = {
   styles: [`${MODULE_PATH}/styles/grudges.css`],
 
   init() {
+    registerGrudgeSettings(() => {
+      refreshQuickWindows();
+      refreshTracker();
+    });
     setTrackerOpener(openTracker);
     addTokenMenuEntries(menuEntries());
     on('renderTokenHUD', addHudButton as (...args: never[]) => unknown);

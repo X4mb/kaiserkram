@@ -2,7 +2,8 @@ import { MODULE_ID } from '../../core/constants.js';
 import { escapeHtml } from '../../core/foundryApi.js';
 import { fmt, loc } from '../../core/i18n.js';
 import { resolveHolder, visibleHolders } from './people.js';
-import { adjust, chanceOf, decide, forget, relationsOf, type HolderLike, type Kind, type Relation } from './store.js';
+import { changePoint } from './points.js';
+import { chanceOf, decide, forget, relationsOf, type HolderLike, type Kind, type Relation } from './store.js';
 
 /**
  * Every grudge and favour this user may see: the GM's are everyone's, a player's those their own
@@ -33,6 +34,11 @@ function logLine(e: Relation['log'][number]): string {
   return `<li>${escapeHtml(`${sign} ${what}`)}${e.reason ? ` — ${escapeHtml(e.reason)}` : ''} <span class="hint">${escapeHtml(`${e.by}, ${when}`)}</span></li>`;
 }
 
+/** The most recent reason given for this relation, if any. */
+function latestReason(rel: Relation): string | undefined {
+  return rel.log.find((e) => e.delta > 0 && e.reason)?.reason;
+}
+
 function relationRow(holder: HolderLike, rel: Relation): string {
   const target = targetOfRelation(rel);
   const chance = chanceOf(rel);
@@ -46,7 +52,9 @@ function relationRow(holder: HolderLike, rel: Relation): string {
       data-search="${escapeHtml(`${holder.name} ${target.name}`.toLowerCase())}">
     <div class="kk-grudge-line">
       <img src="${escapeHtml(target.img)}" alt="" />
-      <span class="name">${escapeHtml(target.name)}</span>
+      <span class="name">${escapeHtml(target.name)}${
+        latestReason(rel) ? `<small class="reason">${escapeHtml(latestReason(rel)!)}</small>` : ''
+      }</span>
       ${counter('good', 'fa-thumbs-up')}
       ${counter('bad', 'fa-thumbs-down')}
       <span class="kk-grudge-pct" data-tooltip="${escapeHtml(loc('kaiserkram.grudges.chanceHint', 'Chance a decision goes their way'))}">${chance}%</span>
@@ -138,7 +146,7 @@ function trackerClass(): new () => TrackerWindow {
       const parties = rowParties(target);
       if (!parties) return;
       const delta = Number(target.dataset.delta) < 0 ? -1 : 1;
-      await adjust(parties.holder, targetOfRelation(parties.rel), target.dataset.kind as Kind, delta);
+      await changePoint(parties.holder, targetOfRelation(parties.rel), target.dataset.kind as Kind, delta);
     }
 
     static async onRoll(this: TrackerWindow, _event: Event, target: HTMLElement): Promise<void> {

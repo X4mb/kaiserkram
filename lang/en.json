@@ -360,5 +360,12 @@
   "kaiserkram.grudges.trackerTitle": "Grudges and favours",
   "kaiserkram.grudges.forgetConfirm": "Forget what {holder} feels about {target}?",
   "kaiserkram.features.grudges.name": "Grudges",
-  "kaiserkram.features.grudges.hint": "Favour and grudge points between characters and NPCs, changed from a right-click, with a decision roll whose odds follow them."
+  "kaiserkram.features.grudges.hint": "Favour and grudge points between characters and NPCs, changed from a right-click, with a decision roll whose odds follow them.",
+  "kaiserkram.grudges.askFavour": "Why does {holder} owe {target} a favour?",
+  "kaiserkram.grudges.askGrudge": "Why does {holder} hold a grudge against {target}?",
+  "kaiserkram.grudges.add": "Add",
+  "kaiserkram.grudges.SETTINGS.steadiness.name": "Grudges: steadiness",
+  "kaiserkram.grudges.SETTINGS.steadiness.hint": "How slowly favour and grudges tip the odds of a decision. Each side starts with this many hidden points, so the first few real ones barely count and a long history weighs most. At 5: 1 favour is 55%, 3 is 62%, 10 is 75%, 20 is 83%; 10 favour against 5 grudge is 60%. 0 means every point counts fully (1 favour alone is 95%).",
+  "kaiserkram.grudges.SETTINGS.askReason.name": "Grudges: ask for a reason",
+  "kaiserkram.grudges.SETTINGS.askReason.hint": "Each time you add a favour or grudge point, ask why (you can leave it blank). Reasons show in the Grudges list and its history. Only affects you."
 }

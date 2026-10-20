@@ -1,6 +1,7 @@
 import { MODULE_ID } from '../../core/constants.js';
 import { escapeHtml, postChat } from '../../core/foundryApi.js';
 import { fmt, loc } from '../../core/i18n.js';
+import { getSteadiness } from './settings.js';
 
 /**
  * Grudges and favours are one-sided: what the holder feels about a target. They live on the
@@ -25,8 +26,6 @@ export type TargetLike = { uuid: string; name: string; img: string };
 
 const FLAG = 'grudges.relations';
 const LOG_LIMIT = 20;
-/** Each net point moves the odds this much, from an even 50%. */
-const STEP = 10;
 const MIN_CHANCE = 5;
 const MAX_CHANCE = 95;
 
@@ -39,10 +38,16 @@ export function relationTo(holder: HolderLike, targetUuid: string): Relation | u
   return relationsOf(holder).find((r) => r.target === targetUuid);
 }
 
-/** The chance (in %) that a decision goes the target's way: 50% at even, 10% per net point. */
-export function chanceOf(rel: { good: number; bad: number } | undefined): number {
-  const net = (rel?.good ?? 0) - (rel?.bad ?? 0);
-  return Math.min(MAX_CHANCE, Math.max(MIN_CHANCE, 50 + STEP * net));
+/**
+ * The chance (in %) that a decision goes the target's way: favour's share of all points, with
+ * `steadiness` hidden points on each side to start with. So 0/0 is 50%, the first few points
+ * barely move it, and a long history weighs most (at 5: 1/0 is 55%, 10/0 75%, 10/5 60%).
+ */
+export function chanceOf(rel: { good: number; bad: number } | undefined, steadiness = getSteadiness()): number {
+  const good = (rel?.good ?? 0) + steadiness;
+  const bad = (rel?.bad ?? 0) + steadiness;
+  const chance = good + bad > 0 ? Math.round((100 * good) / (good + bad)) : 50;
+  return Math.min(MAX_CHANCE, Math.max(MIN_CHANCE, chance));
 }
 
 /** Add (or take away) one point of favour or grudge. Counts never go below 0. */

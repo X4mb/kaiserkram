@@ -2,7 +2,8 @@ import { MODULE_ID } from '../../core/constants.js';
 import { escapeHtml } from '../../core/foundryApi.js';
 import { fmt, loc } from '../../core/i18n.js';
 import { defaultHolder, holderChoices, resolveHolder } from './people.js';
-import { adjust, chanceOf, decide, relationTo, type HolderLike, type Kind, type TargetLike } from './store.js';
+import { changePoint } from './points.js';
+import { chanceOf, decide, relationTo, type HolderLike, type Kind, type TargetLike } from './store.js';
 
 /**
  * The small window right-click opens: what one holder feels about one target, with +/- for
@@ -118,7 +119,7 @@ function quickClass(): new (target: TargetLike) => QuickWindow {
       if (!holder) return;
       const kind = target.dataset.kind as Kind;
       const delta = Number(target.dataset.delta) < 0 ? -1 : 1;
-      await adjust(holder, this.target, kind, delta, this.reason);
+      if (!(await changePoint(holder, this.target, kind, delta, this.reason))) return;
       this.reason = '';
       void this.render();
     }
