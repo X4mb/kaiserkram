@@ -6,6 +6,13 @@ import { FEATURES } from './registry.js';
 import { enabledFeatures, isAvailable, setEnabledFeatures, type EnabledMap } from './toggles.js';
 
 const TEXT: Record<FeatureId, { name: [string, string]; hint: [string, string] }> = {
+  travel: {
+    name: ['kaiserkram.features.travel.name', 'Travel Vote'],
+    hint: [
+      'kaiserkram.features.travel.hint',
+      'Players looking at another scene can propose travelling there; once everyone is ready, the GM makes it active with one click.',
+    ],
+  },
   grudges: {
     name: ['kaiserkram.features.grudges.name', 'Grudges'],
     hint: [
@@ -24,7 +31,7 @@ const TEXT: Record<FeatureId, { name: [string, string]; hint: [string, string] }
     name: ['kaiserkram.features.landing.name', 'World Landing'],
     hint: [
       'kaiserkram.features.landing.hint',
-      'Right-click a scene to make it the landing scene, activated whenever the world starts.',
+      'Right-click a scene to make it the landing scene. After the world starts it is shown to players straight away, and made active for everyone when the first GM arrives; a GM leaving and rejoining changes nothing.',
     ],
   },
   party: {

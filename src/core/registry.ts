@@ -5,6 +5,7 @@ import { earshot } from '../features/earshot/index.js';
 import { trader } from '../features/trader/index.js';
 import { containers } from '../features/containers/index.js';
 import { grudges } from '../features/grudges/index.js';
+import { travel } from '../features/travel/index.js';
 
 /** Every feature, in the order the feature manager lists them. */
-export const FEATURES: readonly Feature[] = [landing, party, earshot, grudges, trader, containers];
+export const FEATURES: readonly Feature[] = [landing, travel, party, earshot, grudges, trader, containers];

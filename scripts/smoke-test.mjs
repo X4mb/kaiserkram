@@ -309,7 +309,7 @@ async function run({ label, systemId, enabled, legacy = false, migrationVersion 
     ui: stub('ui'),
     canvas: null,
     PIXI: stub('PIXI'),
-    document: { head, createElement: () => ({ dataset: {} }), addEventListener: (type) => void record.domListeners.push(type) },
+    document: { head, createElement: () => ({ dataset: {} }), getElementById: () => null, addEventListener: (type) => void record.domListeners.push(type) },
     window: { location: { origin: 'http://localhost' }, addEventListener: () => {} },
     fetch: async () => {
       throw new Error('no server in smoke test');
@@ -349,7 +349,7 @@ function ok(label) {
 
 // 1. Everything on, WFRP4e world with data from the old modules.
 {
-  const all = { landing: true, party: true, earshot: true, grudges: true, trader: true, containers: true };
+  const all = { landing: true, travel: true, party: true, earshot: true, grudges: true, trader: true, containers: true };
   const { record, featureHooks, hookFns, game, CONFIG, OriginalClient, values, world } = await run({
     label: 'all-on',
     systemId: 'wfrp4e',
@@ -371,6 +371,7 @@ function ok(label) {
   assert.deepEqual(record.sheets, [], 'traders keep the system sheet; nothing should register one');
   assert.deepEqual(record.styles, [
     'modules/kaiserkram/styles/landing.css?v=0.1.0',
+    'modules/kaiserkram/styles/travel.css?v=0.1.0',
     'modules/kaiserkram/styles/party.css?v=0.1.0',
     'modules/kaiserkram/styles/token-menu.css?v=0.1.0',
     'modules/kaiserkram/styles/grudges.css?v=0.1.0',
@@ -481,7 +482,7 @@ function ok(label) {
 
 // 3. Everything on in a non-WFRP world: Trader stays off.
 {
-  const all = { landing: true, party: true, earshot: true, grudges: true, trader: true, containers: true };
+  const all = { landing: true, travel: true, party: true, earshot: true, grudges: true, trader: true, containers: true };
   const { record, game } = await run({ label: 'dnd5e', systemId: 'dnd5e', enabled: all });
   assert.deepEqual(record.errors, []);
   assert.deepEqual(record.sheets, []);
