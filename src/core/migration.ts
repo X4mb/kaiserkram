@@ -30,10 +30,13 @@ const LEGACY = {
   trader: 'trader-wfrp4e',
 } as const;
 
+/** Features that replace an old module (newer ones have nothing to migrate). */
+type LegacyFeature = keyof typeof LEGACY;
+
 const TRADER_SHEET_CLASSES = [`${LEGACY.trader}.TraderSheet`, SHEET_CLASS];
 
 /** Old world setting key → new Kaiserkram setting key, per feature. */
-const SETTING_MAP: Record<FeatureId, Record<string, string>> = {
+const SETTING_MAP: Record<LegacyFeature, Record<string, string>> = {
   landing: {
     defaultSceneId: LANDING.DEFAULT_SCENE,
     lastBootEpoch: LANDING.LAST_BOOT,
@@ -196,7 +199,7 @@ class Migrator {
 
   async settings(): Promise<void> {
     const stored = new Map(worldSettings().map((s) => [s.key, s] as const));
-    for (const [feature, keys] of Object.entries(SETTING_MAP) as [FeatureId, Record<string, string>][]) {
+    for (const [feature, keys] of Object.entries(SETTING_MAP) as [LegacyFeature, Record<string, string>][]) {
       for (const [oldKey, newKey] of Object.entries(keys)) {
         const doc = stored.get(`${LEGACY[feature]}.${oldKey}`);
         if (!doc) continue;

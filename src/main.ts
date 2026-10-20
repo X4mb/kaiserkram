@@ -41,7 +41,7 @@ Hooks.once('init', () => {
 /** Running a feature next to the module it replaces doubles hooks, sheets or the WebRTC client. */
 function warnLegacyConflicts(): void {
   for (const feature of active) {
-    const legacy = moduleById(feature.legacyModuleId);
+    const legacy = feature.legacyModuleId ? moduleById(feature.legacyModuleId) : null;
     if (!legacy?.active) continue;
     notify().warn(
       fmt(

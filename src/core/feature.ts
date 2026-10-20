@@ -1,4 +1,4 @@
-export type FeatureId = 'landing' | 'party' | 'earshot' | 'trader';
+export type FeatureId = 'landing' | 'party' | 'earshot' | 'trader' | 'containers';
 export type FeatureGroup = 'general' | 'wfrp4e';
 
 /**
@@ -10,10 +10,10 @@ export interface Feature {
   group: FeatureGroup;
   /** Game systems the feature works with; omitted means any system. */
   systems?: string[];
-  /** Id of the module this feature replaces, for migration and conflict warnings. */
-  legacyModuleId: string;
+  /** Id of the module this feature replaces, for migration and conflict warnings (none for new features). */
+  legacyModuleId?: string;
   /** Title of that module, for messages. */
-  legacyTitle: string;
+  legacyTitle?: string;
   /** Stylesheets (relative to the Foundry root) injected only when active. */
   styles?: string[];
   /** Handlebars templates loaded only when active. */

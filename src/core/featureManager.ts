@@ -6,6 +6,13 @@ import { FEATURES } from './registry.js';
 import { enabledFeatures, isAvailable, setEnabledFeatures, type EnabledMap } from './toggles.js';
 
 const TEXT: Record<FeatureId, { name: [string, string]; hint: [string, string] }> = {
+  containers: {
+    name: ['kaiserkram.features.containers.name', 'Container Limits'],
+    hint: [
+      'kaiserkram.features.containers.hint',
+      "Stops items going into a WFRP4e container (a pouch, a backpack) that hasn't the room for them.",
+    ],
+  },
   landing: {
     name: ['kaiserkram.features.landing.name', 'World Landing'],
     hint: [
@@ -51,7 +58,7 @@ export function featureHint(id: FeatureId): string {
 
 function renderFeature(feature: Feature, enabled: EnabledMap): string {
   const { id } = feature;
-  const legacy = moduleById(feature.legacyModuleId);
+  const legacy = feature.legacyModuleId ? moduleById(feature.legacyModuleId) : null;
   const legacyNote = legacy?.active
     ? `<p class="hint kaiserkram-legacy"><i class="fa-solid fa-triangle-exclamation"></i> ${escapeHtml(
         fmt('kaiserkram.manager.legacyActive', 'The old module "{module}" is still active. Disable it before enabling this.', {

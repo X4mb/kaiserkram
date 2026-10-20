@@ -325,5 +325,9 @@
   "kaiserkram.trader.catalog.add": "Add to stock",
   "kaiserkram.trader.catalog.none": "No trappings compendium found. Enable the WFRP4e Core Rulebook module to list its Trappings here, or drag items from any compendium.",
   "kaiserkram.trader.gm.tried": "Lost haggles over",
-  "kaiserkram.trader.gm.allowRetry": "Let them haggle again (their deals stay)"
+  "kaiserkram.trader.gm.allowRetry": "Let them haggle again (their deals stay)",
+  "kaiserkram.features.containers.name": "Container Limits",
+  "kaiserkram.features.containers.hint": "Stops items going into a WFRP4e container (a pouch, a backpack) that hasn't the room for them.",
+  "kaiserkram.containers.full": "{item} doesn't fit in {container}: {load}/{capacity} used, and it needs {need}.",
+  "kaiserkram.containers.overfilled": "{container} is now over capacity ({total}/{capacity})."
 }
