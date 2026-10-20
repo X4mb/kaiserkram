@@ -23,14 +23,18 @@ export function clampAsk(ask: unknown): number {
 const CURVE = 2;
 
 /**
- * Test modifier for the player's Haggle: never a bonus, and exponential in the discount asked,
- * so small asks cost little and big ones a lot. It reaches 16 × the GM's difficulty at the
- * maximum ask (5 by default: 10% off is −4, 40% −22, 80% −80).
+ * Test modifier for the player's Haggle: never a bonus. Asks up to the GM's free amount (10% by
+ * default) are a plain test; above it the penalty grows exponentially, so small asks cost little
+ * and big ones a lot, reaching 16 × the GM's difficulty at the maximum ask (5 by default: 20% is
+ * −4, 40% −17, 60% −40, 80% −80).
  */
 export function askToModifier(ask: number): number {
   const perStep = Math.max(0, getNumber(SETTINGS.HAGGLE_STEP) || 0);
+  const free = Math.min(MAX_ASK - 5, Math.max(0, getNumber(SETTINGS.HAGGLE_FREE) || 0));
+  const over = clampAsk(ask) - free;
+  if (over <= 0) return 0;
   const atMax = perStep * (MAX_ASK / 5);
-  const share = (Math.exp((CURVE * clampAsk(ask)) / MAX_ASK) - 1) / (Math.exp(CURVE) - 1);
+  const share = (Math.exp((CURVE * over) / (MAX_ASK - free)) - 1) / (Math.exp(CURVE) - 1);
   return -Math.round(atMax * share) || 0;
 }
 

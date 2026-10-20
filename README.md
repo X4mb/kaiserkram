@@ -43,11 +43,11 @@ A trader is an ordinary WFRP4e NPC that keeps its normal NPC sheet (for stats an
    The bar also has **NPC sheet** for the trader's stats and coins.
 5. **Players trade.** They get in through the chat card's **Enter the shop** button, the **Shops** button at the top of the Actors sidebar, or by double-clicking the trader's token. They pick the character they trade as, then buy or haggle in **Buy** and sell in **Sell** (or drag an item from their character sheet onto the shop). Coins move automatically. A GM has to be online, because the trades run on the GM's client.
 
-**Haggling** is an opposed Haggle test against the trader. The player picks a discount up to 80%, in 5% steps; their test gets harder the more they ask, the trader's has no modifier. The penalty grows exponentially, so small asks cost little and big ones a lot; the *Haggle difficulty* setting scales it (default 5, from 0 to 10; 10 is twice as hard). At the default:
+**Haggling** is an opposed Haggle test against the trader. The player picks a discount up to 80%, in 5% steps; their test gets harder the more they ask, the trader's has no modifier. Asking for up to *Haggle: free discount* (10% by default) is a plain test. Above it the penalty grows exponentially, so small asks cost little and big ones a lot; *Haggle difficulty* scales it (default 5, from 0 to 10; 10 is twice as hard). At the defaults:
 
 | Discount asked | 5% | 10% | 15% | 20% | 25% | 30% | 35% | 40% | 45% | 50% | 55% | 60% | 65% | 70% | 75% | 80% |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Player's modifier | −2 | −4 | −6 | −8 | −11 | −14 | −18 | −22 | −26 | −31 | −37 | −44 | −51 | −60 | −69 | −80 |
+| Player's modifier | ±0 | ±0 | −2 | −4 | −7 | −10 | −13 | −17 | −22 | −27 | −33 | −40 | −48 | −57 | −68 | −80 |
 
 Higher SL wins (on a tie, the higher skill). Win, and the next purchase of that item gets exactly the discount asked for; lose, and the price stays. Each character gets one try per item unless *Haggle: allow repeat attempts* is on; In Manage, the **Haggling** list shows each character's deals and lost haggles: the ↻ button lets that character haggle again (their deals stay), the handshake forgets their deals and tries, and **Reset haggling** clears everyone's.
 

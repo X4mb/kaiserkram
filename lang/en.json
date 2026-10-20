@@ -317,7 +317,7 @@
   "kaiserkram.trader.sheet.traderPurse": "The trader's coins",
   "kaiserkram.trader.sheet.cantAfford": "The trader hasn't got the coins to pay for this. The GM can add coins on its NPC sheet.",
   "kaiserkram.trader.SETTINGS.haggleStep.name": "Haggle difficulty",
-  "kaiserkram.trader.SETTINGS.haggleStep.hint": "How hard haggling is. The player's test gets harder exponentially with the discount asked: small asks cost little, big ones a lot. At 5 (the default): 10% off is −4, 20% −8, 40% −22, 50% −31, 60% −44, 80% −80. At 3 everything is about 40% easier (80% is −48); at 10 twice as hard (50% is −62). 0 makes every ask a plain test.",
+  "kaiserkram.trader.SETTINGS.haggleStep.hint": "How hard haggling is above the free discount. The penalty grows exponentially with the discount asked: small asks cost little, big ones a lot. At 5 (the default, with 10% free): 20% off is −4, 30% −10, 40% −17, 50% −27, 60% −40, 70% −57, 80% −80. At 10 everything is twice as hard; 0 makes every ask a plain test.",
   "kaiserkram.trader.catalog.title": "Trappings to stock",
   "kaiserkram.trader.catalog.hint": "Drag an item onto this window, or click + to add one (adding it again raises the count). From:",
   "kaiserkram.trader.catalog.search": "Search…",
@@ -370,5 +370,7 @@
   "kaiserkram.grudges.SETTINGS.askReason.hint": "Each time you add a favour or grudge point, ask why (you can leave it blank). Reasons show in the Grudges list and its history. Only affects you.",
   "kaiserkram.features.travel.name": "Travel Together",
   "kaiserkram.features.travel.hint": "When every user logged in, players and GMs, is viewing the same scene (through a map tile or the scene navigation), it becomes the active scene. Viewing a scene on your own moves nobody else.",
-  "kaiserkram.travel.gathered": "Everyone is at {scene}, so it is now the active scene."
+  "kaiserkram.travel.gathered": "Everyone is at {scene}, so it is now the active scene.",
+  "kaiserkram.trader.SETTINGS.haggleFree.name": "Haggle: free discount (%)",
+  "kaiserkram.trader.SETTINGS.haggleFree.hint": "Asking for up to this much off is a plain Haggle test, with no penalty (10 by default). Above it the penalty starts small and grows towards the 80% maximum."
 }

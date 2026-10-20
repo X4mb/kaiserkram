@@ -8,6 +8,7 @@ export const SETTINGS = {
   HAGGLE_ENABLED: 'traderHaggleEnabled',
   HAGGLE_RETRY: 'traderHaggleRetry',
   HAGGLE_STEP: 'traderHaggleStep',
+  HAGGLE_FREE: 'traderHaggleFree',
 } as const;
 
 /** `name` and `hint` are i18n keys; Foundry localizes them when it shows the settings. */
@@ -32,6 +33,12 @@ const NUMBER_SETTINGS: NumberSetting[] = [
     name: 'kaiserkram.trader.SETTINGS.haggleStep.name',
     hint: 'kaiserkram.trader.SETTINGS.haggleStep.hint',
     def: 5, min: 0, max: 10, step: 1,
+  },
+  {
+    key: SETTINGS.HAGGLE_FREE,
+    name: 'kaiserkram.trader.SETTINGS.haggleFree.name',
+    hint: 'kaiserkram.trader.SETTINGS.haggleFree.hint',
+    def: 10, min: 0, max: 30, step: 5,
   },
 ];
 
