@@ -19,13 +19,19 @@ export function clampAsk(ask: unknown): number {
   return Math.min(MAX_ASK, Math.max(5, Math.round((Number(ask) || 0) / 5) * 5));
 }
 
+/** How sharply the curve bends: higher keeps small asks cheaper and makes big ones steeper. */
+const CURVE = 2;
+
 /**
- * Test modifier for the player's Haggle: never a bonus, minus the GM's difficulty for every 5%
- * of discount asked (5 by default, so 10% off is −10 and 80% is −80).
+ * Test modifier for the player's Haggle: never a bonus, and exponential in the discount asked,
+ * so small asks cost little and big ones a lot. It reaches 16 × the GM's difficulty at the
+ * maximum ask (5 by default: 10% off is −4, 40% −22, 80% −80).
  */
 export function askToModifier(ask: number): number {
   const perStep = Math.max(0, getNumber(SETTINGS.HAGGLE_STEP) || 0);
-  return -(clampAsk(ask) / 5) * perStep || 0;
+  const atMax = perStep * (MAX_ASK / 5);
+  const share = (Math.exp((CURVE * clampAsk(ask)) / MAX_ASK) - 1) / (Math.exp(CURVE) - 1);
+  return -Math.round(atMax * share) || 0;
 }
 
 /** Whether `customerId` may haggle over `itemId` with this trader right now. */
