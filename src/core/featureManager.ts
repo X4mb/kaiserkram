@@ -7,10 +7,10 @@ import { enabledFeatures, isAvailable, setEnabledFeatures, type EnabledMap } fro
 
 const TEXT: Record<FeatureId, { name: [string, string]; hint: [string, string] }> = {
   travel: {
-    name: ['kaiserkram.features.travel.name', 'Travel Vote'],
+    name: ['kaiserkram.features.travel.name', 'Travel Together'],
     hint: [
       'kaiserkram.features.travel.hint',
-      'Players looking at another scene can propose travelling there; once everyone is ready, the GM makes it active with one click.',
+      'When every user logged in, players and GMs, is viewing the same scene (through a map tile or the scene navigation), it becomes the active scene. Viewing a scene on your own moves nobody else.',
     ],
   },
   grudges: {

@@ -371,7 +371,6 @@ function ok(label) {
   assert.deepEqual(record.sheets, [], 'traders keep the system sheet; nothing should register one');
   assert.deepEqual(record.styles, [
     'modules/kaiserkram/styles/landing.css?v=0.1.0',
-    'modules/kaiserkram/styles/travel.css?v=0.1.0',
     'modules/kaiserkram/styles/party.css?v=0.1.0',
     'modules/kaiserkram/styles/token-menu.css?v=0.1.0',
     'modules/kaiserkram/styles/grudges.css?v=0.1.0',
