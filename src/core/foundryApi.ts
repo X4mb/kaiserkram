@@ -41,7 +41,7 @@ export function flags(doc: unknown): FlagHolder {
   return doc as FlagHolder;
 }
 
-export type GameModule = { id: string; title: string; active: boolean; api?: Record<string, unknown> };
+export type GameModule = { id: string; title: string; active: boolean; version?: string; api?: Record<string, unknown> };
 
 export function moduleById(id: string): GameModule | undefined {
   return (game.modules as unknown as { get(id: string): GameModule | undefined } | undefined)?.get(id);

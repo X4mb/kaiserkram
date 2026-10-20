@@ -12,6 +12,12 @@ Every feature is **off** until you enable it. A disabled feature registers nothi
 | **Trader** | WFRP4e | Turns a WFRP4e NPC into a shop: players buy and sell with the coins on their character, and haggle. Only offered in WFRP4e worlds. | `trader-wfrp4e` |
 | **Container Limits** | WFRP4e | An item only goes into a container (a pouch, a backpack) if its encumbrance fits what the container carries. A player's move is stopped with a message saying how full it is; the GM can still overfill one, with a warning. Containers without a capacity aren't limited. | — (new) |
 
+## Compatibility fixes
+
+Kaiserkram also works around bugs in other modules, each only while the bug is there:
+
+- **Token Action HUD WFRP4e** (v3.3.0, with TAH Core 2.1.2): a container icon missing a quote stops the HUD from rendering for any actor carrying a container. Kaiserkram repairs the icon before the HUD renders, as long as that module's source still has the bug. Once an update fixes it, the repair switches off and the GM is told once that `src/core/compat/tahContainerIcon.ts` can be removed.
+
 ## Installation
 
 Setup → **Add-on Modules** → **Install Module**, paste this manifest URL and click Install:

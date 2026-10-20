@@ -7,6 +7,7 @@ import { fmt } from './core/i18n.js';
 import { migrate } from './core/migration.js';
 import { FEATURES } from './core/registry.js';
 import { registerSettingsSections } from './core/settingsSections.js';
+import { registerTahContainerIconFix } from './core/compat/tahContainerIcon.js';
 import { isAvailable, isEnabled, registerCoreSettings } from './core/toggles.js';
 
 /** Features running in this world, decided once during `init`. */
@@ -19,6 +20,8 @@ function log(...args: unknown[]): void {
 Hooks.once('init', () => {
   registerCoreSettings();
   registerFeatureManager();
+  // Workarounds for other modules' bugs, each only active while the bug is there.
+  registerTahContainerIconFix();
 
   active.push(...FEATURES.filter((f) => isAvailable(f) && isEnabled(f.id)));
 

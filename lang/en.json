@@ -329,5 +329,6 @@
   "kaiserkram.features.containers.name": "Container Limits",
   "kaiserkram.features.containers.hint": "Stops items going into a WFRP4e container (a pouch, a backpack) that hasn't the room for them.",
   "kaiserkram.containers.full": "{item} doesn't fit in {container}: {load}/{capacity} used, and it needs {need}.",
-  "kaiserkram.containers.overfilled": "{container} is now over capacity ({total}/{capacity})."
+  "kaiserkram.containers.overfilled": "{container} is now over capacity ({total}/{capacity}).",
+  "kaiserkram.compat.tahContainerIconFixed": "Token Action HUD WFRP4e {version} has fixed its container icon. Kaiserkram no longer repairs it; its workaround (core/compat/tahContainerIcon.ts) can be removed."
 }
