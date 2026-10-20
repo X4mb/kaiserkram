@@ -5,24 +5,22 @@ import { fmt, loc } from '../../core/i18n.js';
 
 export const SETTINGS = {
   DEFAULT_SCENE: 'landingDefaultSceneId',
+  /** Kept for worlds migrated from the old module; no longer read. */
   LAST_BOOT: 'landingLastBootEpoch',
+  /** Server uptime when a GM last checked in, in whatever unit the server reports it. */
+  LAST_UPTIME: 'landingLastUptime',
   /** Shown read-only in Configure Settings (filled in on render), never written. */
   DEFAULT_SCENE_INFO: 'landingDefaultSceneInfo',
 } as const;
 
 const BADGE_CLASS = `${MODULE_ID}-landing-default`;
 
-// If the server-reported boot time differs from what we last saw by more
-// than this, treat it as a genuine restart rather than clock/network jitter.
-const BOOT_TOLERANCE_MS = 15000;
-
-type SceneLike = { id: string; name: string; activate(): Promise<unknown> };
+type SceneLike = { id: string; name: string; activate(): Promise<unknown>; view(): Promise<unknown> };
 type ScenesView = { get(id: string): SceneLike | undefined; active?: SceneLike | null };
 
 function rerenderSceneDirectory(): void {
   (ui as unknown as { scenes?: { render(): unknown } }).scenes?.render();
 }
-type UsersView = { filter(fn: (u: { active: boolean }) => boolean): unknown[] };
 
 function scenes(): ScenesView {
   return game.scenes as unknown as ScenesView;
@@ -98,49 +96,71 @@ function addSceneContextOptions(_application: unknown, options: Record<string, u
   );
 }
 
-/**
- * There is no client hook for "the world process just booted" as distinct
- * from "a client connected to an already-running world". We approximate it
- * using the server's uptime, exposed by Foundry's own /api/status route,
- * falling back to an active-user heuristic if that's ever unavailable.
- */
-async function isFreshWorldBoot(): Promise<boolean> {
+/** The server's uptime from Foundry's own /api/status route, or null if it can't be read. */
+async function serverUptime(): Promise<number | null> {
   try {
     // getRoute honours a configured route prefix (e.g. https://host/foundry/api/status).
     const getRoute = (foundry.utils as unknown as { getRoute?(path: string): string }).getRoute;
-    const response = await fetch(getRoute ? getRoute('api/status') : `${window.location.origin}/api/status`);
+    const response = await fetch(getRoute ? getRoute('api/status') : `${window.location.origin}/api/status`, { cache: 'no-store' });
     if (!response.ok) throw new Error(`status endpoint returned ${response.status}`);
     const data = (await response.json()) as { uptime?: unknown };
     if (typeof data.uptime !== 'number') throw new Error('status endpoint had no uptime field');
-
-    const bootEpoch = Date.now() - data.uptime;
-    const lastBootEpoch = Number(settings().get(MODULE_ID, SETTINGS.LAST_BOOT)) || 0;
-    const isFresh = Math.abs(bootEpoch - lastBootEpoch) > BOOT_TOLERANCE_MS;
-    if (isFresh) await settings().set(MODULE_ID, SETTINGS.LAST_BOOT, bootEpoch);
-    return isFresh;
+    return data.uptime;
   } catch (err) {
-    log('could not read server uptime, falling back to active-user check:', err);
-    return (game.users as unknown as UsersView).filter((u) => u.active).length <= 1;
+    log('could not read server uptime:', err);
+    return null;
   }
 }
 
-async function activateLandingScene(): Promise<void> {
-  if (!game.user?.isGM) return;
+/**
+ * Whether the world restarted since a GM last checked in. There is no hook for "the world just
+ * booted", but the server's uptime only grows until it restarts: if it is lower than what the
+ * last GM saw, it restarted in between. (Comparing uptimes, not clock times, needs neither
+ * synced clocks nor knowing the unit.) Unknown uptime counts as no restart, so a GM rejoining
+ * never pulls everyone back by mistake.
+ */
+function restartedSince(uptime: number | null): boolean {
+  if (uptime === null) return false;
+  const last = Number(settings().get(MODULE_ID, SETTINGS.LAST_UPTIME));
+  return !Number.isFinite(last) || last <= 0 || uptime < last;
+}
 
+async function landingScene(): Promise<SceneLike | null> {
   const sceneId = defaultSceneId();
-  if (!sceneId) return;
-
+  if (!sceneId) return null;
   const scene = scenes().get(sceneId);
-  if (!scene) {
-    log(`configured default scene "${sceneId}" no longer exists`);
+  if (!scene) log(`configured default scene "${sceneId}" no longer exists`);
+  return scene ?? null;
+}
+
+/**
+ * GM: on the first GM visit after a restart, make the landing scene active for everyone, and
+ * note the uptime so later visits in the same run (a GM leaving and rejoining) do nothing.
+ * Players: after a restart, until a GM has been in, show them the landing scene themselves
+ * (only a GM can make a scene active).
+ */
+async function onReady(): Promise<void> {
+  const uptime = await serverUptime();
+  const fresh = restartedSince(uptime);
+  const scene = await landingScene();
+
+  if (game.user?.isGM) {
+    const activeGM = (game.users as unknown as { activeGM?: { isSelf?: boolean } | null }).activeGM;
+    if (!activeGM?.isSelf) return;
+    if (uptime !== null) await settings().set(MODULE_ID, SETTINGS.LAST_UPTIME, uptime);
+    if (!fresh || !scene || scenes().active?.id === scene.id) return;
+    await scene.activate();
+    log(`activated default scene "${scene.name}" on world start`);
     return;
   }
 
-  if (scenes().active?.id === scene.id) return;
-  if (!(await isFreshWorldBoot())) return;
-
-  await scene.activate();
-  log(`activated default scene "${scene.name}" on world start`);
+  if (!fresh || !scene || (canvas as unknown as { scene?: { id: string } | null } | null)?.scene?.id === scene.id) return;
+  try {
+    await scene.view();
+    log(`showing default scene "${scene.name}" until a GM arrives`);
+  } catch (err) {
+    log('could not show the default scene:', err);
+  }
 }
 
 export const landing: Feature = {
@@ -163,6 +183,12 @@ export const landing: Feature = {
       type: Number,
       default: 0,
     });
+    settings().register(MODULE_ID, SETTINGS.LAST_UPTIME, {
+      scope: 'world',
+      config: false,
+      type: Number,
+      default: 0,
+    });
     settings().register(MODULE_ID, SETTINGS.DEFAULT_SCENE_INFO, {
       name: 'kaiserkram.landing.CurrentDefaultSceneName',
       hint: 'kaiserkram.landing.CurrentDefaultSceneHint',
@@ -176,7 +202,7 @@ export const landing: Feature = {
     on('renderSettingsConfig', showDefaultSceneInSettings);
   },
 
-  ready: activateLandingScene,
+  ready: onReady,
 
   api() {
     return {
