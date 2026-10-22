@@ -131,7 +131,7 @@ export class ProximityAudioRouter {
     const rawClient = getFoundryClientGainForPeer(userId);
     const clientG =
       rawClient <= 0 ? 0 : rawClient >= 1 ? 1 : Math.round(rawClient * 20) / 20;
-    p.clientGain.gain.value = clientG;
+    glideTo(p.clientGain.gain, clientG);
     const env = this.computeGainForSpeaker(userId);
     let q = Math.min(1, Math.max(0, env));
     const prev = this.lastStableEnvGain.get(userId);
@@ -140,11 +140,11 @@ export class ProximityAudioRouter {
     } else {
       this.lastStableEnvGain.set(userId, q);
     }
-    p.proximityGain.gain.value = q;
+    glideTo(p.proximityGain.gain, q);
   }
 
-  /** Recompute all remote peer gains (no artificial throttle — canvas ticker + hooks drive rate). */
-  refreshAllGains(_force = true): void {
+  /** Recompute every remote peer's gain; run when something that affects it changes. */
+  refreshAllGains(): void {
     for (const id of this.peers.keys()) this.refreshGain(id);
   }
 
@@ -165,10 +165,6 @@ export class ProximityAudioRouter {
 
   hasPeer(userId: string): boolean {
     return this.peers.has(userId);
-  }
-
-  get peerCount(): number {
-    return this.peers.size;
   }
 
   updateProfileGainForUser(userId: string): void {
@@ -224,6 +220,23 @@ export class ProximityAudioRouter {
   }
 }
 
+/** How quickly a voice follows a change in distance or walls (seconds to ~63%): a fade, not a click. */
+const GLIDE_S = 0.08;
+
+/** The value each gain is gliding towards, so an unchanged one isn't rescheduled. */
+const targets = new WeakMap<AudioParam, number>();
+
+/** Move a gain to `value` smoothly, and only when it actually changes. */
+function glideTo(param: AudioParam, value: number): void {
+  const target = targets.get(param) ?? param.value;
+  if (Math.abs(target - value) < 1e-4) return;
+  targets.set(param, value);
+  // Every peer's nodes live on the router's context.
+  const now = proximityRouter.context.currentTime;
+  param.cancelScheduledValues(now);
+  param.setTargetAtTime(value, now, GLIDE_S);
+}
+
 export const proximityRouter = new ProximityAudioRouter();
 
 let rafScheduled = false;
@@ -233,6 +246,6 @@ export function scheduleProximityRefresh(): void {
   rafScheduled = true;
   requestAnimationFrame(() => {
     rafScheduled = false;
-    proximityRouter.refreshAllGains(true);
+    proximityRouter.refreshAllGains();
   });
 }

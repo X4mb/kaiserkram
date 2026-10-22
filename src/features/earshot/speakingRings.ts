@@ -59,6 +59,9 @@ export function destroySpeakingRings(): void {
   lastLoud.clear();
 }
 
+/** Reused every frame, rather than a new point per ring (made on first use, not at load). */
+let scratchPoint: PIXI.Point | null = null;
+
 /** Per frame: place, fade in or fade out each speaker's ring. */
 export function updateSpeakingRings(): void {
   const layer = canvas?.ready ? canvas.tokens : null;
@@ -104,9 +107,15 @@ export function updateSpeakingRings(): void {
     }
     // Ease towards on/off so short pauses between words don't flicker.
     ring.alpha += ((speaking ? 0.85 : 0) - ring.alpha) * 0.25;
+    // Faded out: drop the ring, so the quiet aren't looked up every frame.
+    if (!speaking && ring.alpha <= 0.02) {
+      ring.g.destroy();
+      rings.delete(userId);
+      continue;
+    }
     ring.g.alpha = ring.alpha;
-    ring.g.visible = ring.alpha > 0.02;
-    const pt = new PIXI.Point();
+    ring.g.visible = true;
+    const pt = (scratchPoint ??= new PIXI.Point());
     token.getGlobalPosition(pt);
     layer.toLocal(pt, undefined, pt);
     ring.g.position.set(pt.x + w / 2, pt.y + h / 2);

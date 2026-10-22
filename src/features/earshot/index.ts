@@ -22,7 +22,11 @@ import { clearVoiceTokenFlagForCurrentUser, getVoiceTokenIdFromUser } from './vo
 import { registerVoiceTokenKeybinding } from './voiceTokenInput.js';
 import { clearWhisperForCurrentUser, isWhispering, registerWhisperControls, setWhisper, toggleWhisper } from './whisper.js';
 
-/** Indicator follows the token every frame; gain updates are throttled inside the router. */
+/**
+ * Per frame, only what has to follow a moving token on screen: the voice indicator, whisper
+ * badges and speaking rings. Gains are worked out from token positions as stored (which change
+ * when a move starts, not during its animation), so they are recomputed on changes, not per frame.
+ */
 let canvasPositionTicker: ((dt?: number) => void) | undefined;
 
 function registerCanvasPositionTicker(): void {
@@ -41,8 +45,6 @@ function registerCanvasPositionTicker(): void {
     redrawVoiceIndicator();
     if (hasWhisperers()) updateWhisperBadges();
     updateSpeakingRings();
-    /** Keep gains aligned with token positions every frame (no artificial 125ms delay). */
-    proximityRouter.refreshAllGains();
   };
   /** Run after NORMAL-priority updates (e.g. movement tweens) so positions match the mesh. */
   const afterMove = (PIXI as typeof PIXI & { UPDATE_PRIORITY?: { LOW: number } }).UPDATE_PRIORITY?.LOW ?? -25;
@@ -63,7 +65,8 @@ function refreshAll(): void {
 const WATCHED_SETTINGS: readonly string[] = Object.values(SETTINGS);
 
 function registerHooks(): void {
-  for (const h of ['controlObject', 'targetToken', 'canvasPan', 'updateToken', 'moveToken', 'refreshToken']) {
+  // What moves voices: tokens moving, appearing or going, and which token is yours.
+  for (const h of ['controlToken', 'updateToken', 'moveToken', 'createToken', 'deleteToken']) {
     on(h, refreshAll);
   }
   on('canvasReady', () => {
@@ -95,7 +98,9 @@ function registerHooks(): void {
     });
   }
 
-  on('updateUser', ((user: User, change: { flags?: Record<string, Record<string, unknown> | undefined> }) => {
+  on('updateUser', ((user: User, change: { character?: unknown; flags?: Record<string, Record<string, unknown> | undefined> }) => {
+    // A user's character decides which token they speak from (and hear with).
+    if ('character' in change) refreshAll();
     if (change.flags?.[MODULE_ID]?.earshot !== undefined) {
       refreshWhisperers();
       scheduleProximityRefresh();

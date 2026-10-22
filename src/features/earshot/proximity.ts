@@ -29,33 +29,14 @@ export function computeProximityGain(distanceGrid: number, maxRange: number): nu
 }
 
 /**
- * Primary token for a remote user. Resolves from scene embedded documents first so tokens that are
- * not currently visible / not in `placeables` still resolve when a canvas Token exists.
+ * The token a user with no assigned character speaks and hears from: the first one they own on
+ * the scene (by id, so every client picks the same one).
  */
-export function getPrimaryTokenForUser(remoteUser: User): Token | null {
-  const actor = remoteUser.character;
-  if (!actor || !canvas?.scene || !canvas.tokens) return null;
-  const docs = Array.from(canvas.scene.tokens).filter((d) => d.actor?.id === actor.id);
-  if (docs.length === 0) return null;
-  const owned = docs.filter((d) => d.testUserPermission(remoteUser, 'OWNER'));
-  const pool = owned.length > 0 ? owned : docs;
-  pool.sort((a, b) => (a.id ?? '').localeCompare(b.id ?? ''));
-  const d0 = pool[0];
-  if (!d0?.id) return null;
-  return canvas.tokens.get(d0.id) ?? null;
-}
-
-/**
- * If the user owns exactly one token on the scene, that token (e.g. a lone PC with no User character link).
- * When ambiguous (0 or 2+ owned), returns null.
- */
-export function getSoleOwnedTokenOnSceneForUser(user: User): Token | null {
-  if (!canvas?.scene || !canvas.tokens) return null;
-  const ownedDocs = Array.from(canvas.scene.tokens).filter((d) => d.testUserPermission(user, 'OWNER'));
-  if (ownedDocs.length !== 1) return null;
-  const d0 = ownedDocs[0];
-  if (!d0?.id) return null;
-  return canvas.tokens.get(d0.id) ?? null;
+export function firstOwnedTokenDoc(user: User): TokenDocument | null {
+  if (!canvas?.scene) return null;
+  const owned = Array.from(canvas.scene.tokens).filter((d) => d.testUserPermission(user, 'OWNER'));
+  owned.sort((a, b) => (a.id ?? '').localeCompare(b.id ?? ''));
+  return owned[0] ?? null;
 }
 
 /** Center for proximity when a canvas Token may be missing (e.g. not visible to this client). */
@@ -105,7 +86,9 @@ export function getListenerTokenForProximity(): Token | null {
   }
 
   if (controlled) return controlled;
-  return getPrimaryTokenForUser(u) ?? getSoleOwnedTokenOnSceneForUser(u);
+  // Same rule as for speaking, so a player is heard and hears from the same token.
+  const doc = firstOwnedTokenDoc(u);
+  return doc?.id ? (canvas.tokens.get(doc.id) ?? null) : null;
 }
 
 /**
