@@ -1,7 +1,7 @@
 import { MODULE_ID } from './constants.js';
 import type { Feature, FeatureGroup, FeatureId } from './feature.js';
-import { dialogV2, escapeHtml, moduleById, settings } from './foundryApi.js';
-import { fmt, loc } from './i18n.js';
+import { dialogV2, escapeHtml, settings } from './foundryApi.js';
+import { loc } from './i18n.js';
 import { FEATURES } from './registry.js';
 import { enabledFeatures, isAvailable, setEnabledFeatures, type EnabledMap } from './toggles.js';
 
