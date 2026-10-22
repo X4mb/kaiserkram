@@ -1,128 +1,39 @@
 # Kaiserkram
 
-A box of opt-in Foundry VTT tools by X4mb, merged from four stand-alone modules, plus a few new ones. **Foundry v14 only.**
+Handy tools for Foundry VTT v14. Every tool is off until you turn it on.
 
-Every feature is **off** until you enable it. A disabled feature registers nothing: no settings, hooks, keybindings, sheets, socket handlers, CSS or templates.
+## Tools
 
-| Feature | Group | What it does | Replaces |
-|---|---|---|---|
-| **World Landing** | General | Right-click a scene → *Set as Default Scene*. After the world (re)starts, players who join are shown it straight away, even with no GM online (only a GM can make a scene active, so until then each player views it on their own). The first GM to arrive makes it the active scene for everyone; a GM leaving and rejoining in the same run changes nothing. Restarts are told apart by the server's uptime. | `world-landing-fvtt` |
-| **Travel Together** | General | Viewing a scene on your own (a map tile, the scene navigation) moves nobody else. Once every user logged in, players and GMs alike, is viewing the same scene for a couple of seconds, it becomes the active scene for everyone. Each client reports the scene it shows to the active GM, who decides; at least one player must be online. | — (new) |
-| **Deploy Party** | General | Drag an actor folder onto the canvas to get one party marker. Players can move the marker and see from it (it is backed by an actor every player owns, kept in a *Party Markers* actor folder; turn this off in the settings). The marker's actor is also the party's shared inventory: items dragged between it and a character (onto its sheet or onto the marker token) move rather than copy. **Party stash** (players double-click the marker, or use its Token HUD button; the GM's double-click still opens the sheet) shows the party's inventory beside one of your characters: use the arrows to move an amount, or drag a whole stack across. A *Party sheet* button in the stash opens the actor sheet. From its Token HUD the GM *Deploys* every actor as its own token and *Recalls* them. **Trading:** right-click another character's or an NPC's token → *Offer … a trade*, or use the **Trade** tool in the token controls (or the Trade button on your own token's HUD) for your target or someone nearby. The trade window shows your inventory beside the two offers: drag (or click) goods into your offer, and type how much money to add. Both sides accept; the GM's client makes the swap, so a GM must be online. A player's character is answered only by its own player (if they're offline, you're told so); NPCs are answered by the GM. **Give** (same right-click menu, token-control tool and HUD) hands items or money over at once, without the receiver having to accept; their player is told and a chat card records it. | `deploy-party` |
-| **Within Earshot** | General | Proximity voice: how loud others are follows token distance and walls. Optional global GM voice, and a voice-token shortcut (default Ctrl+Shift+V). **Whisper** (token controls, or Alt+W): while on, a player is only heard by those within one square (the GM still hears them), and everyone who can see their token sees a purple speech-bubble badge on it. **Speaking ring:** a soft green ring shows on a token while its player is talking, for everyone who can see the token (turn it off per client in the settings). GM voice changer: **Assign Voice** (Token HUD, token or Actors right-click, Token Config) gives an actor a voice (presets, pitch, bass/treble, growl, echo, with a live headphone preview); the GM speaks with it while their voice is pinned to that actor's token. Replaces Foundry's A/V client. | `withinearshot` |
-| **Grudges** | General | One-sided **favour** and **grudge** points: what one character or NPC feels about another. Players right-click someone else's token for *Favour +1*, *Grudge +1*, *Decide* and *Feelings about…*; on tokens you own (every token, for the GM) the scales button on the Token HUD opens the same small window, with − buttons and an optional reason. The GM picks whose feelings they are by selecting that token first (e.g. select the innkeeper, right-click a player's token). **Decide** rolls d100 against favour's share of all points, with a few hidden points on each side (*Grudges: steadiness*, default 5) so the first ones barely tip it and a long history weighs most: 0/0 is 50%, 1 favour 55%, 10 favour 75%, 10 favour/5 grudge 60% (always between 5% and 95%). Only whoever rolled sees it. Each player can turn on *Grudges: ask for a reason* to be asked why whenever they add a point; the latest reason shows in the list. The **Grudges** tool in the token controls lists everything you may see, with a history per entry: players see their own characters' feelings, the GM everyone's. | — (new) |
-| **Trader** | WFRP4e | Turns a WFRP4e NPC into a shop: players buy and sell with the coins on their character, and haggle. Only offered in WFRP4e worlds. | `trader-wfrp4e` |
-| **Container Limits** | WFRP4e | An item only goes into a container (a pouch, a backpack) if its encumbrance fits what the container carries. A player's move is stopped with a message saying how full it is; the GM can still overfill one, with a warning. Containers without a capacity aren't limited. | — (new) |
+- **World Landing**: pick a starting scene. Players land there when the world starts.
+- **Travel Together**: when everyone is looking at the same scene, it becomes the active one.
+- **Deploy Party**: one party token on the map, a shared party stash, and trading or giving items between players.
+- **Within Earshot**: voices get quieter with distance and walls. Includes whisper, a speaking ring and GM voice changer.
+- **Grudges**: track favour and grudges between characters and roll to decide how they act.
+- **Trader** (WFRP4e): turn an NPC into a shop. Players buy, sell and haggle.
+- **Container Limits** (WFRP4e): a full pouch or backpack can't take more.
 
-## Compatibility fixes
+## Install
 
-Kaiserkram also works around bugs in other modules, each only while the bug is there:
-
-- **Token Action HUD WFRP4e** (v3.3.0, with TAH Core 2.1.2): a container icon missing a quote stops the HUD from rendering for any actor carrying a container. Kaiserkram repairs the icon before the HUD renders, as long as that module's source still has the bug. Once an update fixes it, the repair switches off and the GM is told once that `src/core/compat/tahContainerIcon.ts` can be removed.
-
-## Installation
-
-Setup → **Add-on Modules** → **Install Module**, paste this manifest URL and click Install:
+In Foundry, go to **Add-on Modules → Install Module** and paste:
 
 ```
 https://raw.githubusercontent.com/X4mb/kaiserkram/main/module.json
 ```
 
-Enable **Kaiserkram** in the world's **Manage Modules**, then as GM open **Configure Settings → Kaiserkram → Kaiserkram Features**, tick the features you want and save. Foundry asks to reload once at the end.
+Then enable Kaiserkram in your world. As GM, open **Configure Settings → Kaiserkram → Kaiserkram Features** and tick the tools you want.
 
-Each enabled feature adds its own settings under Configure Settings → Kaiserkram, and Within Earshot's keybindings appear under Configure Controls → Kaiserkram.
+## Coming from the old modules
 
-## Using the Trader
+Kaiserkram replaces World Landing, Deploy Party, Within Earshot and WFRP4e Trader. Your old data is copied over the first time a GM loads the world. Turn the old modules off afterwards.
 
-A trader is an ordinary WFRP4e NPC that keeps its normal NPC sheet (for stats and the trader's coins). Its shop opens in a window of its own, with **Buy**, **Sell** and, for the GM, **Manage** tabs.
+## Test version
 
-1. **Make a trader.** In the Actors sidebar, click **Create Trader** and give its name, Haggle skill and starting coins, or right-click an NPC → **Make Trader**. Either way the trader gets every basic skill, and the shop window opens on the Manage tab. A trader pays players from its own coins (unless *Enforce purse* is off), so give it some before it buys.
-2. **Stock it.** Beside the stock, the Manage tab lists the Core Rulebook's **Trappings** (from the `wfrp4e-core` Items compendium, by category, with a search): drag one onto the window or click **+**. You can also drag items from the Items sidebar, any compendium or an actor. Adding an item the trader already has raises its count. In Manage, set each item's count, ∞ for unlimited stock, a fixed price, and whether it is for sale.
-3. **Set prices.** *Prices* is what the trader charges, as a % of book price (100% = book price by default; raise or lower it per trader); *Buy-back rate* is what it pays players (90% by default). New traders take both from the module settings when they are created.
-4. **Open the shop.** The GM's buttons sit in a bar under the trader's name. **Open shop** lets players in and posts an *open for business* card in chat; **Close shop** shuts them out and posts a *closed for business* card; players double-clicking the trader are told it's closed. **Show to players** opens the shop if needed and pops the window up on every connected player's screen.
-   The bar also has **NPC sheet** for the trader's stats and coins.
-5. **Players trade.** They get in through the chat card's **Enter the shop** button, the **Shops** button at the top of the Actors sidebar, or by double-clicking the trader's token. They pick the character they trade as, then buy or haggle in **Buy** and sell in **Sell** (or drag an item from their character sheet onto the shop). Coins move automatically. A GM has to be online, because the trades run on the GM's client.
+To try the newest test build, use this manifest instead:
 
-**Haggling** is an opposed Haggle test against the trader. The player picks a discount up to 80%, in 5% steps; their test gets harder the more they ask, the trader's has no modifier. Asking for up to *Haggle: free discount* (10% by default) is a plain test. Above it the penalty grows exponentially, so small asks cost little and big ones a lot; *Haggle difficulty* scales it (default 5, from 0 to 10; 10 is twice as hard). At the defaults:
-
-| Discount asked | 5% | 10% | 15% | 20% | 25% | 30% | 35% | 40% | 45% | 50% | 55% | 60% | 65% | 70% | 75% | 80% |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Player's modifier | ±0 | ±0 | −2 | −4 | −7 | −10 | −13 | −17 | −22 | −27 | −33 | −40 | −48 | −57 | −68 | −80 |
-
-Higher SL wins (on a tie, the higher skill). Win, and one of that item on the next purchase gets exactly the discount asked for (more than one: the rest are at the asking price); lose, and the price stays. Each character gets one try per item unless *Haggle: allow repeat attempts* is on; In Manage, the **Haggling** list shows each character's deals and lost haggles: the ↻ button lets that character haggle again (their deals stay), the handshake forgets their deals and tries, and **Reset haggling** clears everyone's.
-
-The GM can also open any shop from the trader's Token HUD, from right-click → **Open Shop**, or from **Shops**.
-
-## Moving from the old modules
-
-The first time a GM loads a world with Kaiserkram enabled, Kaiserkram copies the old modules' data into its own namespace. This happens once, whether or not any feature is enabled yet:
-
-- world settings of all four modules
-- traders: their flags and their stock flags (fixed prices, unlimited stock, not for sale). They go back to the normal NPC sheet and shop in their own window
-- party markers and deployed tokens, so Deploy and Recall keep working
-- per-actor voice profiles
-- the landing scene
-- image paths that pointed into the old modules' folders
-- unlinked tokens: trader flags and haggle state stored on the token itself
-
-A notice lists which features had data. **Those features stay off until you enable them.** Nothing is deleted: the old flags and settings stay where they were. The one thing that is switched over is each trader's sheet (back to the NPC sheet), so if you go back to the old Trader module, pick its sheet again in the trader's sheet configuration.
-
-Then disable the four old modules. Running a feature next to the module it replaces doubles its hooks, registers two trader sheets, or fights over the A/V client; Kaiserkram warns the GM if it sees that.
-
-Not migrated:
-
-- **Compendium actors.** Traders stored in a compendium still carry the old module's data; after importing one, right-click it → **Make Trader**.
-- **Keybindings.** Rebind Within Earshot's shortcuts once under Configure Controls.
-- Within Earshot's per-user voice token pin, which is cleared on every load anyway.
-
-To run the migration again (for example after importing more old data), use the console:
-
-```js
-await game.modules.get('kaiserkram').api.migrate({ force: true });
 ```
-
-## API
-
-```js
-const api = game.modules.get('kaiserkram').api;
-api.features.party?.deployParty(tokenDocument);
-api.features.trader?.createTrader();
-api.features.earshot?.setVoiceProfileForActor(actor, { gainMultiplier: 1.2 });
+https://github.com/X4mb/kaiserkram/releases/download/test-latest/module.json
 ```
-
-`api.features` only contains enabled features.
-
-## Development
-
-```sh
-npm ci
-npm run typecheck     # tsc --noEmit (strict)
-npm run check:i18n    # every kaiserkram.* key used in src/ and templates/ exists in lang/en.json
-npm run smoke         # loads the bundle against stubbed Foundry globals: all on, all off, non-WFRP
-npm run build         # esbuild → dist/kaiserkram.js, then copies into your Foundry data folder
-npm run watch
-npm run release-pack  # build + module.zip
-```
-
-`npm run build` copies the module into `%LOCALAPPDATA%/FoundryVTT/Data/modules/kaiserkram`, or into `FOUNDRY_MODULE_PATH` if set.
-
-Layout: `src/main.ts` boots the module; `src/core/` holds the feature toggles, the Kaiserkram Features window, the shared socket (`module.kaiserkram`, messages tagged by feature) and the migration; each feature lives in `src/features/<id>/` and exports a `Feature` from its `index.ts`.
-
-Naming inside the module: settings are `kaiserkram.<feature><Key>` (e.g. `traderDefaultMarkup`), flags are nested per feature (`flags.kaiserkram.trader.isTrader`), i18n keys are `kaiserkram.<feature>.…`.
-
-### Branches and releases
-
-- **`test`**: every push builds a pre-release under the reused tag `test-latest`, versioned `<module.json version>.<run number>`. Install it in Foundry with:
-
-  ```
-  https://github.com/X4mb/kaiserkram/releases/download/test-latest/module.json
-  ```
-
-  It is titled *Kaiserkram (Test)* but uses the same module id as the release, so only one of the two can be installed at a time. Dependabot opens its PRs against `test`.
-- **`main`**: bump `version` in `module.json` (and `package.json`), merge `test` into `main`, then push a matching tag (`v0.1.0`). The release workflow checks the version matches the tag, builds `module.zip` and attaches it to a GitHub Release; the manifest's `download` URL always points at the latest release.
-
-Published builds load a version-stamped bundle (`dist/kaiserkram-<version>.js`, set by `scripts/stamp.mjs`), so browsers behind a caching proxy pick up updates right away. Local builds use `dist/kaiserkram.js`.
 
 ## License
 
-[PolyForm Noncommercial 1.0.0](LICENSE). The World Landing code was MIT-licensed; its notice is kept in `LICENSE`.
+[PolyForm Noncommercial 1.0.0](LICENSE)
