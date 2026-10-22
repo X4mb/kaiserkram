@@ -2,7 +2,7 @@
   "id": "kaiserkram",
   "title": "Kaiserkram",
   "description": "<p><strong>Foundry v14</strong>. A box of opt-in tools by X4mb: <strong>World Landing</strong> (pick a scene that opens when the world starts), <strong>Deploy Party</strong> (drop an actor folder as one party marker and deploy it), <strong>Within Earshot</strong> (proximity voice chat) and, in Warhammer Fantasy Roleplay 4e worlds, the <strong>Trader</strong> shop sheet.</p><p>Everything is off until you enable it under <em>Configure Settings → Kaiserkram → Kaiserkram Features</em>. A disabled feature registers nothing.</p><p><strong>Install:</strong> Setup → Add-on Modules → <em>Install Module</em> → <code>https://raw.githubusercontent.com/X4mb/kaiserkram/main/module.json</code></p>",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "authors": [{ "name": "X4mb", "url": "https://github.com/X4mb" }],
   "compatibility": {
     "minimum": "14",
