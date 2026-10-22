@@ -632,13 +632,13 @@ export function refreshShops(changed: Set<string>): void {
 }
 
 /** Chat card when the GM closes the shop. */
-export async function announceClosed(trader: WfrpActor): Promise<void> {
+async function announceClosed(trader: WfrpActor): Promise<void> {
   const text = fmt('kaiserkram.trader.chat.closed', '{trader} has closed for business.', { trader: escapeHtml(trader.name) });
   await postChat({ speaker: speakerFor(trader), content: `<div class="${CARD_CLASS}"><p>${text}</p></div>` });
 }
 
 /** Chat card telling everyone the shop is open, with a button that opens it. */
-export async function announceShop(trader: WfrpActor): Promise<void> {
+async function announceShop(trader: WfrpActor): Promise<void> {
   const text = fmt('kaiserkram.trader.chat.open', '{trader} is open for business.', { trader: escapeHtml(trader.name) });
   const button = escapeHtml(loc('kaiserkram.trader.chat.enter', 'Enter the shop'));
   await postChat({

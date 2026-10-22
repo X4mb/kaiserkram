@@ -3,7 +3,7 @@ import type { Feature } from '../../core/feature.js';
 import { contextEntry, isActiveGM, notify, on, settings, toElement } from '../../core/foundryApi.js';
 import { fmt, loc } from '../../core/i18n.js';
 
-export const SETTINGS = {
+const SETTINGS = {
   DEFAULT_SCENE: 'landingDefaultSceneId',
   /** When the server last booted, as the active GM saw it (ms since the epoch, server clock). */
   LAST_BOOT: 'landingLastBootEpoch',

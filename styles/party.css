@@ -91,20 +91,6 @@
   font-style: italic;
 }
 
-.kaiserkram-trade .kk-trade-add {
-  display: flex;
-  gap: 0.3rem;
-}
-
-.kaiserkram-trade .kk-trade-add select {
-  flex: 1;
-}
-
-.kaiserkram-trade .kk-trade-add button {
-  width: auto;
-  flex: none;
-}
-
 .kaiserkram-trade .kk-trade-footer {
   display: flex;
   flex-wrap: wrap;

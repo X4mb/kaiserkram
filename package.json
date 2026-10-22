@@ -9,7 +9,6 @@
     "bundle": "node scripts/build.mjs",
     "build": "npm run bundle && node scripts/deploy.mjs",
     "watch": "esbuild src/main.ts --bundle --outfile=dist/kaiserkram.js --format=esm --platform=neutral --target=es2022 --sourcemap --watch",
-    "deploy": "npm run build",
     "release-pack": "npm run build && node scripts/package-release.mjs",
     "typecheck": "tsc --noEmit",
     "check:i18n": "node scripts/check-i18n.mjs",

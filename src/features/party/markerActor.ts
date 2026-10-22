@@ -65,7 +65,7 @@ function visionFrom(folder: Folder): Record<string, unknown> {
 }
 
 /** Get (or create) the actor behind `folder`'s party markers. Returns null if the system has no actor types. */
-export async function markerActorFor(folder: Folder, img: string): Promise<ActorLike | null> {
+async function markerActorFor(folder: Folder, img: string): Promise<ActorLike | null> {
   const existing = actors().find((a) => flags(a).getFlag(MODULE_ID, FLAGS.MARKER_ACTOR_FOR) === folder.uuid);
   if (existing) return existing;
 

@@ -147,7 +147,7 @@ type AppV2Constructor = new (options?: Record<string, unknown>) => {
 let FeatureManagerClass: AppV2Constructor | undefined;
 
 /** The "Kaiserkram Features" window. Built lazily so nothing touches ApplicationV2 until `init`. */
-export function featureManagerClass(): AppV2Constructor {
+function featureManagerClass(): AppV2Constructor {
   if (FeatureManagerClass) return FeatureManagerClass;
   const Base = (foundry.applications.api as unknown as { ApplicationV2: AppV2Constructor }).ApplicationV2;
 

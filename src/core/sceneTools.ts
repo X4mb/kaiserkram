@@ -13,17 +13,15 @@ export type TokenTool = {
 };
 
 type Tool = Record<string, unknown>;
-type Control = { name?: string; tools: Record<string, Tool> | Tool[] };
+type Control = { tools: Record<string, Tool> };
 
 /**
  * Add tools to the token controls. `tools` is asked each time the toolbar is built, so it can
  * return nothing (a setting turned off, say).
  */
 export function addTokenTools(tools: () => TokenTool[]): void {
-  on('getSceneControlButtons', ((controls: Record<string, Control> | Control[]) => {
-    const tokens = Array.isArray(controls)
-      ? controls.find((c) => c.name === 'token' || c.name === 'tokens')
-      : (controls.tokens ?? controls.token);
+  on('getSceneControlButtons', ((controls: Record<string, Control>) => {
+    const tokens = controls.tokens;
     if (!tokens) return;
     for (const t of tools()) {
       const tool: Tool = {
@@ -33,12 +31,9 @@ export function addTokenTools(tools: () => TokenTool[]): void {
         order: t.order,
         visible: true,
         ...(t.toggle ? { toggle: true, active: t.toggle.active() } : { button: true }),
-        // v13+: onChange(event, active).
         onChange: (_event: unknown, active: boolean) => t.use(Boolean(active)),
       };
-      // Older cores: an array of tools, onClick(active).
-      if (Array.isArray(tokens.tools)) tokens.tools.push({ ...tool, onClick: (active: boolean) => t.use(Boolean(active)) });
-      else tokens.tools[t.name] = tool;
+      tokens.tools[t.name] = tool;
     }
   }) as (...args: never[]) => unknown);
 }

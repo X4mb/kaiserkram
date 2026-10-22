@@ -62,7 +62,7 @@ export function whisperApplies(user: User | null | undefined): boolean {
   return !isGameMasterUser(user) || !!getVoiceTokenIdFromUser(user);
 }
 
-export class ProximityAudioRouter {
+class ProximityAudioRouter {
   private audioContext: AudioContext | null = null;
   private readonly peers = new Map<string, PeerAudio>();
   private readonly lastStableEnvGain = new Map<string, number>();

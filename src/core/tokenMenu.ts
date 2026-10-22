@@ -39,7 +39,7 @@ function placeables(): MenuToken[] {
 /** Stops the open menu's outside-click listeners. */
 let dismissListeners: AbortController | null = null;
 
-export function removeTokenMenu(): void {
+function removeTokenMenu(): void {
   dismissListeners?.abort();
   dismissListeners = null;
   document.getElementById(MENU_ID)?.remove();

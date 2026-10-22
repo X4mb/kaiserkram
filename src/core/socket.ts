@@ -6,7 +6,7 @@ import type { FeatureId } from './feature.js';
  * and only features that registered a handler (i.e. are active) ever see their messages.
  * Handlers get the sender's user id from Foundry itself: trust that, never an id in the payload.
  */
-export const SOCKET_NAME = `module.${MODULE_ID}`;
+const SOCKET_NAME = `module.${MODULE_ID}`;
 
 type Envelope = { feature: FeatureId; data: unknown };
 type SocketApi = { emit(name: string, data: unknown): void; on(name: string, fn: (data: unknown, senderId?: string) => void): void };

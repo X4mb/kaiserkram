@@ -6,7 +6,7 @@ import { soleOwnedTokenDoc } from './proximity.js';
 import { voiceChangerProcessor } from './voiceChangerProcessor.js';
 import { getVoiceProfileForActor } from './voiceProfile.js';
 
-export function canUserPickVoiceToken(user: User, token: Token): boolean {
+function canUserPickVoiceToken(user: User, token: Token): boolean {
   if (user.isGM) return true;
   return token.document.testUserPermission(user, 'OWNER');
 }

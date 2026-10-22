@@ -1,7 +1,7 @@
 import { MODULE_ID } from '../../core/constants.js';
 import { settings as s } from '../../core/foundryApi.js';
 
-export const SETTINGS = {
+const SETTINGS = {
   /** World: hidden points each side starts with, so the first few real ones barely move the odds. */
   STEADINESS: 'grudgesSteadiness',
   /** Client (per-user): ask for a reason whenever a point is added. */

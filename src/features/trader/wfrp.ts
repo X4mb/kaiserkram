@@ -109,10 +109,6 @@ export function g(): GameView {
   return game as unknown as GameView;
 }
 
-export function asActor(doc: unknown): WfrpActor {
-  return doc as WfrpActor;
-}
-
 export async function resolveActor(uuid: string): Promise<WfrpActor | null> {
   const doc = await resolveDocument<{ documentName?: string }>(uuid);
   return doc?.documentName === 'Actor' ? (doc as unknown as WfrpActor) : null;

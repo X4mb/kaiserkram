@@ -2,7 +2,7 @@ import { MODULE_ID } from './constants.js';
 import type { Feature, FeatureId } from './feature.js';
 import { settings, systemId } from './foundryApi.js';
 
-export const CORE_SETTINGS = {
+const CORE_SETTINGS = {
   ENABLED_FEATURES: 'enabledFeatures',
 } as const;
 

@@ -1,7 +1,7 @@
 import { rollback, sameGoods, type Undo } from '../../../core/items.js';
 import { forgetDrag } from '../inventory.js';
 
-export { isMoney, rollback, sameGoods, type Undo } from '../../../core/items.js';
+export { isMoney, rollback, type Undo } from '../../../core/items.js';
 
 /**
  * System-agnostic item quantities. WFRP4e keeps them in `system.quantity.value`, dnd5e in

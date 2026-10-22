@@ -45,7 +45,7 @@ function myScene(): string | null {
  * The scene everyone online has reported viewing, if they all agree. Users who haven't reported
  * yet hold it back; users without a canvas don't. At least one player has to be there.
  */
-export function gatheredScene(online: UserLike[], reports: Map<string, string | null>): string | null {
+function gatheredScene(online: UserLike[], reports: Map<string, string | null>): string | null {
   let scene: string | null = null;
   let player = false;
   for (const u of online) {

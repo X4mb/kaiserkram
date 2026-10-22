@@ -76,7 +76,7 @@ async function setHaggle(actor: WfrpActor, target: number): Promise<void> {
 }
 
 /** GM, from Create Trader: ask for the name, Haggle and starting coins, then create it. */
-export async function promptCreateTrader(): Promise<WfrpActor | null> {
+async function promptCreateTrader(): Promise<WfrpActor | null> {
   const content = `<div class="kaiserkram-create-trader">
     <div class="form-group"><label>${escapeHtml(loc('kaiserkram.trader.create.name', 'Name'))}</label>
       <input type="text" name="name" value="${escapeHtml(loc('kaiserkram.trader.sheet.newTrader', 'Trader'))}" autofocus /></div>

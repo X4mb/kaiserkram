@@ -2,7 +2,7 @@ import { MODULE_ID } from '../../core/constants.js';
 import { settings as s } from '../../core/foundryApi.js';
 import { DEFAULT_TOKEN_IMAGE } from './constants.js';
 
-export const SETTINGS = {
+const SETTINGS = {
   DEPLOY_ON_DROP: 'partyDeployOnDrop',
   SHIFT_AFTER_DEPLOY: 'partyShiftAfterDeployBehavior',
   INCLUDE_SUBFOLDERS: 'partyIncludeSubfolders',

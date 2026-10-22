@@ -157,7 +157,7 @@ export function getGmVoiceGlobal(): boolean {
   return Boolean(s().get(MODULE_ID, SETTINGS.GM_VOICE_GLOBAL));
 }
 
-export function setGmVoiceGlobal(v: boolean): Promise<unknown> {
+function setGmVoiceGlobal(v: boolean): Promise<unknown> {
   return s().set(MODULE_ID, SETTINGS.GM_VOICE_GLOBAL, v);
 }
 

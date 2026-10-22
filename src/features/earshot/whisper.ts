@@ -11,7 +11,7 @@ import { scheduleVoiceIndicatorRedraw } from './voiceIndicatorLayer.js';
  * (one square by default, diagonals included). The flag lives on the User, so every client sees it.
  */
 
-export const WHISPER_TOOL = `${MODULE_ID}EarshotWhisper`;
+const WHISPER_TOOL = `${MODULE_ID}EarshotWhisper`;
 
 export function isWhispering(user: User | null | undefined): boolean {
   return Boolean(user && flags(user).getFlag(MODULE_ID, FLAGS.WHISPER));

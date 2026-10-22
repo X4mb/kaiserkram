@@ -1,11 +1,5 @@
 import { MODULE_ID, MODULE_PATH } from '../../core/constants.js';
 
-/**
- * Sheet class id early Kaiserkram builds stored in `flags.core.sheetClass`. Traders now keep the
- * system's sheet and shop in their own window; this still marks such an actor as a trader.
- */
-export const SHEET_CLASS = `${MODULE_ID}.TraderSheet`;
-
 /** Flags, as dotted paths under flags.kaiserkram (i.e. flags.kaiserkram.trader.<key>). */
 export const FLAGS = {
   // Set on the trader actor.

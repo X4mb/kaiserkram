@@ -9,13 +9,13 @@ import { buyQuote, haggleState, isForSale, saveHaggleState, standingOf, type Hag
 import { ACTIONS, resolveParties } from './transactions.js';
 
 /** Largest discount a player can ask for, in %. */
-export const MAX_ASK = 80;
+const MAX_ASK = 80;
 
 function haggleSkillName(): string {
   return loc('NAME.Haggle', 'Haggle');
 }
 
-export function clampAsk(ask: unknown): number {
+function clampAsk(ask: unknown): number {
   return Math.min(MAX_ASK, Math.max(5, Math.round((Number(ask) || 0) / 5) * 5));
 }
 
@@ -28,7 +28,7 @@ const CURVE = 2;
  * and big ones a lot, reaching 16 × the GM's difficulty at the maximum ask (5 by default: 20% is
  * −4, 40% −17, 60% −40, 80% −80).
  */
-export function askToModifier(ask: number): number {
+function askToModifier(ask: number): number {
   const perStep = Math.max(0, getNumber(SETTINGS.HAGGLE_STEP) || 0);
   const free = Math.min(MAX_ASK - 5, Math.max(0, getNumber(SETTINGS.HAGGLE_FREE) || 0));
   const over = clampAsk(ask) - free;

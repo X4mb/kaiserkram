@@ -9,7 +9,7 @@ import { openVoiceAssignDialogForActor } from './voiceAssignDialog.js';
 const MARK = `data-${MODULE_ID}-earshot-assign-voice`;
 
 /** Entry-point diagnostics, gated behind the client "Verbose diagnostics" setting (off by default). */
-export function dlog(msg: string, ...rest: unknown[]): void {
+function dlog(msg: string, ...rest: unknown[]): void {
   if (getDebug()) console.log(`[${MODULE_ID}] earshot: ${msg}`, ...rest);
 }
 

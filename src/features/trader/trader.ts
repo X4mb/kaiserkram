@@ -1,5 +1,5 @@
 import { MODULE_ID } from '../../core/constants.js';
-import { FLAGS, SHEET_CLASS } from './constants.js';
+import { FLAGS } from './constants.js';
 import type { WfrpActor, WfrpItem } from './wfrp.js';
 import { priceToBP } from './money.js';
 import { getNumber, SETTINGS } from './settings.js';
@@ -28,7 +28,7 @@ export type HaggleState = Record<string, HaggleStanding>;
 
 export function isTrader(actor: WfrpActor | null | undefined): boolean {
   if (!actor) return false;
-  return Boolean(actor.getFlag(MODULE_ID, FLAGS.IS_TRADER)) || actor.flags?.core?.sheetClass === SHEET_CLASS;
+  return Boolean(actor.getFlag(MODULE_ID, FLAGS.IS_TRADER));
 }
 
 export function traderConfig(actor: WfrpActor): TraderConfig {
@@ -136,7 +136,7 @@ function roundPrice(bp: number, base: number): number {
   return base > 0 ? Math.max(1, rounded) : Math.max(0, rounded);
 }
 
-export function listPriceBP(trader: WfrpActor, item: WfrpItem): number {
+function listPriceBP(trader: WfrpActor, item: WfrpItem): number {
   const override = priceOverrideBP(item);
   if (override !== null) return override;
   const book = bookPriceBP(item);

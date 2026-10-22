@@ -56,7 +56,7 @@ export function parsePrice(text: string): number | null {
   return matched ? Math.round(total) : null;
 }
 
-export function moneyItems(actor: WfrpActor): WfrpItem[] {
+function moneyItems(actor: WfrpActor): WfrpItem[] {
   return actor.items.contents.filter((i) => i.type === 'money' && Number(i.system?.coinValue?.value) > 0);
 }
 
