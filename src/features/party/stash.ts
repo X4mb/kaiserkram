@@ -1,8 +1,9 @@
 import { MODULE_ID } from '../../core/constants.js';
-import { escapeHtml, notify, toElement } from '../../core/foundryApi.js';
+import { activeGMId, escapeHtml, notify, toElement } from '../../core/foundryApi.js';
+import { sendRequest } from './trade/client.js';
 import { fmt, loc } from '../../core/i18n.js';
 import { isPartyActor } from './inventory.js';
-import { isTradeableItem, quantityOf, transferItem, type ActorLike, type ItemLike } from './trade/items.js';
+import { byCoinValue, isMoney, isTradeableItem, quantityOf, transferItem, type ActorLike, type ItemLike } from './trade/items.js';
 
 /**
  * The party stash: the party marker's actor inventory beside one of your characters, to put
@@ -23,10 +24,6 @@ type StashWindow = AppInstance & { party: ActorLike; characterId: string | null 
 
 const windows = new Map<string, StashWindow>();
 let StashClass: (new (party: ActorLike) => StashWindow) | undefined;
-
-function isMoney(item: { type: string }): boolean {
-  return item.type === 'money';
-}
 
 /** Your characters that can use the stash: ones you own, the party itself excluded. */
 function myCharacters(): ActorLike[] {
@@ -61,11 +58,9 @@ function rows(actor: ActorLike | null, side: Side): { goods: string; money: stri
     </li>`;
   };
   const byName = (a: ItemLike, b: ItemLike) => a.name.localeCompare(b.name);
-  const byValue = (a: ItemLike, b: ItemLike) =>
-    Number(b.system?.coinValue?.value ?? 0) - Number(a.system?.coinValue?.value ?? 0);
   return {
     goods: items.filter((i) => !isMoney(i)).sort(byName).map((i) => row(i, false)).join(''),
-    money: items.filter(isMoney).sort(byValue).map((i) => row(i, true)).join(''),
+    money: items.filter(isMoney).sort(byCoinValue).map((i) => row(i, true)).join(''),
   };
 }
 
@@ -105,6 +100,10 @@ function render(win: StashWindow): string {
   </div>`;
 }
 
+/**
+ * Move through the GM, one move at a time, so two players taking from the same stack can't both
+ * take what's there. With no GM online, the move happens here.
+ */
 async function move(win: StashWindow, from: Side, itemId: string, qty?: number): Promise<void> {
   const source = from === 'stash' ? win.party : characterOf(win);
   const target = from === 'stash' ? characterOf(win) : win.party;
@@ -112,6 +111,10 @@ async function move(win: StashWindow, from: Side, itemId: string, qty?: number):
   if (!source || !target || !item) return;
   const have = quantityOf(item);
   const amount = Math.min(have, Math.max(1, Math.floor(qty ?? have)));
+  if (activeGMId()) {
+    sendRequest({ op: 'move', from: source.uuid, to: target.uuid, itemId, qty: amount });
+    return;
+  }
   await transferItem(item, amount, target);
   notify().info(
     fmt('kaiserkram.party.notifications.itemMoved', 'Moved {item} from {from} to {to}.', {
@@ -226,8 +229,11 @@ export function openStash(party: ActorLike): void {
   win.bringToFront?.();
 }
 
-export function refreshStashWindows(): void {
-  for (const win of windows.values()) if (win.rendered) void win.render();
+/** Redraw stash windows showing one of the `changed` actors (the party, or the character beside it). */
+export function refreshStashWindows(changed: Set<string>): void {
+  for (const win of windows.values()) {
+    if (win.rendered && (changed.has(win.party.uuid) || changed.has(characterOf(win)?.uuid ?? ''))) void win.render();
+  }
 }
 
 /** Token HUD of a party marker: a Party stash button for everyone who owns it. */
@@ -260,7 +266,7 @@ const PATCHED = Symbol('kaiserkramStashDoubleClick');
  */
 export function routeMarkerDoubleClick(): void {
   const proto = (CONFIG as unknown as { Token?: { objectClass?: { prototype: TokenProto } } }).Token?.objectClass?.prototype;
-  if (!proto || proto[PATCHED] || typeof proto._onClickLeft2 !== 'function') return;
+  if (!proto || Object.hasOwn(proto, PATCHED) || typeof proto._onClickLeft2 !== 'function') return;
   const original = proto._onClickLeft2;
   proto._onClickLeft2 = function (this: TokenProto, event: unknown) {
     const actor = this.actor;

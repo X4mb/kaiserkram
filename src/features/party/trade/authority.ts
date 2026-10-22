@@ -2,6 +2,7 @@ import { escapeHtml, postChat, resolveDocument } from '../../../core/foundryApi.
 import { fmt, loc } from '../../../core/i18n.js';
 import { isTradeableItem, quantityOf, transferItem, type ActorLike, type ItemLike } from './items.js';
 import type { CloseReason, TradeRequest, TradeSession, TradeSide, TradeUpdate } from './types.js';
+import { getTrading } from '../settings.js';
 
 /**
  * The active GM's client holds every trade: players can't change each other's actors, so the
@@ -15,8 +16,11 @@ type Session = {
   status: 'pending' | 'open';
   sides: [SideState, SideState];
   timer?: ReturnType<typeof setTimeout>;
-  /** Trades run one at a time, so two accepts can't both execute. */
-  busy: boolean;
+  /**
+   * Bumped by every change to the deal. An accept names the revision it was given for, so one
+   * sent while the other side was still changing their offer doesn't agree to a deal nobody saw.
+   */
+  rev: number;
 };
 
 type SideState = { actorUuid: string; userId: string; items: Record<string, number>; accepted: boolean };
@@ -77,7 +81,26 @@ async function viewOf(side: SideState): Promise<TradeSide> {
 }
 
 async function viewOfSession(s: Session): Promise<TradeSession> {
-  return { id: s.id, status: s.status, sides: [await viewOf(s.sides[0]), await viewOf(s.sides[1])] };
+  return { id: s.id, status: s.status, rev: s.rev, sides: [await viewOf(s.sides[0]), await viewOf(s.sides[1])] };
+}
+
+function resetAccepts(s: Session): void {
+  s.sides[0].accepted = s.sides[1].accepted = false;
+  s.rev += 1;
+}
+
+/**
+ * An item changed or went away: a deal offering it has to be agreed again (its window shows the
+ * current item once the state goes out).
+ */
+export async function onItemChanged(item: { id: string; parent?: { uuid?: string } | null }): Promise<void> {
+  const owner = item.parent?.uuid;
+  if (!owner) return;
+  for (const s of sessions.values()) {
+    if (s.status !== 'open' || !s.sides.some((x) => x.actorUuid === owner && item.id in x.items)) continue;
+    resetAccepts(s);
+    broadcast({ kind: 'trade', op: 'state', session: await viewOfSession(s) });
+  }
 }
 
 function close(s: Session, reason: CloseReason, by?: string, message?: string): void {
@@ -107,7 +130,7 @@ async function execute(s: Session): Promise<void> {
   const [a, b] = s.sides;
   const problem = (await validate(a)) ?? (await validate(b));
   if (problem) {
-    a.accepted = b.accepted = false;
+    resetAccepts(s);
     broadcast({ kind: 'trade', op: 'state', session: await viewOfSession(s) });
     close(s, 'failed', undefined, problem);
     return;
@@ -188,9 +211,48 @@ async function give(sender: UserLike, msg: Extract<TradeRequest, { op: 'give' }>
   });
 }
 
+/**
+ * Move items between two actors the sender owns (the party stash). Run here, one request at a
+ * time, so two players taking from the same stack can't both take what's there.
+ */
+async function move(sender: UserLike, msg: Extract<TradeRequest, { op: 'move' }>): Promise<void> {
+  const from = await actorOf(msg.from);
+  const to = await actorOf(msg.to);
+  const item = from?.items.get(msg.itemId);
+  const notice = (text: string, failed = false) => broadcast({ kind: 'trade', op: 'given', users: [sender.id], text, failed });
+  if (!from || !to || !item || !isTradeableItem(item) || from.uuid === to.uuid) {
+    return notice(loc('kaiserkram.party.stash.gone', 'That is no longer there.'), true);
+  }
+  if (!from.testUserPermission(sender, 'OWNER') || !to.testUserPermission(sender, 'OWNER')) {
+    return notice(loc('kaiserkram.party.stash.notYours', 'You can only move things between characters you own.'), true);
+  }
+  const have = quantityOf(item);
+  const qty = Math.min(have, Math.max(1, Math.floor(Number(msg.qty) || have)));
+  if (have < 1) return notice(loc('kaiserkram.party.stash.gone', 'That is no longer there.'), true);
+  await transferItem(item, qty, to);
+  notice(
+    fmt('kaiserkram.party.notifications.itemMoved', 'Moved {item} from {from} to {to}.', {
+      item: qty > 1 ? `${qty}× ${item.name}` : item.name,
+      from: from.name,
+      to: to.name,
+    }),
+  );
+}
+
 async function handleOne(msg: TradeRequest): Promise<void> {
   const sender = userById(msg.userId);
   if (!sender) return;
+
+  if (msg.op === 'move') {
+    try {
+      await move(sender, msg);
+    } catch (err) {
+      console.error('[kaiserkram] party: stash move failed', err);
+    }
+    return;
+  }
+  // Trading and giving can be switched off on their own; the stash can't.
+  if (!getTrading()) return;
 
   if (msg.op === 'give') {
     try {
@@ -233,7 +295,7 @@ async function handleOne(msg: TradeRequest): Promise<void> {
         { actorUuid: from.uuid, userId: sender.id, items: {}, accepted: false },
         { actorUuid: to.uuid, userId: decider.id, items: {}, accepted: false },
       ],
-      busy: false,
+      rev: 0,
     };
     sessions.set(s.id, s);
     const view = await viewOfSession(s);
@@ -274,14 +336,16 @@ async function handleOne(msg: TradeRequest): Promise<void> {
       }
       side.items = items;
       // Any change to the deal needs both sides to agree again.
-      s.sides[0].accepted = s.sides[1].accepted = false;
+      resetAccepts(s);
       break;
     }
     case 'accept':
-      if (s.status !== 'open' || s.busy) return;
+      if (s.status !== 'open') return;
+      // Agreeing to a deal that has changed since: show the current one instead.
+      if (msg.accepted && msg.rev !== s.rev) break;
       side.accepted = Boolean(msg.accepted);
       if (s.sides[0].accepted && s.sides[1].accepted) {
-        s.busy = true;
+        // Requests run one at a time, so a second accept can't execute this trade again.
         try {
           await execute(s);
         } catch (err) {

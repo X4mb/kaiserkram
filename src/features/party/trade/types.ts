@@ -16,6 +16,8 @@ export type TradeStatus = 'pending' | 'open';
 export type TradeSession = {
   id: string;
   status: TradeStatus;
+  /** Revision of the deal; an accept names the one it agrees to. */
+  rev: number;
   /** [initiator, partner] */
   sides: [TradeSide, TradeSide];
 };
@@ -27,10 +29,12 @@ export type TradeRequest =
   | { kind: 'trade'; op: 'propose'; userId: string; from: string; to: string }
   | { kind: 'trade'; op: 'respond'; userId: string; id: string; accept: boolean }
   | { kind: 'trade'; op: 'offer'; userId: string; id: string; items: Record<string, number> }
-  | { kind: 'trade'; op: 'accept'; userId: string; id: string; accepted: boolean }
+  | { kind: 'trade'; op: 'accept'; userId: string; id: string; accepted: boolean; rev: number }
   | { kind: 'trade'; op: 'cancel'; userId: string; id: string }
   /** A one-way handover: no session, no answer; it happens at once. */
-  | { kind: 'trade'; op: 'give'; userId: string; from: string; to: string; items: Record<string, number> };
+  | { kind: 'trade'; op: 'give'; userId: string; from: string; to: string; items: Record<string, number> }
+  /** The party stash: move items between two actors the sender owns. */
+  | { kind: 'trade'; op: 'move'; userId: string; from: string; to: string; itemId: string; qty: number };
 
 /** GM → clients. */
 export type TradeUpdate =
@@ -41,7 +45,7 @@ export type TradeUpdate =
 
 export type TradeMessage = TradeRequest | TradeUpdate;
 
-export const REQUEST_OPS = new Set(['propose', 'respond', 'offer', 'accept', 'cancel', 'give']);
+export const REQUEST_OPS = new Set(['propose', 'respond', 'offer', 'accept', 'cancel', 'give', 'move']);
 
 /** A request without the fields the sender fills in itself. */
 export type RequestBody = {

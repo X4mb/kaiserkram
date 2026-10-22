@@ -8,19 +8,24 @@ import { registerPartyInventory } from './inventory.js';
 import { upgradeMarkers } from './markerActor.js';
 import { getPlayersControlMarker, getTrading, registerPartySettings } from './settings.js';
 import { MODULE_PATH } from '../../core/constants.js';
-import { on } from '../../core/foundryApi.js';
+import { isActiveGM, on } from '../../core/foundryApi.js';
+import { onActorChanges } from '../../core/refresh.js';
 import { registerSocketHandler } from '../../core/socket.js';
-import { onUserLeft } from './trade/authority.js';
+import { onItemChanged, onUserLeft } from './trade/authority.js';
 import { giveItems, initTradeClient, onTradeMessage, proposeTrade, refreshTradeWindows } from './trade/client.js';
 import { registerTradeEntryPoints } from './trade/entry.js';
 import { addStashHudButton, openStash, refreshStashWindows, routeMarkerDoubleClick } from './stash.js';
 
 /** Trading between characters: entry points, and keeping open trade windows current. */
 function registerTrading(): void {
-  initTradeClient();
   registerTradeEntryPoints();
-  const refresh = foundry.utils.debounce(refreshTradeWindows, 100);
-  for (const hook of ['createItem', 'updateItem', 'deleteItem']) on(hook, refresh);
+  onActorChanges(refreshTradeWindows);
+  // The GM: a deal whose offered item changes, or goes, has to be agreed again.
+  const itemChanged = ((item: Parameters<typeof onItemChanged>[0]) => {
+    if (isActiveGM()) void onItemChanged(item);
+  }) as (...args: never[]) => unknown;
+  on('updateItem', itemChanged);
+  on('deleteItem', itemChanged);
   on('userConnected', ((user: { id: string }, connected: boolean) => {
     if (!connected) onUserLeft(user.id);
   }) as (...args: never[]) => unknown);
@@ -32,8 +37,7 @@ function registerStash(): void {
   // Before tokens are drawn: each token's mouse handler keeps the click function it was made with.
   on('setup', routeMarkerDoubleClick);
   on('canvasInit', routeMarkerDoubleClick);
-  const refresh = foundry.utils.debounce(refreshStashWindows, 100);
-  for (const hook of ['createItem', 'updateItem', 'deleteItem']) on(hook, refresh);
+  onActorChanges(refreshStashWindows);
 }
 
 export const party: Feature = {
@@ -50,13 +54,16 @@ export const party: Feature = {
     registerPartyInventory();
     registerStash();
     on('canvasReady', () => {
-      if (game.user?.isGM && getPlayersControlMarker()) void upgradeMarkers(canvas?.scene as never);
+      // One GM does it, or two GMs online would both create marker actors.
+      if (isActiveGM() && getPlayersControlMarker()) void upgradeMarkers(canvas?.scene as never);
     });
+    // The GM runs stash moves too, so the channel is open even with trading off.
+    initTradeClient();
     if (getTrading()) registerTrading();
   },
 
   ready() {
-    if (getTrading()) registerSocketHandler('party', onTradeMessage);
+    registerSocketHandler('party', onTradeMessage);
   },
 
   api() {

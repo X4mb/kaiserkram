@@ -372,5 +372,7 @@
   "kaiserkram.features.travel.hint": "When every user logged in, players and GMs, is viewing the same scene (through a map tile or the scene navigation), it becomes the active scene. Viewing a scene on your own moves nobody else.",
   "kaiserkram.travel.gathered": "Everyone is at {scene}, so it is now the active scene.",
   "kaiserkram.trader.SETTINGS.haggleFree.name": "Haggle: free discount (%)",
-  "kaiserkram.trader.SETTINGS.haggleFree.hint": "Asking for up to this much off is a plain Haggle test, with no penalty (10 by default). Above it the penalty starts small and grows towards the 80% maximum."
+  "kaiserkram.trader.SETTINGS.haggleFree.hint": "Asking for up to this much off is a plain Haggle test, with no penalty (10 by default). Above it the penalty starts small and grows towards the 80% maximum.",
+  "kaiserkram.party.stash.gone": "That is no longer there.",
+  "kaiserkram.party.stash.notYours": "You can only move things between characters you own."
 }

@@ -327,7 +327,7 @@ const PATCHED = Symbol('kaiserkramTraderDoubleClick');
  */
 function routeTraderDoubleClick(): void {
   const proto = (CONFIG as unknown as { Token?: { objectClass?: { prototype: TokenProto } } }).Token?.objectClass?.prototype;
-  if (!proto || proto[PATCHED] || typeof proto._onClickLeft2 !== 'function' || typeof proto._canView !== 'function') return;
+  if (!proto || Object.hasOwn(proto, PATCHED) || typeof proto._onClickLeft2 !== 'function' || typeof proto._canView !== 'function') return;
   const forPlayer = (token: TokenProto) => !g().user.isGM && !!token.actor && isTrader(token.actor);
   const canView = proto._canView;
   proto._canView = function (this: TokenProto, user: unknown, event: unknown) {

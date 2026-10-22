@@ -2,6 +2,7 @@ import { MODULE_ID } from '../../core/constants.js';
 import { flags, notify, on } from '../../core/foundryApi.js';
 import { fmt } from '../../core/i18n.js';
 import { FLAGS } from './constants.js';
+import { copyForNewOwner } from './trade/items.js';
 
 /**
  * The actor behind a party marker doubles as the party's shared inventory. Items dragged between
@@ -125,11 +126,7 @@ function onDropCanvas(_canvas: unknown, data: DropData): boolean | void {
   const placeables = (canvas as unknown as { tokens?: { placeables: TokenLike[] } } | null)?.tokens?.placeables ?? [];
   const target = placeables.filter((t) => isPartyActor(t.document.actor) && t.bounds?.contains(x, y)).at(-1)?.document.actor;
   if (!target || !involvesParty(item.parent, target)) return;
-  const copy = item.toObject();
-  delete copy._id;
-  // A container on the old owner means nothing on the new one.
-  if (copy.system?.location && typeof copy.system.location === 'object') copy.system.location.value = '';
-  void target.createEmbeddedDocuments('Item', [copy]);
+  void target.createEmbeddedDocuments('Item', [copyForNewOwner(item)]);
   return false;
 }
 

@@ -3,7 +3,7 @@ import { dialogV2, escapeHtml, notify } from '../../../core/foundryApi.js';
 import { fmt, loc } from '../../../core/i18n.js';
 import { emitSocket } from '../../../core/socket.js';
 import { handleRequest, setBroadcaster } from './authority.js';
-import { isTradeableItem, quantityOf, type ActorLike } from './items.js';
+import { byCoinValue, isMoney, isTradeableItem, quantityOf, type ActorLike } from './items.js';
 import { REQUEST_OPS, type CloseReason, type RequestBody, type TradeMessage, type TradeRequest, type TradeSession, type TradeUpdate } from './types.js';
 
 type UserLike = { id: string; isGM: boolean; isSelf?: boolean };
@@ -78,7 +78,7 @@ export async function giveItems(from: ActorLike, to: ActorLike): Promise<void> {
   const goods = items.filter((i) => !isMoney(i)).sort(byName).map(row).join('');
   const money = items
     .filter(isMoney)
-    .sort((a, b) => Number(b.system?.coinValue?.value ?? 0) - Number(a.system?.coinValue?.value ?? 0))
+    .sort(byCoinValue)
     .map(row)
     .join('');
   const content = `<div class="kk-give">
@@ -245,10 +245,6 @@ function renderSide(win: TradeWindow, index: 0 | 1): string {
   </section>`;
 }
 
-/** Coins are items of type `money` (WFRP4e); they get amount boxes instead of drag rows. */
-function isMoney(item: { type: string }): boolean {
-  return item.type === 'money';
-}
 
 /** Your inventory beside the offer: goods to drag (or click) in, and money to type an amount of. */
 function renderInventory(win: TradeWindow): string {
@@ -270,7 +266,7 @@ function renderInventory(win: TradeWindow): string {
     .join('');
   const money = items
     .filter(isMoney)
-    .sort((a, b) => Number(b.system?.coinValue?.value ?? 0) - Number(a.system?.coinValue?.value ?? 0))
+    .sort(byCoinValue)
     .map(
       (i) => `<li class="kk-trade-item kk-trade-coin" data-item-id="${escapeHtml(i.id)}">
         <img src="${escapeHtml(i.img)}" alt="" />
@@ -410,7 +406,7 @@ function tradeWindowClass(): new (session: TradeSession, mine: 0 | 1) => TradeWi
     }
 
     static onAccept(this: TradeWindow): void {
-      sendRequest({ op: 'accept', id: this.session.id, accepted: !this.session.sides[this.mine].accepted });
+      sendRequest({ op: 'accept', id: this.session.id, accepted: !this.session.sides[this.mine].accepted, rev: this.session.rev });
     }
 
     static onCancel(this: TradeWindow): void {
@@ -459,6 +455,9 @@ function openTradeWindow(session: TradeSession, mine: 0 | 1): void {
 }
 
 /** All trade windows this client has open (for refreshing when inventories change). */
-export function refreshTradeWindows(): void {
-  for (const win of windows.values()) if (win.rendered) void win.render();
+/** Redraw trade windows whose traders include one of the `changed` actors. */
+export function refreshTradeWindows(changed: Set<string>): void {
+  for (const win of windows.values()) {
+    if (win.rendered && win.session.sides.some((side) => changed.has(side.actorUuid))) void win.render();
+  }
 }

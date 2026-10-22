@@ -64,7 +64,7 @@ const PATCHED = Symbol('kaiserkramTahContainerIcon');
 function patchHud(): void {
   const hud = (game as unknown as { tokenActionHud?: object }).tokenActionHud;
   const proto = hud ? (Object.getPrototypeOf(hud) as HudPrototype) : null;
-  if (!proto || proto[PATCHED] || typeof proto._prepareContext !== 'function') return;
+  if (!proto || Object.hasOwn(proto, PATCHED) || typeof proto._prepareContext !== 'function') return;
   const original = proto._prepareContext;
   proto._prepareContext = async function (this: unknown, options: unknown) {
     const context = await original.call(this, options);

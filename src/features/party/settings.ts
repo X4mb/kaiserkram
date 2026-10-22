@@ -125,6 +125,8 @@ export function registerPartySettings(): void {
     config: true,
     type: Boolean,
     default: true,
+    // Its menu entries, tools and buttons are set up when the world loads.
+    requiresReload: true,
   });
 
   s().register(MODULE_ID, SETTINGS.DEFAULT_IMAGE, {
