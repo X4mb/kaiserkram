@@ -156,7 +156,7 @@
   "kaiserkram.trader.gm.shownToPlayers": "Showed {trader} to {count} player(s).",
   "kaiserkram.trader.gm.noPlayers": "No players are connected; they can open the shop from the chat card or the Shops button in the Actors sidebar.",
   "kaiserkram.party.SETTINGS.markerFollows.name": "Hidden party marker follows the party",
-  "kaiserkram.party.SETTINGS.markerFollows.hint": "While the party is deployed and its marker is hidden, the marker moves to the middle of the deployed tokens whenever they move. Recall then gathers everyone where they stand.",
+  "kaiserkram.party.SETTINGS.markerFollows.hint": "While the party is deployed and its marker is hidden, the marker moves to the middle of the deployed tokens a few seconds after they stop moving (not while the GM has it selected or under the mouse). Recall then gathers everyone where they stand.",
   "kaiserkram.party.SETTINGS.playersControlMarker.name": "Players can move the party marker and see from it",
   "kaiserkram.party.SETTINGS.playersControlMarker.hint": "New party markers are backed by an actor every player owns (kept in a \"Party Markers\" actor folder), with vision copied from a party member's token. Players can then move the marker and see what it sees. Deploy and Recall stay GM-only. When disabled, markers have no actor and only the GM can move them.",
   "kaiserkram.party.markerFolder": "Party Markers",
