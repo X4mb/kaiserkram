@@ -4,23 +4,17 @@ import { createTrader, openShopPicker, registerShopAccess } from './access.js';
 import { STYLESHEET, TEMPLATES } from './constants.js';
 import { registerHaggleHandler, resetHaggling, startHaggle } from './haggle.js';
 import { registerTraderSettings } from './settings.js';
-import { openShop, refreshShops, TraderShop } from './shop.js';
+import { openShop, openShops, refreshShops } from './shop.js';
+import { onActorChanges } from '../../core/refresh.js';
 import { registerSocket } from './socket.js';
 import { isTrader } from './trader.js';
 import { registerTransactionHandlers } from './transactions.js';
 
 function registerHooks(): void {
-  /** The trader's settings, stock, or a customer's coins or inventory changing refreshes open shops. */
-  const refresh = foundry.utils.debounce(refreshShops, 100);
-  const onActorChange = (): void => {
-    if (TraderShop.open.size) refresh();
-  };
-  const onItemChange = (item: { parent?: { documentName?: string } | null }): void => {
-    if (item.parent?.documentName === 'Actor') onActorChange();
-  };
-
-  on('updateActor', onActorChange);
-  for (const hook of ['createItem', 'updateItem', 'deleteItem']) on(hook, onItemChange);
+  // The trader's settings or stock, or the shopper's coins or inventory, changed: redraw that shop.
+  onActorChanges((changed) => {
+    if (openShops.size) refreshShops(changed);
+  }, { actors: true });
   registerShopAccess();
 }
 

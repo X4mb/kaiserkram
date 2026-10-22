@@ -82,8 +82,6 @@
   font-weight: bold;
 }
 
-.kaiserkram .shop-grudge,
-.kaiserkram .tag.grudge,
 .kaiserkram .price.is-dearer {
   color: var(--color-level-error, #b71c1c);
 }

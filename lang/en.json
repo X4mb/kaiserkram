@@ -93,7 +93,6 @@
   "kaiserkram.trader.sheet.closed": "Closed",
   "kaiserkram.trader.sheet.tradingAs": "Trading as",
   "kaiserkram.trader.sheet.yourPurse": "Coins on your character",
-  "kaiserkram.trader.sheet.grudgeHint": "This trader charges you this much more, from a haggle in an older version.",
   "kaiserkram.trader.sheet.noCharacter": "You have no character to trade with. Ask the GM to assign you one.",
   "kaiserkram.trader.sheet.item": "Item",
   "kaiserkram.trader.sheet.qty": "Qty",
@@ -136,7 +135,7 @@
   "kaiserkram.trader.gm.noStandings": "Nobody has haggled with this trader yet.",
   "kaiserkram.trader.gm.forgive": "Forget this character's deals and tries",
   "kaiserkram.trader.gm.resetHaggle": "Reset haggling",
-  "kaiserkram.trader.gm.resetConfirm": "Forget every haggled deal this trader has made, and let everyone haggle again?",
+  "kaiserkram.trader.gm.resetConfirm": "Forget every haggled deal and try this trader knows of?",
   "kaiserkram.trader.gm.removeItem": "Remove from stock",
   "kaiserkram.trader.gm.removeConfirm": "Remove {item} from the trader's inventory?",
   "kaiserkram.trader.chat.bought": "<b>{customer}</b> bought {qty}× <b>{item}</b> from {trader} for <b>{total}</b>.",
@@ -374,5 +373,6 @@
   "kaiserkram.trader.SETTINGS.haggleFree.name": "Haggle: free discount (%)",
   "kaiserkram.trader.SETTINGS.haggleFree.hint": "Asking for up to this much off is a plain Haggle test, with no penalty (10 by default). Above it the penalty starts small and grows towards the 80% maximum.",
   "kaiserkram.party.stash.gone": "That is no longer there.",
-  "kaiserkram.party.stash.notYours": "You can only move things between characters you own."
+  "kaiserkram.party.stash.notYours": "You can only move things between characters you own.",
+  "kaiserkram.trader.buy.dealEach": "{deal} for the first, then {list}"
 }

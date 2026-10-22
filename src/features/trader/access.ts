@@ -316,6 +316,7 @@ type TokenProto = {
   _canView?(user: unknown, event: unknown): boolean;
   _onClickLeft2?(event: unknown): unknown;
   actor?: WfrpActor | null;
+  document?: { hidden?: boolean };
 } & Record<symbol, unknown>;
 const PATCHED = Symbol('kaiserkramTraderDoubleClick');
 
@@ -328,7 +329,9 @@ const PATCHED = Symbol('kaiserkramTraderDoubleClick');
 function routeTraderDoubleClick(): void {
   const proto = (CONFIG as unknown as { Token?: { objectClass?: { prototype: TokenProto } } }).Token?.objectClass?.prototype;
   if (!proto || Object.hasOwn(proto, PATCHED) || typeof proto._onClickLeft2 !== 'function' || typeof proto._canView !== 'function') return;
-  const forPlayer = (token: TokenProto) => !g().user.isGM && !!token.actor && isTrader(token.actor);
+  // Only tokens the player may see at all: a hidden trader stays hidden.
+  const forPlayer = (token: TokenProto) =>
+    !g().user.isGM && !!token.actor && !token.document?.hidden && isTrader(token.actor);
   const canView = proto._canView;
   proto._canView = function (this: TokenProto, user: unknown, event: unknown) {
     return forPlayer(this) || canView.call(this, user, event);

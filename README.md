@@ -49,7 +49,7 @@ A trader is an ordinary WFRP4e NPC that keeps its normal NPC sheet (for stats an
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | Player's modifier | ±0 | ±0 | −2 | −4 | −7 | −10 | −13 | −17 | −22 | −27 | −33 | −40 | −48 | −57 | −68 | −80 |
 
-Higher SL wins (on a tie, the higher skill). Win, and the next purchase of that item gets exactly the discount asked for; lose, and the price stays. Each character gets one try per item unless *Haggle: allow repeat attempts* is on; In Manage, the **Haggling** list shows each character's deals and lost haggles: the ↻ button lets that character haggle again (their deals stay), the handshake forgets their deals and tries, and **Reset haggling** clears everyone's.
+Higher SL wins (on a tie, the higher skill). Win, and one of that item on the next purchase gets exactly the discount asked for (more than one: the rest are at the asking price); lose, and the price stays. Each character gets one try per item unless *Haggle: allow repeat attempts* is on; In Manage, the **Haggling** list shows each character's deals and lost haggles: the ↻ button lets that character haggle again (their deals stay), the handshake forgets their deals and tries, and **Reset haggling** clears everyone's.
 
 The GM can also open any shop from the trader's Token HUD, from right-click → **Open Shop**, or from **Shops**.
 

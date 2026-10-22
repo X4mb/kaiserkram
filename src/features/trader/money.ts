@@ -147,11 +147,22 @@ const COIN_NAME_KEYS: Record<number, [string, string]> = {
   [COIN.BP]: ['NAME.BP', 'Brass Penny'],
 };
 
+/** The system's coin items, read once (a compendium doesn't change during play). */
+let coinDocs: Promise<WfrpItem[]> | null = null;
+
+function systemCoins(): Promise<WfrpItem[]> {
+  const pack = g().packs.get('wfrp4e.basic');
+  coinDocs ??= pack ? pack.getDocuments({ type: 'money' }) : Promise.resolve([]);
+  return coinDocs.catch((err) => {
+    coinDocs = null;
+    throw err;
+  });
+}
+
 /** Coin item data, copied from the system's Basic Items compendium when it's available. */
 async function coinItemData(value: number, qty: number): Promise<Record<string, unknown>> {
   try {
-    const pack = g().packs.get('wfrp4e.basic');
-    const coins = pack ? await pack.getDocuments({ type: 'money' }) : [];
+    const coins = await systemCoins();
     const match = coins.find((c) => Number(c.system?.coinValue?.value) === value);
     if (match) {
       const data = match.toObject();

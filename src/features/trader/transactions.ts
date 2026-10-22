@@ -22,6 +22,7 @@ import {
   sellQuote,
   standingOf,
   stockQuantity,
+  totalFor,
   traderConfig,
 } from './trader.js';
 
@@ -128,7 +129,7 @@ async function handleBuy(payload: Record<string, unknown>, user: FoundryUser): P
 
   const state = haggleState(trader);
   const quote = buyQuote(trader, item, customer.id, state);
-  const total = quote.unit * qty;
+  const total = totalFor(quote, qty);
   const customerPurse = purseOf(customer);
   const paid = planPayment(customerPurse, total);
   if (!paid) {
@@ -178,7 +179,7 @@ async function handleSell(payload: Record<string, unknown>, user: FoundryUser): 
   const qty = Math.min(clampQty(payload.qty), stockQuantity(item));
   if (qty < 1) return fail('kaiserkram.trader.notifications.cantSell', 'That can\'t be sold.');
 
-  const total = sellQuote(trader, item, customer.id) * qty;
+  const total = sellQuote(trader, item) * qty;
   const traderPurse = purseOf(trader);
   if (getBool(SETTINGS.ENFORCE_PURSE)) {
     const paid = planPayment(traderPurse, total);

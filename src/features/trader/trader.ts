@@ -18,9 +18,7 @@ export type TraderConfig = {
 
 /** One player character's standing with a trader, stored in flags.kaiserkram.trader.haggle.<actorId>. */
 export type HaggleStanding = {
-  /** Markup % on everything this trader sells to them, from failed haggles. */
-  penalty: number;
-  /** Item id → discount % won by haggling, used up on the next purchase of that item. */
+  /** Item id → discount % won by haggling, good for one unit of the next purchase of that item. */
   deals: Record<string, number>;
   /** Item ids already haggled over (blocks repeat attempts unless the setting allows them). */
   tried: string[];
@@ -50,7 +48,6 @@ export function haggleState(trader: WfrpActor): HaggleState {
 export function standingOf(state: HaggleState, actorId: string): HaggleStanding {
   const s = state[actorId];
   return {
-    penalty: Number(s?.penalty) || 0,
     deals: { ...(s?.deals ?? {}) },
     tried: [...(s?.tried ?? [])],
   };
@@ -103,7 +100,6 @@ export type BuyQuote = {
   /** What this buyer pays per unit. */
   unit: number;
   deal: number;
-  penalty: number;
 };
 
 function roundPrice(bp: number, base: number): number {
@@ -119,21 +115,23 @@ export function listPriceBP(trader: WfrpActor, item: WfrpItem): number {
   return roundPrice((book * traderConfig(trader).markup) / 100, book);
 }
 
-/** Per-unit price for `buyerId`, after their haggled deal on this item and any grudge the trader holds. */
+/** Price for `buyerId`: `unit` is the first unit's, after any deal they haggled for this item. */
 export function buyQuote(trader: WfrpActor, item: WfrpItem, buyerId: string | null, state?: HaggleState): BuyQuote {
   const list = listPriceBP(trader, item);
-  if (!buyerId) return { list, unit: list, deal: 0, penalty: 0 };
+  if (!buyerId) return { list, unit: list, deal: 0 };
   const standing = standingOf(state ?? haggleState(trader), buyerId);
   const deal = Math.max(0, Number(standing.deals[item.id]) || 0);
-  const penalty = Math.max(0, standing.penalty);
-  const unit = roundPrice(list * (1 - deal / 100) * (1 + penalty / 100), list);
-  return { list, unit, deal, penalty };
+  return { list, unit: roundPrice(list * (1 - deal / 100), list), deal };
 }
 
-/** Per-unit price the trader pays `sellerId` for `item`; a grudge lowers that offer, too. */
-export function sellQuote(trader: WfrpActor, item: WfrpItem, sellerId: string | null, state?: HaggleState): number {
+/** What `qty` cost: a haggled deal is good for one of them, the rest are at the asking price. */
+export function totalFor(quote: BuyQuote, qty: number): number {
+  return qty <= 0 ? 0 : quote.unit + quote.list * (qty - 1);
+}
+
+/** Per-unit price the trader pays for `item`. */
+export function sellQuote(trader: WfrpActor, item: WfrpItem): number {
   const book = bookPriceBP(item);
-  const penalty = sellerId ? standingOf(state ?? haggleState(trader), sellerId).penalty : 0;
   const rate = traderConfig(trader).sellRate / 100;
-  return Math.max(0, Math.floor((book * rate) / (1 + penalty / 100)));
+  return Math.max(0, Math.floor(book * rate));
 }

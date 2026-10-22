@@ -26,11 +26,6 @@
             <span class="shop-purse" data-tooltip="{{localize "kaiserkram.trader.sheet.yourPurse"}}">
               <i class="fa-solid fa-coins"></i> {{customer.purse}}
             </span>
-            {{#if customer.penalty}}
-              <span class="shop-grudge" data-tooltip="{{localize "kaiserkram.trader.sheet.grudgeHint"}}">
-                <i class="fa-solid fa-face-angry"></i> +{{customer.penalty}}%
-              </span>
-            {{/if}}
           </div>
         {{/if}}
       {{else}}
@@ -242,7 +237,6 @@
                   {{#each standings}}
                     <tr data-actor-id="{{actorId}}">
                       <td>{{name}}</td>
-                      <td>{{#if penalty}}<span class="tag grudge">+{{penalty}}%</span>{{/if}}</td>
                       <td>{{deals}}</td>
                       <td>{{#if tried}}<span class="hint">{{localize "kaiserkram.trader.gm.tried"}}: {{tried}}</span>{{/if}}</td>
                       <td class="col-actions">
