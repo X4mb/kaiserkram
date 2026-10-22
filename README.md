@@ -1,6 +1,6 @@
 # Kaiserkram
 
-Handy tools for Foundry VTT v14. Every tool is off until you turn it on.
+Handy tools for Foundry VTT v14, made mainly for **Warhammer Fantasy Roleplay 4e (WFRP4e)**. Most tools work in any system; the Trader and Container Limits need WFRP4e. Every tool is off until you turn it on.
 
 ## Tools
 
