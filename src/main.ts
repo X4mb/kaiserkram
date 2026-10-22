@@ -1,10 +1,8 @@
 import { injectStylesheet } from './core/assets.js';
 import { MODULE_ID } from './core/constants.js';
 import type { Feature } from './core/feature.js';
-import { featureName, registerFeatureManager } from './core/featureManager.js';
-import { isActiveGM, loadTemplates, moduleById, notify } from './core/foundryApi.js';
-import { fmt } from './core/i18n.js';
-import { migrate } from './core/migration.js';
+import { registerFeatureManager } from './core/featureManager.js';
+import { loadTemplates, moduleById } from './core/foundryApi.js';
 import { FEATURES } from './core/registry.js';
 import { registerSettingsSections } from './core/settingsSections.js';
 import { registerTahContainerIconFix } from './core/compat/tahContainerIcon.js';
@@ -41,22 +39,6 @@ Hooks.once('init', () => {
   log(active.length ? `active features: ${active.map((f) => f.id).join(', ')}` : 'no features enabled');
 });
 
-/** Running a feature next to the module it replaces doubles hooks, sheets or the WebRTC client. */
-function warnLegacyConflicts(): void {
-  for (const feature of active) {
-    const legacy = feature.legacyModuleId ? moduleById(feature.legacyModuleId) : null;
-    if (!legacy?.active) continue;
-    notify().warn(
-      fmt(
-        'kaiserkram.conflict',
-        'Kaiserkram: "{feature}" is enabled while the old module "{module}" is still active. Disable "{module}" in Manage Modules.',
-        { feature: featureName(feature.id), module: legacy.title ?? feature.legacyTitle },
-      ),
-      { permanent: true },
-    );
-  }
-}
-
 Hooks.once('ready', () => {
   const features: Record<string, unknown> = {};
   for (const feature of active) {
@@ -68,17 +50,11 @@ Hooks.once('ready', () => {
     }
   }
   const mod = moduleById(MODULE_ID);
-  if (mod) mod.api = { features, migrate, isEnabled };
+  if (mod) mod.api = { features, isEnabled };
 
   for (const feature of active) {
     void Promise.resolve()
       .then(() => feature.ready?.())
       .catch((err) => console.error(`${MODULE_ID} | feature "${feature.id}" failed in ready`, err));
-  }
-
-  if (!game.user?.isGM) return;
-  warnLegacyConflicts();
-  if (isActiveGM()) {
-    void migrate().catch((err) => console.error(`${MODULE_ID} | migration failed`, err));
   }
 });

@@ -22,10 +22,6 @@ https://raw.githubusercontent.com/X4mb/kaiserkram/main/module.json
 
 Then enable Kaiserkram in your world. As GM, open **Configure Settings → Kaiserkram → Kaiserkram Features** and tick the tools you want.
 
-## Coming from the old modules
-
-Kaiserkram replaces World Landing, Deploy Party, Within Earshot and WFRP4e Trader. Your old data is copied over the first time a GM loads the world. Turn the old modules off afterwards.
-
 ## Test version
 
 To try the newest test build, use this manifest instead:

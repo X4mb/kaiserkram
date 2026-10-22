@@ -1,8 +1,8 @@
 import { MODULE_ID, MODULE_PATH } from '../../core/constants.js';
 
 /**
- * Sheet class id earlier Kaiserkram builds stored in `flags.core.sheetClass`. Traders now keep
- * the system's sheet and shop in their own window; migration clears this.
+ * Sheet class id early Kaiserkram builds stored in `flags.core.sheetClass`. Traders now keep the
+ * system's sheet and shop in their own window; this still marks such an actor as a trader.
  */
 export const SHEET_CLASS = `${MODULE_ID}.TraderSheet`;
 

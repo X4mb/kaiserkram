@@ -7,10 +7,6 @@
   flex: 0 0 100%;
 }
 
-.kaiserkram-features .kaiserkram-legacy {
-  color: var(--color-level-warning, #b8860b);
-}
-
 /* Configure Settings: one heading per Kaiserkram feature. */
 .kaiserkram-settings-section {
   margin-top: 1rem;

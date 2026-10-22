@@ -108,7 +108,7 @@ type SceneLike = {
   updateEmbeddedDocuments(type: 'Token', updates: Record<string, unknown>[]): Promise<unknown>;
 };
 
-/** GM: give markers placed before "players control the marker" was on (or by the old module) their actor. */
+/** GM: give markers placed before "players control the marker" was on their actor. */
 export async function upgradeMarkers(scene: SceneLike | null | undefined): Promise<void> {
   if (!scene || !game.user?.isGM) return;
   const updates: Record<string, unknown>[] = [];

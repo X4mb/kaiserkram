@@ -147,8 +147,6 @@ async function setVoiceProfileForActor(actor: Actor, profile: VoiceProfile | nul
 export const earshot: Feature = {
   id: 'earshot',
   group: 'general',
-  legacyModuleId: 'withinearshot',
-  legacyTitle: 'Within Earshot',
 
   init() {
     registerEarshotSettings();

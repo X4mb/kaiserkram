@@ -2,7 +2,7 @@
  * Smoke test: load dist/kaiserkram.js against stubbed Foundry globals and fire init/ready.
  *
  *  1. All features on in a WFRP4e world: nothing throws, settings and keybindings register
- *     during `init` only, every feature is active, and legacy data gets migrated.
+ *     during `init` only, and every feature is active.
  *  2. All features off: no feature hooks, settings, keybindings, sheets, sockets, CSS or templates.
  *  3. All features on in a non-WFRP world: the Trader stays off.
  *
@@ -76,116 +76,13 @@ function mergeObject(a, b) {
   return out;
 }
 
-/** A document whose update() merges dotted changes into its source, so the test can inspect results. */
-function fakeDoc(name, source, embedded = {}) {
-  const doc = {
-    name,
-    _source: source,
-    updates: [],
-    async update(changes) {
-      doc.updates.push(changes);
-      mergeObject(source, changes);
-    },
-    async updateEmbeddedDocuments(type, list) {
-      for (const change of list) {
-        const target = embedded[type]?.find((d) => d._id === change._id);
-        assert.ok(target, `${name}: no ${type} ${change._id}`);
-        const { _id, ...rest } = change;
-        mergeObject(target, rest);
-      }
-    },
-  };
-  return doc;
-}
-
-function seedLegacyWorld() {
-  const settingDocs = [
-    ['world-landing-fvtt.defaultSceneId', JSON.stringify('scene123')],
-    ['deploy-party.defaultTokenImage', JSON.stringify('modules/deploy-party/assets/party-token.svg')],
-    ['deploy-party.tokenSpacing', JSON.stringify(1.5)],
-    ['trader-wfrp4e.defaultMarkup', JSON.stringify(120)],
-    ['trader-wfrp4e.haggleMode', JSON.stringify('simple')], // gone: must not be copied
-    ['trader-wfrp4e.haggleRetry', JSON.stringify(true)],
-    ['withinearshot.maxRange', JSON.stringify(30)],
-    ['someothermodule.thing', JSON.stringify(1)],
-  ].map(([key, value]) => fakeDoc(key, { value }));
-  for (const d of settingDocs) d.key = d.name;
-
-  const traderItems = [
-    { _id: 'item1', name: 'Rope', flags: { 'trader-wfrp4e': { priceOverride: 12, infinite: true } } },
-    { _id: 'item2', name: 'Sword', flags: {} },
-  ];
-  const traderActor = fakeDoc(
-    'Trader',
-    {
-      img: 'modules/trader-wfrp4e/assets/trader.svg',
-      prototypeToken: { texture: { src: 'modules/trader-wfrp4e/assets/trader.svg' } },
-      flags: {
-        core: { sheetClass: 'trader-wfrp4e.TraderSheet' },
-        'trader-wfrp4e': { isTrader: true, config: { markup: 110, open: true } },
-      },
-      items: traderItems,
-    },
-    { Item: traderItems },
-  );
-  // Made a trader by an earlier Kaiserkram build: only the sheet class says so.
-  const oldKaiserkramTrader = fakeDoc('Old trader', { img: 'x.png', flags: { core: { sheetClass: 'kaiserkram.TraderSheet' } }, items: [] });
-  const pc = fakeDoc('PC', { img: 'pc.png', flags: { withinearshot: { voiceProfile: { gainMultiplier: 1.5 } } }, items: [] });
-
-  const deltaItems = [{ _id: 'item1', flags: { 'trader-wfrp4e': { notForSale: true } } }];
-  const syntheticTrader = fakeDoc('Trader (synthetic)', {}, { Item: deltaItems });
-  const tokens = [
-    {
-      id: 'tok1',
-      name: 'Party',
-      actor: null,
-      _source: {
-        _id: 'tok1',
-        actorLink: false,
-        texture: { src: 'modules/deploy-party/assets/party-token.svg' },
-        flags: { 'deploy-party': { isPartyToken: true, folderUuid: 'Folder.abc', folderName: 'Heroes' } },
-        delta: null,
-      },
-    },
-    {
-      id: 'tok2',
-      name: 'Trader',
-      actor: syntheticTrader,
-      _source: {
-        _id: 'tok2',
-        actorLink: false,
-        texture: { src: 'modules/trader-wfrp4e/assets/trader.svg' },
-        flags: {},
-        delta: { flags: { 'trader-wfrp4e': { haggle: { pc1: { penalty: 5 } } } }, items: deltaItems },
-      },
-    },
-  ];
-  const tokenUpdates = [];
-  const scene = {
-    name: 'Town',
-    tokens: { contents: tokens },
-    async updateEmbeddedDocuments(type, list) {
-      assert.equal(type, 'Token');
-      tokenUpdates.push(...list);
-      for (const change of list) {
-        const t = tokens.find((x) => x._source._id === change._id);
-        const { _id, ...rest } = change;
-        mergeObject(t._source, rest);
-      }
-    },
-  };
-  return { settingDocs, traderActor, oldKaiserkramTrader, traderItems, pc, syntheticTrader, deltaItems, tokens, scene, tokenUpdates };
-}
-
-async function run({ label, systemId, enabled, legacy = false, migrationVersion }) {
+async function run({ label, systemId, enabled }) {
   const phase = { current: 'load' };
-  const record = { domListeners: [], hooks: [], settings: [], menus: [], keybindings: [], sheets: [], socketOn: 0, styles: [], templates: [], errors: [], created: [] };
+  const record = { domListeners: [], hooks: [], settings: [], menus: [], keybindings: [], sheets: [], socketOn: 0, styles: [], templates: [], errors: [] };
   const hookFns = new Map();
   const values = new Map([[`${MODULE_ID}.enabledFeatures`, enabled]]);
-  if (migrationVersion !== undefined) values.set(`${MODULE_ID}.migrationVersion`, migrationVersion);
   const registered = new Map();
-  const world = legacy ? seedLegacyWorld() : null;
-  const settingDocs = world?.settingDocs ?? [];
+  const settingDocs = [];
 
   const Hooks = {
     on(name, fn) {
@@ -215,8 +112,8 @@ async function run({ label, systemId, enabled, legacy = false, migrationVersion 
     modules: new Map([[MODULE_ID, { id: MODULE_ID, title: 'Kaiserkram', active: true, version: '0.1.0' }]]),
     i18n: partial('i18n', { localize: (k) => k, format: (k) => k }),
     socket: { on: () => void record.socketOn++, emit: () => {} },
-    actors: { contents: world ? [world.traderActor, world.oldKaiserkramTrader, world.pc] : [] },
-    scenes: { contents: world ? [world.scene] : [], get: () => undefined, active: null },
+    actors: { contents: [] },
+    scenes: { contents: [], get: () => undefined, active: null },
     settings: {
       settings: registered,
       storage: new Map([['world', { contents: settingDocs }]]),
@@ -283,16 +180,6 @@ async function run({ label, systemId, enabled, legacy = false, migrationVersion 
   const OriginalClient = class {};
   const CONFIG = partial('CONFIG', {
     WebRTC: { clientClass: OriginalClient },
-    Setting: {
-      documentClass: {
-        create: async (data) => {
-          record.created.push(data);
-          const doc = fakeDoc(data.key, { value: data.value });
-          doc.key = data.key;
-          settingDocs.push(doc);
-        },
-      },
-    },
   });
 
   const head = {
@@ -332,7 +219,7 @@ async function run({ label, systemId, enabled, legacy = false, migrationVersion 
     await Hooks.callAll('init');
     phase.current = 'ready';
     await Hooks.callAll('ready');
-    // Let un-awaited feature ready() calls and the migration finish.
+    // Let un-awaited feature ready() calls finish.
     for (let i = 0; i < 20; i++) await new Promise((r) => setTimeout(r, 0));
   } finally {
     console.error = originalError;
@@ -340,21 +227,20 @@ async function run({ label, systemId, enabled, legacy = false, migrationVersion 
   }
 
   const featureHooks = record.hooks.filter((h) => !(h.phase === 'load' && (h.name === 'init' || h.name === 'ready')));
-  return { record, featureHooks, hookFns, game, CONFIG, OriginalClient, values, world };
+  return { record, featureHooks, hookFns, game, CONFIG, OriginalClient };
 }
 
 function ok(label) {
   console.log(`[kaiserkram] smoke: ${label} ✓`);
 }
 
-// 1. Everything on, WFRP4e world with data from the old modules.
+// 1. Everything on, WFRP4e world.
 {
   const all = { landing: true, travel: true, party: true, earshot: true, grudges: true, trader: true, containers: true };
-  const { record, featureHooks, hookFns, game, CONFIG, OriginalClient, values, world } = await run({
+  const { record, featureHooks, hookFns, game, CONFIG, OriginalClient } = await run({
     label: 'all-on',
     systemId: 'wfrp4e',
     enabled: all,
-    legacy: true,
   });
   assert.deepEqual(record.errors, [], 'console.error was called');
   assert.ok(featureHooks.length > 15, `expected feature hooks, got ${featureHooks.length}`);
@@ -381,40 +267,7 @@ function ok(label) {
   assert.notEqual(CONFIG.WebRTC.clientClass, OriginalClient, 'WebRTC client not replaced');
   const api = game.modules.get(MODULE_ID).api;
   assert.deepEqual(Object.keys(api.features).sort(), ['earshot', 'grudges', 'landing', 'party', 'trader']);
-  assert.equal(typeof api.migrate, 'function');
   ok('all features on (WFRP4e): registers in init, exposes api');
-
-  // Migration
-  assert.equal(values.get(`${MODULE_ID}.migrationVersion`), 2, 'migrationVersion not set');
-  const created = Object.fromEntries(record.created.map((c) => [c.key, JSON.parse(c.value)]));
-  // These features are enabled, so their settings are registered and go through game.settings.set.
-  assert.equal(values.get(`${MODULE_ID}.landingDefaultSceneId`), 'scene123');
-  assert.equal(values.get(`${MODULE_ID}.partyDefaultTokenImage`), 'modules/kaiserkram/assets/party-token.svg');
-  assert.equal(values.get(`${MODULE_ID}.partyTokenSpacing`), 1.5);
-  assert.equal(values.get(`${MODULE_ID}.traderDefaultMarkup`), 120);
-  assert.equal(values.get(`${MODULE_ID}.traderHaggleRetry`), true);
-  assert.equal(values.has(`${MODULE_ID}.traderHaggleMode`), false);
-  assert.equal(values.get(`${MODULE_ID}.earshotMaxRange`), 30);
-  assert.deepEqual(created, {});
-
-  const t = world.traderActor._source;
-  assert.equal(t.flags.core.sheetClass, '', 'trader should be back on the default sheet');
-  assert.equal(world.oldKaiserkramTrader._source.flags.core.sheetClass, '');
-  assert.equal(world.oldKaiserkramTrader._source.flags.kaiserkram.trader.isTrader, true);
-  assert.deepEqual(t.flags.kaiserkram.trader, { isTrader: true, config: { markup: 110, open: true } });
-  assert.ok(t.flags['trader-wfrp4e'], 'old trader flags must be kept');
-  assert.equal(t.img, 'modules/kaiserkram/assets/trader.svg');
-  assert.equal(t.prototypeToken.texture.src, 'modules/kaiserkram/assets/trader.svg');
-  assert.deepEqual(world.traderItems[0].flags.kaiserkram.trader, { priceOverride: 12, infinite: true });
-  assert.equal(world.traderItems[1].flags.kaiserkram, undefined);
-  assert.deepEqual(world.pc._source.flags.kaiserkram.earshot.voiceProfile, { gainMultiplier: 1.5 });
-  const [partyTok, traderTok] = world.tokens.map((x) => x._source);
-  assert.deepEqual(partyTok.flags.kaiserkram.party, { isPartyToken: true, folderUuid: 'Folder.abc', folderName: 'Heroes' });
-  assert.equal(partyTok.texture.src, 'modules/kaiserkram/assets/party-token.svg');
-  assert.equal(traderTok.texture.src, 'modules/kaiserkram/assets/trader.svg');
-  assert.deepEqual(world.syntheticTrader.updates, [{ 'flags.kaiserkram.trader': { haggle: { pc1: { penalty: 5 } } } }]);
-  assert.deepEqual(world.deltaItems[0].flags.kaiserkram.trader, { notForSale: true });
-  ok('migration copies settings, flags, images and token deltas, and moves traders off the old sheet');
 
   // Configure Settings: a heading per feature, with its settings grouped under it.
   const { document, HTMLElement, Node } = parseHTML(`<section class="settings">
@@ -445,17 +298,16 @@ function ok(label) {
   ok('Configure Settings shows a heading per feature, settings grouped under it');
 }
 
-// 2. Everything off (the default), with legacy data: nothing registers, migration still runs.
+// 2. Everything off (the default): nothing registers.
 {
-  const { record, featureHooks, CONFIG, OriginalClient, values } = await run({
+  const { record, featureHooks, CONFIG, OriginalClient } = await run({
     label: 'all-off',
     systemId: 'wfrp4e',
     enabled: {},
-    legacy: true,
   });
   assert.deepEqual(record.errors, []);
   assert.deepEqual(featureHooks, [], 'disabled features registered hooks');
-  assert.deepEqual(record.settings.sort(), [`${MODULE_ID}.enabledFeatures`, `${MODULE_ID}.migrationVersion`]);
+  assert.deepEqual(record.settings.sort(), [`${MODULE_ID}.enabledFeatures`]);
   assert.deepEqual(record.keybindings, []);
   assert.deepEqual(record.sheets, []);
   assert.deepEqual(record.domListeners, []);
@@ -464,19 +316,6 @@ function ok(label) {
   assert.equal(record.socketOn, 0);
   assert.equal(CONFIG.WebRTC.clientClass, OriginalClient);
   ok('all features off: registers nothing');
-
-  // Unregistered settings are written straight to world storage.
-  assert.equal(values.get(`${MODULE_ID}.migrationVersion`), 2);
-  const created = Object.fromEntries(record.created.map((c) => [c.key, JSON.parse(c.value)]));
-  assert.deepEqual(created, {
-    'kaiserkram.landingDefaultSceneId': 'scene123',
-    'kaiserkram.partyDefaultTokenImage': 'modules/kaiserkram/assets/party-token.svg',
-    'kaiserkram.partyTokenSpacing': 1.5,
-    'kaiserkram.traderDefaultMarkup': 120,
-    'kaiserkram.traderHaggleRetry': true,
-    'kaiserkram.earshotMaxRange': 30,
-  });
-  ok('migration runs with every feature off');
 }
 
 // 3. Everything on in a non-WFRP world: Trader stays off.
@@ -489,22 +328,4 @@ function ok(label) {
   assert.ok(!record.settings.some((k) => k.startsWith(`${MODULE_ID}.trader`)), 'trader settings registered');
   assert.deepEqual(Object.keys(game.modules.get(MODULE_ID).api.features).sort(), ['earshot', 'grudges', 'landing', 'party']);
   ok('non-WFRP world: Trader stays off');
-}
-
-// 4. A world already migrated to version 1: only step 2 runs (settings are not copied again).
-{
-  const { record, values, world } = await run({
-    label: 'from-v1',
-    systemId: 'wfrp4e',
-    enabled: {},
-    legacy: true,
-    migrationVersion: 1,
-  });
-  assert.deepEqual(record.errors, []);
-  assert.equal(values.get(`${MODULE_ID}.migrationVersion`), 2);
-  assert.deepEqual(record.created, [], 'step 1 ran again');
-  assert.equal(world.traderActor._source.flags.kaiserkram?.trader?.config, undefined, 'step 1 ran again');
-  assert.equal(world.traderActor._source.flags.core.sheetClass, '');
-  assert.equal(world.oldKaiserkramTrader._source.flags.kaiserkram.trader.isTrader, true);
-  ok('a version-1 world only gets step 2');
 }

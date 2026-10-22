@@ -29,8 +29,6 @@ export const trader: Feature = {
   id: 'trader',
   group: 'wfrp4e',
   systems: ['wfrp4e'],
-  legacyModuleId: 'trader-wfrp4e',
-  legacyTitle: 'WFRP4e Trader',
   styles: [STYLESHEET],
   templates: Object.values(TEMPLATES),
 

@@ -185,8 +185,6 @@ async function onReady(): Promise<void> {
 export const landing: Feature = {
   id: 'landing',
   group: 'general',
-  legacyModuleId: 'world-landing-fvtt',
-  legacyTitle: 'World Landing',
   styles: [`${MODULE_PATH}/styles/landing.css`],
 
   init() {

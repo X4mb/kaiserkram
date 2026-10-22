@@ -72,14 +72,6 @@ export function featureHint(id: FeatureId): string {
 
 function renderFeature(feature: Feature, enabled: EnabledMap): string {
   const { id } = feature;
-  const legacy = feature.legacyModuleId ? moduleById(feature.legacyModuleId) : null;
-  const legacyNote = legacy?.active
-    ? `<p class="hint kaiserkram-legacy"><i class="fa-solid fa-triangle-exclamation"></i> ${escapeHtml(
-        fmt('kaiserkram.manager.legacyActive', 'The old module "{module}" is still active. Disable it before enabling this.', {
-          module: feature.legacyTitle,
-        }),
-      )}</p>`
-    : '';
   return `
     <div class="form-group kaiserkram-feature">
       <label for="kaiserkram-feature-${id}">${escapeHtml(featureName(id))}</label>
@@ -87,7 +79,6 @@ function renderFeature(feature: Feature, enabled: EnabledMap): string {
         <input type="checkbox" id="kaiserkram-feature-${id}" name="${id}" ${enabled[id] === true ? 'checked' : ''} />
       </div>
       <p class="hint">${escapeHtml(featureHint(id))}</p>
-      ${legacyNote}
     </div>`;
 }
 

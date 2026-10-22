@@ -4,7 +4,6 @@ import { settings, systemId } from './foundryApi.js';
 
 export const CORE_SETTINGS = {
   ENABLED_FEATURES: 'enabledFeatures',
-  MIGRATION_VERSION: 'migrationVersion',
 } as const;
 
 export type EnabledMap = Partial<Record<FeatureId, boolean>>;
@@ -15,12 +14,6 @@ export function registerCoreSettings(): void {
     config: false,
     type: Object,
     default: {},
-  });
-  settings().register(MODULE_ID, CORE_SETTINGS.MIGRATION_VERSION, {
-    scope: 'world',
-    config: false,
-    type: Number,
-    default: 0,
   });
 }
 

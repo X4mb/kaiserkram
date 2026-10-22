@@ -43,8 +43,6 @@ function registerStash(): void {
 export const party: Feature = {
   id: 'party',
   group: 'general',
-  legacyModuleId: 'deploy-party',
-  legacyTitle: 'Deploy Party',
   styles: [`${MODULE_PATH}/styles/party.css`],
 
   init() {
