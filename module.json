@@ -2,7 +2,7 @@
   "id": "kaiserkram",
   "title": "Kaiserkram",
   "description": "<p><strong>Foundry v14</strong>, made mainly for <strong>Warhammer Fantasy Roleplay 4e</strong>. Handy tools: World Landing, Travel Together, Deploy Party, Within Earshot, Grudges, and for WFRP4e the Trader and Container Limits.</p><p>Every tool is off until you turn it on under <em>Configure Settings → Kaiserkram → Kaiserkram Features</em>.</p>",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "authors": [{ "name": "X4mb", "url": "https://github.com/X4mb" }],
   "compatibility": {
     "minimum": "14",
