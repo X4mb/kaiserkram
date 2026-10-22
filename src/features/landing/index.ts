@@ -1,14 +1,12 @@
 import { MODULE_ID, MODULE_PATH } from '../../core/constants.js';
 import type { Feature } from '../../core/feature.js';
-import { contextEntry, notify, on, settings, toElement } from '../../core/foundryApi.js';
+import { contextEntry, isActiveGM, notify, on, settings, toElement } from '../../core/foundryApi.js';
 import { fmt, loc } from '../../core/i18n.js';
 
 export const SETTINGS = {
   DEFAULT_SCENE: 'landingDefaultSceneId',
-  /** Kept for worlds migrated from the old module; no longer read. */
+  /** When the server last booted, as the active GM saw it (ms since the epoch, server clock). */
   LAST_BOOT: 'landingLastBootEpoch',
-  /** Server uptime when a GM last checked in, in whatever unit the server reports it. */
-  LAST_UPTIME: 'landingLastUptime',
   /** Shown read-only in Configure Settings (filled in on render), never written. */
   DEFAULT_SCENE_INFO: 'landingDefaultSceneInfo',
 } as const;
@@ -112,20 +110,40 @@ async function serverUptime(): Promise<number | null> {
   }
 }
 
-/**
- * Whether the world restarted since a GM last checked in. There is no hook for "the world just
- * booted", but the server's uptime only grows until it restarts: if it is lower than what the
- * last GM saw, it restarted in between. (Comparing uptimes, not clock times, needs neither
- * synced clocks nor knowing the unit.) Unknown uptime counts as no restart, so a GM rejoining
- * never pulls everyone back by mistake.
- */
-function restartedSince(uptime: number | null): boolean {
-  if (uptime === null) return false;
-  const last = Number(settings().get(MODULE_ID, SETTINGS.LAST_UPTIME));
-  return !Number.isFinite(last) || last <= 0 || uptime < last;
+/** Two uptime readings this far apart tell the unit the server reports it in. */
+const PROBE_MS = 1500;
+/** Boot times closer than this are the same boot (timing jitter between readings). */
+const SAME_BOOT_MS = 60_000;
+
+function serverNow(): number {
+  return (game as unknown as { time?: { serverTime?: number } }).time?.serverTime ?? Date.now();
 }
 
-async function landingScene(): Promise<SceneLike | null> {
+/**
+ * When the server booted (ms since the epoch, on the server's clock), or null if it can't be read.
+ * There is no hook for "the world just started", so it is worked out from the server's uptime;
+ * reading it twice tells whether that is in seconds or milliseconds.
+ */
+async function serverBootTime(): Promise<number | null> {
+  const first = await serverUptime();
+  if (first === null) return null;
+  const started = performance.now();
+  await new Promise((resolve) => setTimeout(resolve, PROBE_MS));
+  const second = await serverUptime();
+  if (second === null) return null;
+  const perMs = (second - first) / Math.max(1, performance.now() - started);
+  const msPerUnit = perMs > 0.1 ? 1 : 1000;
+  return Math.round(serverNow() - second * msPerUnit);
+}
+
+/** Whether the server booted since the active GM last recorded it. Unknown counts as no. */
+function isNewBoot(boot: number | null): boolean {
+  if (boot === null) return false;
+  const last = Number(settings().get(MODULE_ID, SETTINGS.LAST_BOOT)) || 0;
+  return Math.abs(boot - last) > SAME_BOOT_MS;
+}
+
+function landingScene(): SceneLike | null {
   const sceneId = defaultSceneId();
   if (!sceneId) return null;
   const scene = scenes().get(sceneId);
@@ -140,14 +158,15 @@ async function landingScene(): Promise<SceneLike | null> {
  * (only a GM can make a scene active).
  */
 async function onReady(): Promise<void> {
-  const uptime = await serverUptime();
-  const fresh = restartedSince(uptime);
-  const scene = await landingScene();
+  const scene = landingScene();
+  // Other GMs leave it to the active one; players have nothing to do without a landing scene.
+  if (game.user?.isGM ? !isActiveGM() : !scene) return;
+  const boot = await serverBootTime();
+  const fresh = isNewBoot(boot);
 
   if (game.user?.isGM) {
-    const activeGM = (game.users as unknown as { activeGM?: { isSelf?: boolean } | null }).activeGM;
-    if (!activeGM?.isSelf) return;
-    if (uptime !== null) await settings().set(MODULE_ID, SETTINGS.LAST_UPTIME, uptime);
+    // Noted even with no landing scene set, so setting one later doesn't count as a restart.
+    if (boot !== null && fresh) await settings().set(MODULE_ID, SETTINGS.LAST_BOOT, boot);
     if (!fresh || !scene || scenes().active?.id === scene.id) return;
     await scene.activate();
     log(`activated default scene "${scene.name}" on world start`);
@@ -178,12 +197,6 @@ export const landing: Feature = {
       default: '',
     });
     settings().register(MODULE_ID, SETTINGS.LAST_BOOT, {
-      scope: 'world',
-      config: false,
-      type: Number,
-      default: 0,
-    });
-    settings().register(MODULE_ID, SETTINGS.LAST_UPTIME, {
       scope: 'world',
       config: false,
       type: Number,
