@@ -36,7 +36,12 @@ function placeables(): MenuToken[] {
   return (canvas as unknown as { tokens?: { placeables: MenuToken[] } } | null)?.tokens?.placeables ?? [];
 }
 
+/** Stops the open menu's outside-click listeners. */
+let dismissListeners: AbortController | null = null;
+
 export function removeTokenMenu(): void {
+  dismissListeners?.abort();
+  dismissListeners = null;
   document.getElementById(MENU_ID)?.remove();
 }
 
@@ -63,15 +68,15 @@ function showMenu(clientX: number, clientY: number, token: MenuToken, entries: T
   });
   document.body.append(menu);
   // Any other click, or the wheel (zoom), closes it.
+  const listeners = new AbortController();
+  dismissListeners = listeners;
   const dismiss = (ev: Event) => {
-    if (menu.contains(ev.target as Node)) return;
-    removeTokenMenu();
-    document.removeEventListener('pointerdown', dismiss, true);
-    document.removeEventListener('wheel', dismiss, true);
+    if (!menu.contains(ev.target as Node)) removeTokenMenu();
   };
   setTimeout(() => {
-    document.addEventListener('pointerdown', dismiss, true);
-    document.addEventListener('wheel', dismiss, true);
+    if (listeners.signal.aborted) return;
+    document.addEventListener('pointerdown', dismiss, { capture: true, signal: listeners.signal });
+    document.addEventListener('wheel', dismiss, { capture: true, signal: listeners.signal });
   }, 0);
 }
 

@@ -93,10 +93,12 @@ async function sourceHasBug(): Promise<boolean | null> {
 }
 
 async function checkSource(): Promise<void> {
+  // Only the GM reads TAH's source and hears about the fix; players keep the (harmless) repair.
+  if (!game.user?.isGM) return;
   const hasBug = await sourceHasBug();
   if (hasBug === null) return; // Can't tell: keep repairing, it changes nothing on a fixed version.
   repairing = hasBug;
-  if (hasBug || !game.user?.isGM) return;
+  if (hasBug) return;
   const version = moduleById(TAH_WFRP)?.version ?? '?';
   if (settings().get(MODULE_ID, NOTIFIED_SETTING) === version) return;
   notify().info(

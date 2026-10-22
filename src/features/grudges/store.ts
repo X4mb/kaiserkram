@@ -50,8 +50,28 @@ export function chanceOf(rel: { good: number; bad: number } | undefined, steadin
   return Math.min(MAX_CHANCE, Math.max(MIN_CHANCE, chance));
 }
 
+/**
+ * Changes to one holder run one after another, each reading what the last one wrote: two quick
+ * clicks both reading "2 grudge" and both writing 3 would lose a point.
+ */
+const writes = new Map<string, Promise<unknown>>();
+
+function queued<T>(holder: HolderLike, work: () => Promise<T>): Promise<T> {
+  const run = (writes.get(holder.uuid) ?? Promise.resolve()).then(work, work);
+  const tail = run.catch(() => undefined);
+  writes.set(holder.uuid, tail);
+  void tail.then(() => {
+    if (writes.get(holder.uuid) === tail) writes.delete(holder.uuid);
+  });
+  return run;
+}
+
 /** Add (or take away) one point of favour or grudge. Counts never go below 0. */
-export async function adjust(holder: HolderLike, target: TargetLike, kind: Kind, delta: 1 | -1, reason?: string): Promise<void> {
+export function adjust(holder: HolderLike, target: TargetLike, kind: Kind, delta: 1 | -1, reason?: string): Promise<void> {
+  return queued(holder, () => applyAdjust(holder, target, kind, delta, reason));
+}
+
+async function applyAdjust(holder: HolderLike, target: TargetLike, kind: Kind, delta: 1 | -1, reason?: string): Promise<void> {
   const relations = relationsOf(holder);
   let rel = relations.find((r) => r.target === target.uuid);
   if (!rel) {
@@ -70,8 +90,8 @@ export async function adjust(holder: HolderLike, target: TargetLike, kind: Kind,
   await holder.setFlag(MODULE_ID, FLAG, relations);
 }
 
-export async function forget(holder: HolderLike, targetUuid: string): Promise<void> {
-  await holder.setFlag(MODULE_ID, FLAG, relationsOf(holder).filter((r) => r.target !== targetUuid));
+export function forget(holder: HolderLike, targetUuid: string): Promise<unknown> {
+  return queued(holder, () => holder.setFlag(MODULE_ID, FLAG, relationsOf(holder).filter((r) => r.target !== targetUuid)));
 }
 
 /**

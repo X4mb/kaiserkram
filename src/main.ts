@@ -2,7 +2,7 @@ import { injectStylesheet } from './core/assets.js';
 import { MODULE_ID } from './core/constants.js';
 import type { Feature } from './core/feature.js';
 import { featureName, registerFeatureManager } from './core/featureManager.js';
-import { loadTemplates, moduleById, notify } from './core/foundryApi.js';
+import { isActiveGM, loadTemplates, moduleById, notify } from './core/foundryApi.js';
 import { fmt } from './core/i18n.js';
 import { migrate } from './core/migration.js';
 import { FEATURES } from './core/registry.js';
@@ -59,7 +59,14 @@ function warnLegacyConflicts(): void {
 
 Hooks.once('ready', () => {
   const features: Record<string, unknown> = {};
-  for (const feature of active) if (feature.api) features[feature.id] = feature.api();
+  for (const feature of active) {
+    if (!feature.api) continue;
+    try {
+      features[feature.id] = feature.api();
+    } catch (err) {
+      console.error(`${MODULE_ID} | feature "${feature.id}" failed to build its API`, err);
+    }
+  }
   const mod = moduleById(MODULE_ID);
   if (mod) mod.api = { features, migrate, isEnabled };
 
@@ -71,8 +78,7 @@ Hooks.once('ready', () => {
 
   if (!game.user?.isGM) return;
   warnLegacyConflicts();
-  const activeGM = (game.users as unknown as { activeGM?: { isSelf?: boolean } | null } | undefined)?.activeGM;
-  if (activeGM?.isSelf) {
+  if (isActiveGM()) {
     void migrate().catch((err) => console.error(`${MODULE_ID} | migration failed`, err));
   }
 });

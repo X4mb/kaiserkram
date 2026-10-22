@@ -149,6 +149,10 @@ export function openQuick(target: TargetLike): void {
   win.bringToFront?.();
 }
 
+export function anyQuickWindowOpen(): boolean {
+  return windows.size > 0;
+}
+
 export function refreshQuickWindows(): void {
   for (const win of windows.values()) if (win.rendered) void win.render();
 }

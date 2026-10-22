@@ -1,6 +1,7 @@
 import { MODULE_ID } from '../../core/constants.js';
-import { flags, notify, on } from '../../core/foundryApi.js';
+import { flags, notify } from '../../core/foundryApi.js';
 import { loc } from '../../core/i18n.js';
+import { addTokenTools } from '../../core/sceneTools.js';
 import { FLAGS } from './constants.js';
 import { scheduleProximityRefresh } from './proximityAudioRouter.js';
 import { scheduleVoiceIndicatorRedraw } from './voiceIndicatorLayer.js';
@@ -42,30 +43,16 @@ export async function clearWhisperForCurrentUser(): Promise<void> {
   if (user && isWhispering(user)) await flags(user).unsetFlag(MODULE_ID, FLAGS.WHISPER);
 }
 
-type Tool = Record<string, unknown>;
-type Control = { name?: string; tools: Record<string, Tool> | Tool[] };
-
-/** A Whisper toggle in the token controls (left toolbar). */
-function addWhisperTool(controls: Record<string, Control> | Control[]): void {
-  const tokens = Array.isArray(controls)
-    ? controls.find((c) => c.name === 'token' || c.name === 'tokens')
-    : (controls.tokens ?? controls.token);
-  if (!tokens) return;
-  const tool: Tool = {
-    name: WHISPER_TOOL,
-    title: loc('kaiserkram.earshot.WHISPER.tool', 'Whisper (only those next to you hear you)'),
-    icon: 'fa-solid fa-comment-dots',
-    order: 100,
-    toggle: true,
-    visible: true,
-    active: isWhispering(game.user),
-    // v13+: onChange(event, active); older cores: onClick(active).
-    onChange: (_event: unknown, active: boolean) => void setWhisper(Boolean(active)),
-  };
-  if (Array.isArray(tokens.tools)) tokens.tools.push({ ...tool, onClick: (active: boolean) => void setWhisper(active) });
-  else tokens.tools[WHISPER_TOOL] = tool;
-}
-
 export function registerWhisperControls(): void {
-  on('getSceneControlButtons', addWhisperTool as (...args: never[]) => unknown);
+  // A Whisper toggle in the token controls (left toolbar).
+  addTokenTools(() => [
+    {
+      name: WHISPER_TOOL,
+      title: loc('kaiserkram.earshot.WHISPER.tool', 'Whisper (only those next to you hear you)'),
+      icon: 'fa-solid fa-comment-dots',
+      order: 100,
+      toggle: { active: () => isWhispering(game.user) },
+      use: (active) => void setWhisper(active),
+    },
+  ]);
 }

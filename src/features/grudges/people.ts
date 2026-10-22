@@ -1,3 +1,4 @@
+import { MODULE_ID } from '../../core/constants.js';
 import type { HolderLike, TargetLike } from './store.js';
 
 /**
@@ -15,7 +16,7 @@ export type TokenLike = {
 type ActorEntry = HolderLike & { type?: string; hasPlayerOwner?: boolean };
 
 function isPartyMarkerActor(actor: HolderLike): boolean {
-  return Boolean(actor.getFlag('kaiserkram', 'party.markerActorFor'));
+  return Boolean(actor.getFlag(MODULE_ID, 'party.markerActorFor'));
 }
 
 function sceneTokens(): TokenLike[] {

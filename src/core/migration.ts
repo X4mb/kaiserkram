@@ -179,6 +179,12 @@ async function writeSetting(key: string, value: unknown): Promise<void> {
 }
 
 class Migrator {
+  /**
+   * Re-running after a partly failed migration must not undo changes made since: a value that
+   * already exists under Kaiserkram is kept, unless the GM forces a fresh copy.
+   */
+  constructor(private readonly overwrite: boolean) {}
+
   readonly report: MigrationReport = { features: [], settings: 0, actors: 0, items: 0, tokens: 0, traderSheets: 0, errors: 0 };
   private readonly found = new Set<FeatureId>();
 
@@ -202,7 +208,7 @@ class Migrator {
     for (const [feature, keys] of Object.entries(SETTING_MAP) as [LegacyFeature, Record<string, string>][]) {
       for (const [oldKey, newKey] of Object.entries(keys)) {
         const doc = stored.get(`${LEGACY[feature]}.${oldKey}`);
-        if (!doc) continue;
+        if (!doc || (!this.overwrite && stored.has(`${MODULE_ID}.${newKey}`))) continue;
         let value = readValue(doc);
         if (feature === 'party' && oldKey === 'defaultTokenImage') value = newAsset(value) ?? value;
         if (await this.attempt(`setting ${LEGACY[feature]}.${oldKey}`, () => writeSetting(newKey, value))) {
@@ -216,13 +222,16 @@ class Migrator {
   /** Changes for a (base or synthetic) actor's own flags and image, from what its source holds. */
   private actorChanges(source: { img?: string | null; flags?: Obj }): Obj {
     const update: Obj = {};
+    const ours = isObj(source.flags?.[MODULE_ID]) ? (source.flags[MODULE_ID] as Obj) : {};
+    const keep = (key: string) => !this.overwrite && ours[key] !== undefined;
     const traderFlags = legacyNamespace(source.flags, LEGACY.trader);
-    if (traderFlags) {
+    if (traderFlags && !keep('trader')) {
       update[`flags.${MODULE_ID}.trader`] = clone(traderFlags);
       this.mark('trader');
     }
     const earshot = legacyNamespace(source.flags, LEGACY.earshot);
-    if (earshot && earshot.voiceProfile !== undefined) {
+    const ourEarshot = isObj(ours.earshot) ? ours.earshot : {};
+    if (earshot && earshot.voiceProfile !== undefined && (this.overwrite || ourEarshot.voiceProfile === undefined)) {
       update[`flags.${MODULE_ID}.earshot.voiceProfile`] = clone(earshot.voiceProfile);
       this.mark('earshot');
     }
@@ -236,6 +245,7 @@ class Migrator {
     for (const item of items ?? []) {
       const traderFlags = legacyNamespace(item.flags, LEGACY.trader);
       if (!item._id || !traderFlags) continue;
+      if (!this.overwrite && isObj(item.flags?.[MODULE_ID]) && (item.flags[MODULE_ID] as Obj).trader !== undefined) continue;
       updates.push({ _id: item._id, [`flags.${MODULE_ID}.trader`]: clone(traderFlags) });
     }
     if (updates.length) this.mark('trader');
@@ -361,7 +371,7 @@ export async function migrate({ force = false }: { force?: boolean } = {}): Prom
   if (from >= MIGRATION_VERSION) return null;
 
   console.log(`[${MODULE_ID}] migrating world data from version ${from} to ${MIGRATION_VERSION}…`);
-  const migrator = new Migrator();
+  const migrator = new Migrator(force);
   if (from < 1) {
     await migrator.settings();
     await migrator.actors();

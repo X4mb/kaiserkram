@@ -1,14 +1,19 @@
-import { MODULE_PATH } from '../../core/constants.js';
+import { MODULE_ID, MODULE_PATH } from '../../core/constants.js';
 import type { Feature } from '../../core/feature.js';
 import { notify, on, toElement } from '../../core/foundryApi.js';
 import { fmt, loc } from '../../core/i18n.js';
+import { addTokenTools } from '../../core/sceneTools.js';
 import { addTokenMenuEntries, type MenuToken } from '../../core/tokenMenu.js';
 import { defaultHolder, holderChoices, targetOf, type TokenLike } from './people.js';
-import { openQuick, refreshQuickWindows, setTrackerOpener } from './quick.js';
+import { anyQuickWindowOpen, openQuick, refreshQuickWindows, setTrackerOpener } from './quick.js';
 import { changePoint } from './points.js';
 import { registerGrudgeSettings } from './settings.js';
 import { chanceOf, decide, relationTo, type HolderLike, type Kind, type TargetLike } from './store.js';
-import { openTracker, refreshTracker } from './tracker.js';
+import { isTrackerOpen, openTracker, refreshTracker } from './tracker.js';
+
+function anyGrudgeWindowOpen(): boolean {
+  return anyQuickWindowOpen() || isTrackerOpen();
+}
 
 /**
  * Grudges: one-sided favour and grudge points between characters and NPCs, with a decision
@@ -113,28 +118,6 @@ function addHudButton(hud: unknown, html: unknown): void {
   column.appendChild(button);
 }
 
-type Tool = Record<string, unknown>;
-type Control = { name?: string; tools: Record<string, Tool> | Tool[] };
-
-function addTool(controls: Record<string, Control> | Control[]): void {
-  const tokens = Array.isArray(controls)
-    ? controls.find((c) => c.name === 'token' || c.name === 'tokens')
-    : (controls.tokens ?? controls.token);
-  if (!tokens) return;
-  const tool: Tool = {
-    name: 'kaiserkramGrudges',
-    title: loc('kaiserkram.grudges.tool', 'Grudges and favours'),
-    icon: 'fa-solid fa-scale-unbalanced',
-    order: 110,
-    button: true,
-    visible: true,
-    // v13+: onChange(event, active); older cores: onClick().
-    onChange: () => openTracker(),
-  };
-  if (Array.isArray(tokens.tools)) tokens.tools.push({ ...tool, onClick: () => openTracker() });
-  else tokens.tools[tool.name as string] = tool;
-}
-
 export const grudges: Feature = {
   id: 'grudges',
   group: 'general',
@@ -148,13 +131,34 @@ export const grudges: Feature = {
     setTrackerOpener(openTracker);
     addTokenMenuEntries(menuEntries());
     on('renderTokenHUD', addHudButton as (...args: never[]) => unknown);
-    on('getSceneControlButtons', addTool as (...args: never[]) => unknown);
-    // Feelings live on actors (or an unlinked token's actor): refresh open windows when they change.
+    addTokenTools(() => [
+      {
+        name: 'kaiserkramGrudges',
+        title: loc('kaiserkram.grudges.tool', 'Grudges and favours'),
+        icon: 'fa-solid fa-scale-unbalanced',
+        order: 110,
+        use: () => openTracker(),
+      },
+    ]);
+    // Feelings live in actor flags (an unlinked token's in its delta). Redraw open windows when
+    // those, or a name or picture they show, change; not on every token move or HP change.
     const refresh = foundry.utils.debounce(() => {
       refreshQuickWindows();
       refreshTracker();
     }, 50);
-    for (const hook of ['updateActor', 'updateToken', 'updateActorDelta', 'canvasReady']) on(hook, refresh);
+    const touches = (change: Record<string, unknown> | undefined) =>
+      !!change &&
+      (!!(change.flags as Record<string, Record<string, unknown> | undefined> | undefined)?.[MODULE_ID]?.grudges ||
+        'name' in change ||
+        'img' in change ||
+        'texture' in change);
+    const onChange = ((_doc: unknown, change: Record<string, unknown>) => {
+      if (anyGrudgeWindowOpen() && touches(change)) refresh();
+    }) as (...args: never[]) => unknown;
+    for (const hook of ['updateActor', 'updateToken', 'updateActorDelta']) on(hook, onChange);
+    on('canvasReady', () => {
+      if (anyGrudgeWindowOpen()) refresh();
+    });
   },
 
   api() {

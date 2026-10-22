@@ -48,12 +48,13 @@ function relationRow(holder: HolderLike, rel: Relation): string {
       <i class="fa-solid ${icon}"></i> ${rel[kind]}
       <button type="button" data-action="change" data-kind="${kind}" data-delta="1"><i class="fa-solid fa-plus"></i></button>
     </span>`;
+  const reason = latestReason(rel);
   return `<li class="kk-grudge-relation" data-holder="${escapeHtml(holder.uuid)}" data-target="${escapeHtml(rel.target)}"
       data-search="${escapeHtml(`${holder.name} ${target.name}`.toLowerCase())}">
     <div class="kk-grudge-line">
       <img src="${escapeHtml(target.img)}" alt="" />
       <span class="name">${escapeHtml(target.name)}${
-        latestReason(rel) ? `<small class="reason">${escapeHtml(latestReason(rel)!)}</small>` : ''
+        reason ? `<small class="reason">${escapeHtml(reason)}</small>` : ''
       }</span>
       ${counter('good', 'fa-thumbs-up')}
       ${counter('bad', 'fa-thumbs-down')}
@@ -185,6 +186,10 @@ export function openTracker(): void {
   instance ??= new (trackerClass())();
   void instance.render({ force: true });
   instance.bringToFront?.();
+}
+
+export function isTrackerOpen(): boolean {
+  return !!instance?.rendered;
 }
 
 export function refreshTracker(): void {

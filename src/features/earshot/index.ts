@@ -151,7 +151,6 @@ export const earshot: Feature = {
   legacyTitle: 'Within Earshot',
 
   init() {
-    (CONFIG.WebRTC as { clientClass: unknown }).clientClass = proximityClientClass();
     registerEarshotSettings();
     registerEarshotClientSettings();
     // Foundry requires keybindings to be registered during init (not ready), or setup throws.
@@ -160,6 +159,8 @@ export const earshot: Feature = {
     registerHooks();
     registerVoiceEntryPoints();
     registerWhisperControls();
+    // Last: if anything above throws, voice chat keeps Foundry's own client instead of a half-set-up one.
+    (CONFIG.WebRTC as { clientClass: unknown }).clientClass = proximityClientClass();
   },
 
   async ready() {

@@ -1,6 +1,7 @@
 import { escapeHtml, dialogV2, notify, on, toElement } from '../../../core/foundryApi.js';
 import { fmt, loc } from '../../../core/i18n.js';
 import { getTrading } from '../settings.js';
+import { addTokenTools, type TokenTool } from '../../../core/sceneTools.js';
 import { addTokenMenuEntries, type MenuToken, type TokenMenuEntry } from '../../../core/tokenMenu.js';
 import type { ActorLike } from './items.js';
 import { giveItems, proposeTrade } from './client.js';
@@ -223,39 +224,30 @@ function tradeFromToolbar(mode: Mode = 'trade'): void {
   });
 }
 
-type Tool = Record<string, unknown>;
-type Control = { name?: string; tools: Record<string, Tool> | Tool[] };
-
-function addTradeTool(controls: Record<string, Control> | Control[]): void {
-  if (!getTrading()) return;
-  const tokens = Array.isArray(controls)
-    ? controls.find((c) => c.name === 'token' || c.name === 'tokens')
-    : (controls.tokens ?? controls.token);
-  if (!tokens) return;
-  const tools: [Mode, string, string, string][] = [
-    ['trade', 'kaiserkramPartyTrade', loc('kaiserkram.party.trade.tool', 'Trade (with your target, or someone nearby)'), 'fa-handshake'],
-    ['give', 'kaiserkramPartyGive', loc('kaiserkram.party.give.tool', 'Give (to your target, or someone nearby)'), 'fa-gift'],
+function tradeTools(): TokenTool[] {
+  if (!getTrading()) return [];
+  return [
+    {
+      name: 'kaiserkramPartyTrade',
+      title: loc('kaiserkram.party.trade.tool', 'Trade (with your target, or someone nearby)'),
+      icon: 'fa-solid fa-handshake',
+      order: 101,
+      use: () => tradeFromToolbar('trade'),
+    },
+    {
+      name: 'kaiserkramPartyGive',
+      title: loc('kaiserkram.party.give.tool', 'Give (to your target, or someone nearby)'),
+      icon: 'fa-solid fa-gift',
+      order: 102,
+      use: () => tradeFromToolbar('give'),
+    },
   ];
-  tools.forEach(([mode, name, title, icon], i) => {
-    const tool: Tool = {
-      name,
-      title,
-      icon: `fa-solid ${icon}`,
-      order: 101 + i,
-      button: true,
-      visible: true,
-      // v13+: onChange(event, active); older cores: onClick().
-      onChange: () => tradeFromToolbar(mode),
-    };
-    if (Array.isArray(tokens.tools)) tokens.tools.push({ ...tool, onClick: () => tradeFromToolbar(mode) });
-    else tokens.tools[name] = tool;
-  });
 }
 
 export function registerTradeEntryPoints(): void {
   on('renderTokenHUD', addHudButton);
   on('getTokenPlaceableContextOptions', addTokenMenuEntry as (...args: never[]) => unknown);
-  on('getSceneControlButtons', addTradeTool as (...args: never[]) => unknown);
+  addTokenTools(tradeTools);
   addTokenMenuEntries(tokenMenuEntries());
 }
 
