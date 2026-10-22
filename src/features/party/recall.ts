@@ -1,9 +1,10 @@
 import { MODULE_ID } from '../../core/constants.js';
 import { flags } from '../../core/foundryApi.js';
 import { loc } from '../../core/i18n.js';
-import { FLAGS } from './constants.js';
+import { FLAGS, OWN_MOVE } from './constants.js';
 import { sceneTokens } from './views.js';
 import { createPartyTokenFromFolder, isActorFolder } from './partyToken.js';
+import { placedFor } from './follow.js';
 
 export function isPartyMarker(tokenDoc: TokenDocument): boolean {
   return Boolean(flags(tokenDoc).getFlag(MODULE_ID, FLAGS.IS_PARTY_TOKEN));
@@ -93,11 +94,15 @@ export async function recallParty(tokenDoc: TokenDocument): Promise<void> {
   await sceneTokens(scene).deleteEmbeddedDocuments('Token', memberIds);
 
   if (marker) {
-    await marker.update({
-      x: centroid.x - (marker.width * gridSize) / 2,
-      y: centroid.y - (marker.height * gridSize) / 2,
-      hidden: false,
-    });
+    // Where the GM put the marker, if they did; otherwise in the middle of the party.
+    const placed = placedFor(marker) > 0;
+    const position = placed
+      ? {}
+      : { x: centroid.x - (marker.width * gridSize) / 2, y: centroid.y - (marker.height * gridSize) / 2 };
+    await marker.update(
+      { ...position, hidden: false, [`flags.${MODULE_ID}.${FLAGS.MARKER_PLACED}`]: 0 },
+      { [OWN_MOVE]: true } as never,
+    );
   } else {
     const folderUuid = (
       isPartyMarker(tokenDoc)

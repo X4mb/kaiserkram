@@ -109,6 +109,12 @@ export async function deployFolderDirectly(
 
 async function applyAfterDeployBehavior(tokenDoc: TokenDocument, override?: string): Promise<void> {
   const behavior = override ?? getAfterDeployBehavior();
-  if (behavior === AFTER_DEPLOY_BEHAVIORS.DELETE) await tokenDoc.delete();
-  else if (behavior === AFTER_DEPLOY_BEHAVIORS.HIDE) await tokenDoc.update({ hidden: true });
+  if (behavior === AFTER_DEPLOY_BEHAVIORS.DELETE) {
+    await tokenDoc.delete();
+    return;
+  }
+  // A fresh deploy starts following the party again, wherever the marker was put before.
+  const unplace = { [`flags.${MODULE_ID}.${FLAGS.MARKER_PLACED}`]: 0 };
+  if (behavior === AFTER_DEPLOY_BEHAVIORS.HIDE) await tokenDoc.update({ hidden: true, ...unplace });
+  else if (flags(tokenDoc).getFlag(MODULE_ID, FLAGS.MARKER_PLACED)) await tokenDoc.update(unplace);
 }
