@@ -211,8 +211,8 @@ function defineShop() {
       const enforcePurse = getBool(SETTINGS.ENFORCE_PURSE);
       const sellable =
         customer && config.buysFromPlayers
-          ? customer.items.contents.filter(isTradeable).map((item) => {
-              const offer = sellQuote(trader, item);
+          ? await Promise.all(customer.items.contents.filter(isTradeable).map(async (item) => {
+              const offer = await sellQuote(trader, item);
               return {
                 id: item.id,
                 name: item.name,
@@ -221,7 +221,7 @@ function defineShop() {
                 offer: formatBP(offer),
                 cantAfford: enforcePurse && offer > traderCoins,
               };
-            })
+            }))
           : [];
 
       const standings = Object.entries(state)
@@ -466,7 +466,7 @@ function defineShop() {
         }));
         return;
       }
-      const offer = sellQuote(trader, item);
+      const offer = await sellQuote(trader, item);
       const qty = await askQuantity(
         fmt('kaiserkram.trader.sell.title', 'Sell {item}', { item: item.name }),
         stockQuantity(item),

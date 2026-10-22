@@ -1,6 +1,7 @@
 import { MODULE_ID } from '../../core/constants.js';
 import { escapeHtml, postChat, speakerFor } from '../../core/foundryApi.js';
 import { fmt } from '../../core/i18n.js';
+import { allOrNothing, sameGoods, type Undo } from '../../core/items.js';
 import { CARD_CLASS } from './constants.js';
 import {
   resolveActor,
@@ -75,28 +76,40 @@ function transferData(item: WfrpItem, qty: number): Record<string, unknown> {
   return data;
 }
 
-/** Put `qty` of `item` into `actor`'s inventory, stacking onto a matching item if there is one. */
+/**
+ * Put `qty` of `item` into `actor`'s inventory, stacking onto the same goods if they are there
+ * (not just something of the same name: a sword with other qualities stays separate).
+ */
 async function receiveItem(
   actor: WfrpActor,
   item: WfrpItem,
   qty: number,
+  undo: Undo,
   canStack: (i: WfrpItem) => boolean = isTradeable,
 ): Promise<void> {
-  const match = actor.items.contents.find(
-    (i) => i.name === item.name && i.type === item.type && i.type !== 'container' && canStack(i),
-  );
+  const match = actor.items.contents.find((i) => canStack(i) && sameGoods(i, item));
   if (match) {
-    await match.update({ 'system.quantity.value': stockQuantity(match) + qty });
+    const before = stockQuantity(match);
+    await match.update({ 'system.quantity.value': before + qty });
+    undo.push(() => match.update({ 'system.quantity.value': before }));
   } else {
-    await actor.createEmbeddedDocuments('Item', [transferData(item, qty)]);
+    const [created] = (await actor.createEmbeddedDocuments('Item', [transferData(item, qty)])) ?? [];
+    if (created) undo.push(() => actor.deleteEmbeddedDocuments('Item', [created.id]));
   }
 }
 
 /** Remove `qty` of `item` from its owner, deleting the item when none are left. */
-async function removeItem(actor: WfrpActor, item: WfrpItem, qty: number): Promise<void> {
-  const left = stockQuantity(item) - qty;
-  if (left > 0) await item.update({ 'system.quantity.value': left });
-  else await actor.deleteEmbeddedDocuments('Item', [item.id]);
+async function removeItem(actor: WfrpActor, item: WfrpItem, qty: number, undo: Undo): Promise<void> {
+  const had = stockQuantity(item);
+  const left = had - qty;
+  if (left > 0) {
+    await item.update({ 'system.quantity.value': left });
+    undo.push(() => item.update({ 'system.quantity.value': had }));
+  } else {
+    const original = item.toObject();
+    await actor.deleteEmbeddedDocuments('Item', [item.id]);
+    undo.push(() => actor.createEmbeddedDocuments('Item', [original], { keepId: true }));
+  }
 }
 
 function clampQty(v: unknown): number {
@@ -140,18 +153,20 @@ async function handleBuy(payload: Record<string, unknown>, user: FoundryUser): P
     });
   }
 
-  await applyPurse(customer, customerPurse, paid);
-  const traderPurse = purseOf(trader);
-  await applyPurse(trader, traderPurse, planCredit(traderPurse, total));
-  await receiveItem(customer, item, qty);
-  if (!infinite) await removeItem(trader, item, qty);
-
-  if (quote.deal) {
-    const standing = standingOf(state, customer.id);
-    delete standing.deals[item.id];
-    state[customer.id] = standing;
-    await saveHaggleState(trader, state);
-  }
+  // All of it or none: if a step fails, the ones before it are put back.
+  await allOrNothing(async (undo) => {
+    await applyPurse(customer, customerPurse, paid, undo);
+    const traderPurse = purseOf(trader);
+    await applyPurse(trader, traderPurse, planCredit(traderPurse, total), undo);
+    await receiveItem(customer, item, qty, undo);
+    if (!infinite) await removeItem(trader, item, qty, undo);
+    if (quote.deal) {
+      const standing = standingOf(state, customer.id);
+      delete standing.deals[item.id];
+      state[customer.id] = standing;
+      await saveHaggleState(trader, state);
+    }
+  });
 
   await card(
     trader,
@@ -179,22 +194,22 @@ async function handleSell(payload: Record<string, unknown>, user: FoundryUser): 
   const qty = Math.min(clampQty(payload.qty), stockQuantity(item));
   if (qty < 1) return fail('kaiserkram.trader.notifications.cantSell', 'That can\'t be sold.');
 
-  const total = sellQuote(trader, item) * qty;
+  const total = (await sellQuote(trader, item)) * qty;
   const traderPurse = purseOf(trader);
-  if (getBool(SETTINGS.ENFORCE_PURSE)) {
-    const paid = planPayment(traderPurse, total);
-    if (!paid) {
-      return fail('kaiserkram.trader.notifications.traderCantAfford', '{trader} can\'t afford {total} right now.', {
-        trader: trader.name,
-        total: formatBP(total),
-      });
-    }
-    await applyPurse(trader, traderPurse, paid);
+  const traderPaid = getBool(SETTINGS.ENFORCE_PURSE) ? planPayment(traderPurse, total) : null;
+  if (getBool(SETTINGS.ENFORCE_PURSE) && !traderPaid) {
+    return fail('kaiserkram.trader.notifications.traderCantAfford', '{trader} can\'t afford {total} right now.', {
+      trader: trader.name,
+      total: formatBP(total),
+    });
   }
-  const customerPurse = purseOf(customer);
-  await applyPurse(customer, customerPurse, planCredit(customerPurse, total));
-  await receiveItem(trader, item, qty, isForSale);
-  await removeItem(customer, item, qty);
+  await allOrNothing(async (undo) => {
+    if (traderPaid) await applyPurse(trader, traderPurse, traderPaid, undo);
+    const customerPurse = purseOf(customer);
+    await applyPurse(customer, customerPurse, planCredit(customerPurse, total), undo);
+    await receiveItem(trader, item, qty, undo, isForSale);
+    await removeItem(customer, item, qty, undo);
+  });
 
   await card(
     trader,

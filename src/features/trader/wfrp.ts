@@ -14,6 +14,8 @@ export type WfrpItem = {
   uuid: string;
   system: any;
   actor: WfrpActor | null;
+  flags?: Record<string, any>;
+  _stats?: { compendiumSource?: string | null };
   getFlag(scope: string, key: string): unknown;
   setFlag(scope: string, key: string, value: unknown): Promise<unknown>;
   unsetFlag(scope: string, key: string): Promise<unknown>;
@@ -45,7 +47,7 @@ export type WfrpActor = {
   update(data: Record<string, unknown>): Promise<unknown>;
   testUserPermission(user: unknown, level: string | number): boolean;
   getActiveTokens(linked?: boolean, document?: boolean): WfrpTokenDoc[];
-  createEmbeddedDocuments(type: 'Item', data: Record<string, unknown>[]): Promise<WfrpItem[]>;
+  createEmbeddedDocuments(type: 'Item', data: Record<string, unknown>[], options?: Record<string, unknown>): Promise<WfrpItem[]>;
   updateEmbeddedDocuments(type: 'Item', data: Record<string, unknown>[]): Promise<unknown[]>;
   deleteEmbeddedDocuments(type: 'Item', ids: string[]): Promise<unknown[]>;
   setupSkill(

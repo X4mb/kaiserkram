@@ -81,7 +81,8 @@ export async function startHaggle(trader: WfrpActor, item: WfrpItem, customer: W
         };
         const mod = askToModifier(v);
         out('[data-out="ask"]', `${v}%`);
-        out('[data-out="price"]', formatBP(Math.max(1, Math.round(quote.unit * (1 - v / 100)))));
+        // Winning keeps the better of this ask and a deal already won, both off the asking price.
+        out('[data-out="price"]', formatBP(Math.max(1, Math.round(quote.list * (1 - Math.max(v, quote.deal) / 100)))));
         out('[data-out="modifier"]', mod === 0 ? '±0' : String(mod));
       };
       input?.addEventListener('input', update);

@@ -36,6 +36,20 @@ function loadOf(actor: ActorLike, containerId: string, exceptId?: string): numbe
     .reduce((sum, i) => sum + encOf(i.system), 0);
 }
 
+/**
+ * Items going into containers in the same batch (several dropped or moved at once): Foundry
+ * hands every item of one batch the same options object, so it keys what the batch has added
+ * so far, per container. Without it each item would be checked as if it went in alone.
+ */
+const batches = new WeakMap<object, Map<string, number>>();
+
+function batchOf(options: unknown): Map<string, number> {
+  if (!options || typeof options !== 'object') return new Map();
+  let batch = batches.get(options);
+  if (!batch) batches.set(options, (batch = new Map()));
+  return batch;
+}
+
 function round(n: number): number {
   return Math.round(n * 100) / 100;
 }
@@ -44,13 +58,15 @@ function round(n: number): number {
  * Whether `incoming` encumbrance (the item as it would be) fits in the container with id
  * `containerId` on `actor`. Tells the user when it doesn't; returns false only to stop a player.
  */
-function allow(actor: ActorLike, containerId: string, item: ItemLike, incoming: number): boolean {
+function allow(actor: ActorLike, containerId: string, item: ItemLike, incoming: number, batch: Map<string, number>): boolean {
   const container = actor.items.get(containerId);
   if (!container || container.type !== 'container' || container.id === item.id) return true;
   const capacity = num(container.system?.carries?.value);
   if (capacity <= 0) return true;
-  const load = loadOf(actor, containerId, item.id);
-  if (load + incoming <= capacity + EPSILON) return true;
+  const load = loadOf(actor, containerId, item.id) + (batch.get(containerId) ?? 0);
+  const fits = load + incoming <= capacity + EPSILON;
+  if (fits || game.user?.isGM) batch.set(containerId, (batch.get(containerId) ?? 0) + incoming);
+  if (fits) return true;
 
   const vars = {
     container: container.name,
@@ -70,7 +86,7 @@ function allow(actor: ActorLike, containerId: string, item: ItemLike, incoming: 
   return false;
 }
 
-function onPreUpdateItem(item: ItemLike, changes: Record<string, unknown>, _options: unknown, userId: string): boolean | void {
+function onPreUpdateItem(item: ItemLike, changes: Record<string, unknown>, options: unknown, userId: string): boolean | void {
   if (userId !== game.user?.id) return;
   const actor = item.parent;
   if (actor?.documentName !== 'Actor') return;
@@ -86,15 +102,15 @@ function onPreUpdateItem(item: ItemLike, changes: Record<string, unknown>, _opti
   // Only a move into the container, or the item growing inside it, can overfill it.
   const moved = location !== item.system?.location?.value;
   if (!moved && incoming <= encOf(item.system) + EPSILON) return;
-  if (!allow(actor, location, item, incoming)) return false;
+  if (!allow(actor, location, item, incoming, batchOf(options))) return false;
 }
 
-function onPreCreateItem(item: ItemLike, _data: unknown, _options: unknown, userId: string): boolean | void {
+function onPreCreateItem(item: ItemLike, _data: unknown, options: unknown, userId: string): boolean | void {
   if (userId !== game.user?.id) return;
   const actor = item.parent;
   const location = item.system?.location?.value as string | undefined;
   if (actor?.documentName !== 'Actor' || !location) return;
-  if (!allow(actor, location, item, encOf(item.system))) return false;
+  if (!allow(actor, location, item, encOf(item.system), batchOf(options))) return false;
 }
 
 export const containers: Feature = {

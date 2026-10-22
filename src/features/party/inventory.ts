@@ -68,6 +68,12 @@ function involvesParty(source: ActorLike | null | undefined, target: ActorLike |
  */
 let dragged: { uuid: string; at: number } | null = null;
 const DRAG_WINDOW_MS = 10_000;
+/**
+ * Once the drag has ended, its drop has this long left to create the item. A drag that was let go
+ * of somewhere else then stops counting soon, instead of after the full window. (Not cleared at
+ * once: dragend can fire before an asynchronous drop handler has created the item.)
+ */
+const AFTER_DRAG_MS = 3000;
 
 /**
  * Code that moves an item itself (the stash window, a trade, a gift) calls this first, so the
@@ -75,6 +81,10 @@ const DRAG_WINDOW_MS = 10_000;
  */
 export function forgetDrag(): void {
   dragged = null;
+}
+
+function onDragEnd(): void {
+  if (dragged) dragged.at = Math.min(dragged.at, Date.now() - DRAG_WINDOW_MS + AFTER_DRAG_MS);
 }
 
 function onDragStart(event: DragEvent): void {
@@ -132,6 +142,7 @@ function onDropCanvas(_canvas: unknown, data: DropData): boolean | void {
 
 export function registerPartyInventory(): void {
   document.addEventListener('dragstart', onDragStart);
+  document.addEventListener('dragend', onDragEnd);
   on('createItem', onCreateItem as (...args: never[]) => unknown);
   on('dropCanvasData', onDropCanvas as (...args: never[]) => unknown);
 }

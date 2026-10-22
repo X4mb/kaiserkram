@@ -1,6 +1,6 @@
 import { escapeHtml, postChat, resolveDocument } from '../../../core/foundryApi.js';
 import { fmt, loc } from '../../../core/i18n.js';
-import { isTradeableItem, quantityOf, transferItem, type ActorLike, type ItemLike } from './items.js';
+import { isTradeableItem, quantityOf, rollback, transferItem, type ActorLike, type ItemLike, type Undo } from './items.js';
 import type { CloseReason, TradeRequest, TradeSession, TradeSide, TradeUpdate } from './types.js';
 import { getTrading } from '../settings.js';
 
@@ -144,8 +144,15 @@ async function execute(s: Session): Promise<void> {
   const gaveA = summary(a, actorA);
   const gaveB = summary(b, actorB);
 
-  for (const [id, qty] of Object.entries(a.items)) await transferItem(actorA.items.get(id)!, qty, actorB);
-  for (const [id, qty] of Object.entries(b.items)) await transferItem(actorB.items.get(id)!, qty, actorA);
+  // All of it or none: if one move fails, the ones before it are put back.
+  const undo: Undo = [];
+  try {
+    for (const [id, qty] of Object.entries(a.items)) await transferItem(actorA.items.get(id)!, qty, actorB, undo);
+    for (const [id, qty] of Object.entries(b.items)) await transferItem(actorB.items.get(id)!, qty, actorA, undo);
+  } catch (err) {
+    await rollback(undo);
+    throw err;
+  }
 
   await postChat({
     content: `<div class="kaiserkram-trade-card">${fmt(
@@ -187,7 +194,13 @@ async function give(sender: UserLike, msg: Extract<TradeRequest, { op: 'give' }>
   }
   if (!items.length) return fail(loc('kaiserkram.party.give.nothing', 'Choose something to give.'));
   const what = items.map(([item, qty]) => `${qty}× ${escapeHtml(item.name)}`).join(', ');
-  for (const [item, qty] of items) await transferItem(item, qty, to);
+  const undo: Undo = [];
+  try {
+    for (const [item, qty] of items) await transferItem(item, qty, to, undo);
+  } catch (err) {
+    await rollback(undo);
+    throw err;
+  }
   await postChat({
     content: `<div class="kaiserkram-trade-card">${fmt('kaiserkram.party.give.chat', '<b>{a}</b> gave {what} to <b>{b}</b>.', {
       a: escapeHtml(from.name),
@@ -248,6 +261,13 @@ async function handleOne(msg: TradeRequest): Promise<void> {
       await move(sender, msg);
     } catch (err) {
       console.error('[kaiserkram] party: stash move failed', err);
+      broadcast({
+        kind: 'trade',
+        op: 'given',
+        users: [sender.id],
+        text: loc('kaiserkram.party.stash.error', "Moving that failed; see the GM's console."),
+        failed: true,
+      });
     }
     return;
   }

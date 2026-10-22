@@ -1,5 +1,5 @@
 import type { Feature } from '../../core/feature.js';
-import { on } from '../../core/foundryApi.js';
+import { isActiveGM, on } from '../../core/foundryApi.js';
 import { createTrader, openShopPicker, registerShopAccess } from './access.js';
 import { STYLESHEET, TEMPLATES } from './constants.js';
 import { registerHaggleHandler, resetHaggling, startHaggle } from './haggle.js';
@@ -7,7 +7,8 @@ import { registerTraderSettings } from './settings.js';
 import { openShop, openShops, refreshShops } from './shop.js';
 import { onActorChanges } from '../../core/refresh.js';
 import { registerSocket } from './socket.js';
-import { isTrader } from './trader.js';
+import { forgetItemInHaggles, isTrader } from './trader.js';
+import type { WfrpActor } from './wfrp.js';
 import { registerTransactionHandlers } from './transactions.js';
 
 function registerHooks(): void {
@@ -16,6 +17,12 @@ function registerHooks(): void {
     if (openShops.size) refreshShops(changed);
   }, { actors: true });
   registerShopAccess();
+  // An item the trader no longer has can't be bought at a haggled price: forget its deals.
+  on('deleteItem', ((item: { id: string; parent?: WfrpActor | null }) => {
+    const owner = item.parent;
+    if (!owner || !isActiveGM() || !isTrader(owner)) return;
+    forgetItemInHaggles(owner, item.id).catch((err) => console.error('[kaiserkram] trader: clearing deals failed', err));
+  }) as (...args: never[]) => unknown);
 }
 
 export const trader: Feature = {

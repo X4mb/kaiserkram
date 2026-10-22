@@ -374,5 +374,6 @@
   "kaiserkram.trader.SETTINGS.haggleFree.hint": "Asking for up to this much off is a plain Haggle test, with no penalty (10 by default). Above it the penalty starts small and grows towards the 80% maximum.",
   "kaiserkram.party.stash.gone": "That is no longer there.",
   "kaiserkram.party.stash.notYours": "You can only move things between characters you own.",
+  "kaiserkram.party.stash.error": "Moving that failed; see the GM's console.",
   "kaiserkram.trader.buy.dealEach": "{deal} for the first, then {list}"
 }

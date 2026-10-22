@@ -1,4 +1,5 @@
 import { loc } from '../../core/i18n.js';
+import type { Undo } from '../../core/items.js';
 import { COIN } from './constants.js';
 import { g, type WfrpActor, type WfrpItem } from './wfrp.js';
 
@@ -125,8 +126,11 @@ export function planPayment(purse: CoinStack[], amount: number): CoinStack[] | n
   return next;
 }
 
-/** Write a planned purse back to the actor, creating coin items for denominations it lacked. */
-export async function applyPurse(actor: WfrpActor, before: CoinStack[], after: CoinStack[]): Promise<void> {
+/**
+ * Write a planned purse back to the actor, creating coin items for denominations it lacked.
+ * `undo` collects the steps that put the purse back as it was.
+ */
+export async function applyPurse(actor: WfrpActor, before: CoinStack[], after: CoinStack[], undo: Undo = []): Promise<void> {
   const updates: Record<string, unknown>[] = [];
   const creates: Record<string, unknown>[] = [];
   for (const stack of after) {
@@ -137,8 +141,16 @@ export async function applyPurse(actor: WfrpActor, before: CoinStack[], after: C
       creates.push(await coinItemData(stack.value, stack.qty));
     }
   }
-  if (updates.length) await actor.updateEmbeddedDocuments('Item', updates);
-  if (creates.length) await actor.createEmbeddedDocuments('Item', creates);
+  if (updates.length) {
+    await actor.updateEmbeddedDocuments('Item', updates);
+    const restore = updates.map((u) => ({ _id: u._id, 'system.quantity.value': before.find((b) => b.id === u._id)?.qty ?? 0 }));
+    undo.push(() => actor.updateEmbeddedDocuments('Item', restore));
+  }
+  if (creates.length) {
+    const created = await actor.createEmbeddedDocuments('Item', creates);
+    const ids = (created ?? []).map((i) => i.id);
+    if (ids.length) undo.push(() => actor.deleteEmbeddedDocuments('Item', ids));
+  }
 }
 
 const COIN_NAME_KEYS: Record<number, [string, string]> = {

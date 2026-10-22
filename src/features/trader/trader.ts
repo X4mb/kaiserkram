@@ -53,10 +53,38 @@ export function standingOf(state: HaggleState, actorId: string): HaggleStanding 
   };
 }
 
-/** Replaces the whole haggle flag (setFlag would merge, and keep deals we meant to drop). */
+/**
+ * Store `state` as the whole haggle flag, in one update. A plain setFlag would merge, and keep
+ * deals and customers we meant to drop, so those are deleted explicitly (`-=key`).
+ */
 export async function saveHaggleState(trader: WfrpActor, state: HaggleState): Promise<void> {
-  await trader.unsetFlag(MODULE_ID, FLAGS.HAGGLE);
-  if (Object.keys(state).length) await trader.setFlag(MODULE_ID, FLAGS.HAGGLE, state);
+  const old = haggleState(trader);
+  const patch: Record<string, unknown> = {};
+  for (const id of Object.keys(old)) if (!(id in state)) patch[`-=${id}`] = null;
+  for (const [id, standing] of Object.entries(state)) {
+    const deals: Record<string, unknown> = { ...standing.deals };
+    for (const itemId of Object.keys(old[id]?.deals ?? {})) if (!(itemId in standing.deals)) deals[`-=${itemId}`] = null;
+    // Arrays are replaced whole by an update.
+    patch[id] = { deals, tried: [...standing.tried] };
+  }
+  if (Object.keys(patch).length) await trader.update({ [`flags.${MODULE_ID}.${FLAGS.HAGGLE}`]: patch });
+}
+
+/** Forget deals and tries on an item the trader no longer has. */
+export async function forgetItemInHaggles(trader: WfrpActor, itemId: string): Promise<void> {
+  const state = haggleState(trader);
+  let changed = false;
+  for (const standing of Object.values(state)) {
+    if (itemId in (standing.deals ?? {})) {
+      delete standing.deals[itemId];
+      changed = true;
+    }
+    if (standing.tried?.includes(itemId)) {
+      standing.tried = standing.tried.filter((id) => id !== itemId);
+      changed = true;
+    }
+  }
+  if (changed) await saveHaggleState(trader, state);
 }
 
 /** Whether an item is a physical good that can change hands (money and abilities are not). */
@@ -129,9 +157,40 @@ export function totalFor(quote: BuyQuote, qty: number): number {
   return qty <= 0 ? 0 : quote.unit + quote.list * (qty - 1);
 }
 
-/** Per-unit price the trader pays for `item`. */
-export function sellQuote(trader: WfrpActor, item: WfrpItem): number {
-  const book = bookPriceBP(item);
+/** Book prices of the items that player items were made from, looked up once each. */
+const sourcePrices = new Map<string, Promise<number | null>>();
+
+/** The book price of what `item` was copied from (a compendium or world item), if known. */
+function sourceBookBP(item: WfrpItem): Promise<number | null> {
+  const uuid = item._stats?.compendiumSource ?? item.flags?.core?.sourceId;
+  if (typeof uuid !== 'string' || !uuid) return Promise.resolve(null);
+  let price = sourcePrices.get(uuid);
+  if (!price) {
+    const lookup = (globalThis as unknown as { fromUuid(u: string): Promise<WfrpItem | null> }).fromUuid;
+    price = lookup(uuid)
+      .then((source) => (source?.system?.price !== undefined ? bookPriceBP(source) : null))
+      .catch(() => null);
+    sourcePrices.set(uuid, price);
+  }
+  return price;
+}
+
+/**
+ * Per-unit price the trader pays for `item`. A player can edit the price on their own copy, so
+ * the trader goes by the lowest of that, the price of what it was copied from, and the price of
+ * the same goods in its own stock.
+ */
+export async function sellQuote(trader: WfrpActor, item: WfrpItem): Promise<number> {
+  const prices = [bookPriceBP(item)];
+  const source = await sourceBookBP(item);
+  if (source !== null) prices.push(source);
+  const stocked = trader.items.contents.find((i) => isTradeable(i) && sameGoodsIgnoringPrice(i, item));
+  if (stocked) prices.push(bookPriceBP(stocked));
   const rate = traderConfig(trader).sellRate / 100;
-  return Math.max(0, Math.floor(book * rate));
+  return Math.max(0, Math.floor(Math.min(...prices) * rate));
+}
+
+/** The same goods as far as a buyer can tell: name and type (the price is what's in question). */
+function sameGoodsIgnoringPrice(a: WfrpItem, b: WfrpItem): boolean {
+  return a.name === b.name && a.type === b.type;
 }

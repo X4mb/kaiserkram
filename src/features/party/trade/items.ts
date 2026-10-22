@@ -1,4 +1,7 @@
+import { rollback, sameGoods, type Undo } from '../../../core/items.js';
 import { forgetDrag } from '../inventory.js';
+
+export { isMoney, rollback, sameGoods, type Undo } from '../../../core/items.js';
 
 /**
  * System-agnostic item quantities. WFRP4e keeps them in `system.quantity.value`, dnd5e in
@@ -12,6 +15,7 @@ export type ItemLike = {
   type: string;
   img: string;
   system?: Record<string, any>;
+  parent?: ActorLike | null;
   toObject(): Record<string, any>;
   update(d: Record<string, unknown>): Promise<unknown>;
   delete(): Promise<unknown>;
@@ -26,8 +30,10 @@ export type ActorLike = {
   hasPlayerOwner?: boolean;
   items: { contents: ItemLike[]; get(id: string): ItemLike | undefined };
   testUserPermission(user: unknown, level: string | number): boolean;
-  createEmbeddedDocuments(type: 'Item', data: Record<string, unknown>[]): Promise<unknown>;
+  createEmbeddedDocuments(type: 'Item', data: Record<string, unknown>[], options?: Record<string, unknown>): Promise<unknown>;
 };
+
+
 
 type QuantityShape = 'value' | 'number';
 
@@ -53,18 +59,10 @@ function quantityPath(item: { system?: Record<string, any> }): string {
   return shapeOf(item.system) === 'number' ? 'system.quantity' : 'system.quantity.value';
 }
 
-/** Coins are items of type `money` (WFRP4e). */
-export function isMoney(item: { type: string }): boolean {
-  return item.type === 'money';
-}
-
 /** Sort coins from the most valuable down. */
 export function byCoinValue(a: { system?: Record<string, any> }, b: { system?: Record<string, any> }): number {
   return Number(b.system?.coinValue?.value ?? 0) - Number(a.system?.coinValue?.value ?? 0);
 }
-
-/** Per-owner state that means nothing once an item changes hands. */
-const OWNER_STATE = ['quantity', 'location', 'equipped', 'worn'];
 
 /**
  * Item data to give someone else: no id, and not inside one of the old owner's containers or
@@ -83,39 +81,42 @@ export function copyForNewOwner(item: { toObject(): Record<string, any> }): Reco
 }
 
 /**
- * Whether two items are the same goods, so one can stack onto the other: same name and type,
- * and the same data apart from how many there are and who carries them. A sword with different
- * qualities stays a separate sword.
+ * Move `qty` of `item` onto `target`: stacked onto the same goods there, or as a new item.
+ * If taking it off the source fails, the copy on the target is taken back, so nothing is doubled.
+ * Pass `undo` to collect the steps that would put the whole move back (for several moves that
+ * must all happen or none).
  */
-export function sameGoods(a: ItemLike, b: ItemLike): boolean {
-  if (a.name !== b.name || a.type !== b.type || a.type === 'container') return false;
-  // Coins are coins: some stacks are made with only a value and a count.
-  if (isMoney(a)) return Number(a.system?.coinValue?.value) === Number(b.system?.coinValue?.value);
-  const strip = (system: Record<string, any> | undefined) => {
-    const s = { ...(system ?? {}) };
-    for (const key of OWNER_STATE) delete s[key];
-    return s;
-  };
-  const equal = (foundry.utils as unknown as { objectsEqual?(x: unknown, y: unknown): boolean }).objectsEqual;
-  const x = strip(a.system);
-  const y = strip(b.system);
-  return equal ? equal(x, y) : JSON.stringify(x) === JSON.stringify(y);
-}
-
-/** Move `qty` of `item` onto `target`: stacked onto the same goods there, or as a new item. */
-export async function transferItem(item: ItemLike, qty: number, target: ActorLike): Promise<void> {
+export async function transferItem(item: ItemLike, qty: number, target: ActorLike, undo: Undo = []): Promise<void> {
   // This removes the item from its source itself; the party-move tracker must not as well.
   forgetDrag();
   const had = quantityOf(item);
+  const steps: Undo = [];
   const stack = target.items.contents.find((i) => isTradeableItem(i) && sameGoods(i, item));
   if (stack) {
-    await stack.update({ [quantityPath(stack)]: quantityOf(stack) + qty });
+    const before = quantityOf(stack);
+    await stack.update({ [quantityPath(stack)]: before + qty });
+    steps.push(() => stack.update({ [quantityPath(stack)]: before }));
   } else {
     const data = copyForNewOwner(item);
     if (shapeOf(data.system) === 'number') data.system.quantity = qty;
     else data.system.quantity.value = qty;
-    await target.createEmbeddedDocuments('Item', [data]);
+    const created = (await target.createEmbeddedDocuments('Item', [data])) as ItemLike[] | undefined;
+    const copy = Array.isArray(created) ? created[0] : undefined;
+    if (copy) steps.push(() => copy.delete());
   }
-  if (qty < had) await item.update({ [quantityPath(item)]: had - qty });
-  else await item.delete();
+  try {
+    if (qty < had) {
+      await item.update({ [quantityPath(item)]: had - qty });
+      steps.push(() => item.update({ [quantityPath(item)]: had }));
+    } else {
+      const source = item.parent;
+      const original = item.toObject();
+      await item.delete();
+      if (source) steps.push(() => source.createEmbeddedDocuments('Item', [original], { keepId: true }));
+    }
+  } catch (err) {
+    await rollback(steps);
+    throw err;
+  }
+  undo.push(...steps);
 }
