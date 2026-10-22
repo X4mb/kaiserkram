@@ -2,7 +2,7 @@ import { MODULE_ID } from '../../core/constants.js';
 import { flags, notify } from '../../core/foundryApi.js';
 import { fmt, loc } from '../../core/i18n.js';
 import { FLAGS } from './constants.js';
-import { firstOwnedTokenDoc } from './proximity.js';
+import { soleOwnedTokenDoc } from './proximity.js';
 import { voiceChangerProcessor } from './voiceChangerProcessor.js';
 import { getVoiceProfileForActor } from './voiceProfile.js';
 
@@ -41,7 +41,7 @@ export function getSpeakerTokenDocumentForUser(remoteUser: User): TokenDocument 
   }
 
   /** No assigned actor: the same token the listener side uses for them. */
-  return firstOwnedTokenDoc(remoteUser);
+  return soleOwnedTokenDoc(remoteUser);
 }
 
 /** Prefer {@link getSpeakerTokenDocumentForUser} when you need a position even if `visible` is false. */

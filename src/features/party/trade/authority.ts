@@ -13,7 +13,8 @@ type UserLike = { id: string; name: string; isGM: boolean; active: boolean; char
 
 type Session = {
   id: string;
-  status: 'pending' | 'open';
+  /** `executing`: both accepted, items moving; nothing about it changes any more. */
+  status: 'pending' | 'open' | 'executing';
   sides: [SideState, SideState];
   timer?: ReturnType<typeof setTimeout>;
   /**
@@ -81,7 +82,7 @@ async function viewOf(side: SideState): Promise<TradeSide> {
 }
 
 async function viewOfSession(s: Session): Promise<TradeSession> {
-  return { id: s.id, status: s.status, rev: s.rev, sides: [await viewOf(s.sides[0]), await viewOf(s.sides[1])] };
+  return { id: s.id, status: s.status === 'pending' ? 'pending' : 'open', rev: s.rev, sides: [await viewOf(s.sides[0]), await viewOf(s.sides[1])] };
 }
 
 function resetAccepts(s: Session): void {
@@ -135,6 +136,8 @@ async function execute(s: Session): Promise<void> {
     close(s, 'failed', undefined, problem);
     return;
   }
+  // The moves below change the offered items; that must not reopen the deal (onItemChanged).
+  s.status = 'executing';
   const actorA = (await actorOf(a.actorUuid))!;
   const actorB = (await actorOf(b.actorUuid))!;
   const summary = (side: SideState, actor: ActorLike) =>

@@ -161,10 +161,12 @@ async function handleBuy(payload: Record<string, unknown>, user: FoundryUser): P
     await receiveItem(customer, item, qty, undo);
     if (!infinite) await removeItem(trader, item, qty, undo);
     if (quote.deal) {
-      const standing = standingOf(state, customer.id);
+      // Read again: selling the last one deletes the item, and that clears its deals meanwhile.
+      const latest = haggleState(trader);
+      const standing = standingOf(latest, customer.id);
       delete standing.deals[item.id];
-      state[customer.id] = standing;
-      await saveHaggleState(trader, state);
+      latest[customer.id] = standing;
+      await saveHaggleState(trader, latest);
     }
   });
 

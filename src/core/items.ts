@@ -3,7 +3,7 @@
  * the trader's shop). System-agnostic apart from WFRP4e's coins.
  */
 
-type GoodsLike = { name: string; type: string; system?: Record<string, any> };
+type GoodsLike = { name: string; type: string; system?: Record<string, any>; _source?: { system?: Record<string, any> } };
 
 /** Coins are items of type `money` (WFRP4e). */
 export function isMoney(item: { type: string }): boolean {
@@ -28,8 +28,9 @@ export function sameGoods(a: GoodsLike, b: GoodsLike): boolean {
     return s;
   };
   const equal = (foundry.utils as unknown as { objectsEqual?(x: unknown, y: unknown): boolean }).objectsEqual;
-  const x = strip(a.system);
-  const y = strip(b.system);
+  // Stored data, not prepared: systems derive values from the quantity (WFRP4e's total encumbrance).
+  const x = strip(a._source?.system ?? a.system);
+  const y = strip(b._source?.system ?? b.system);
   return equal ? equal(x, y) : JSON.stringify(x) === JSON.stringify(y);
 }
 

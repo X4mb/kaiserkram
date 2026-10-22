@@ -228,7 +228,13 @@ const targets = new WeakMap<AudioParam, number>();
 
 /** Move a gain to `value` smoothly, and only when it actually changes. */
 function glideTo(param: AudioParam, value: number): void {
-  const target = targets.get(param) ?? param.value;
+  const target = targets.get(param);
+  if (target === undefined) {
+    // A new voice starts where it belongs: no fade in from full volume (that could leak a whisper).
+    targets.set(param, value);
+    param.value = value;
+    return;
+  }
   if (Math.abs(target - value) < 1e-4) return;
   targets.set(param, value);
   // Every peer's nodes live on the router's context.

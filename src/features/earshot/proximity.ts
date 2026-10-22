@@ -29,14 +29,14 @@ export function computeProximityGain(distanceGrid: number, maxRange: number): nu
 }
 
 /**
- * The token a user with no assigned character speaks and hears from: the first one they own on
- * the scene (by id, so every client picks the same one).
+ * The token a user with no assigned character speaks and hears from: the one token they own on
+ * the scene. Owning none or several (a familiar, the party marker) is ambiguous: no token, so
+ * nobody is faded by guesswork.
  */
-export function firstOwnedTokenDoc(user: User): TokenDocument | null {
+export function soleOwnedTokenDoc(user: User): TokenDocument | null {
   if (!canvas?.scene) return null;
   const owned = Array.from(canvas.scene.tokens).filter((d) => d.testUserPermission(user, 'OWNER'));
-  owned.sort((a, b) => (a.id ?? '').localeCompare(b.id ?? ''));
-  return owned[0] ?? null;
+  return owned.length === 1 ? owned[0] : null;
 }
 
 /** Center for proximity when a canvas Token may be missing (e.g. not visible to this client). */
@@ -87,7 +87,7 @@ export function getListenerTokenForProximity(): Token | null {
 
   if (controlled) return controlled;
   // Same rule as for speaking, so a player is heard and hears from the same token.
-  const doc = firstOwnedTokenDoc(u);
+  const doc = soleOwnedTokenDoc(u);
   return doc?.id ? (canvas.tokens.get(doc.id) ?? null) : null;
 }
 
