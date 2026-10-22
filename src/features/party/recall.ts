@@ -32,6 +32,18 @@ export function findDeployedMembers(tokenDoc: TokenDocument, scene: Scene): Toke
   );
 }
 
+/** The middle of `members` on the canvas (each token's own center, averaged). */
+export function centerOf(members: TokenDocument[], scene: Scene): { x: number; y: number } {
+  const gridSize = (scene.grid as unknown as { size: number }).size;
+  let sumX = 0;
+  let sumY = 0;
+  for (const member of members) {
+    sumX += member.x + (member.width * gridSize) / 2;
+    sumY += member.y + (member.height * gridSize) / 2;
+  }
+  return { x: sumX / members.length, y: sumY / members.length };
+}
+
 async function confirmRecall(count: number): Promise<boolean> {
   const result = await foundry.applications.api.DialogV2.confirm({
     window: { title: loc('kaiserkram.party.recall.confirmTitle', 'Recall Party') },
@@ -69,15 +81,8 @@ export async function recallParty(tokenDoc: TokenDocument): Promise<void> {
 
   if (!(await confirmRecall(members.length))) return;
 
-  const grid = scene.grid as unknown as { size: number };
-  const gridSize = grid.size;
-  let sumX = 0;
-  let sumY = 0;
-  for (const member of members) {
-    sumX += member.x + (member.width * gridSize) / 2;
-    sumY += member.y + (member.height * gridSize) / 2;
-  }
-  const centroid = { x: sumX / members.length, y: sumY / members.length };
+  const gridSize = (scene.grid as unknown as { size: number }).size;
+  const centroid = centerOf(members, scene);
 
   const markerId = isPartyMarker(tokenDoc)
     ? tokenDoc.id

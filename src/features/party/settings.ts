@@ -7,6 +7,7 @@ export const SETTINGS = {
   SHIFT_AFTER_DEPLOY: 'partyShiftAfterDeployBehavior',
   INCLUDE_SUBFOLDERS: 'partyIncludeSubfolders',
   AFTER_DEPLOY: 'partyAfterDeployBehavior',
+  MARKER_FOLLOWS: 'partyMarkerFollows',
   LAYOUT: 'partyDeployLayout',
   SPACING: 'partyTokenSpacing',
   PARTY_TOKEN_SIZE: 'partyTokenSize',
@@ -72,6 +73,15 @@ export function registerPartySettings(): void {
     type: String,
     choices: BEHAVIOR_CHOICES,
     default: AFTER_DEPLOY_BEHAVIORS.DELETE,
+  });
+
+  s().register(MODULE_ID, SETTINGS.MARKER_FOLLOWS, {
+    name: 'kaiserkram.party.SETTINGS.markerFollows.name',
+    hint: 'kaiserkram.party.SETTINGS.markerFollows.hint',
+    scope: 'world',
+    config: true,
+    type: Boolean,
+    default: true,
   });
 
   s().register(MODULE_ID, SETTINGS.LAYOUT, {
@@ -154,6 +164,10 @@ export function getIncludeSubfolders(): boolean {
 
 export function getAfterDeployBehavior(): string {
   return String(s().get(MODULE_ID, SETTINGS.AFTER_DEPLOY) ?? AFTER_DEPLOY_BEHAVIORS.HIDE);
+}
+
+export function getMarkerFollows(): boolean {
+  return Boolean(s().get(MODULE_ID, SETTINGS.MARKER_FOLLOWS));
 }
 
 export function getDeployLayout(): string {

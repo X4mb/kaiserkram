@@ -4,6 +4,7 @@ import { deployFolderDirectly, deployParty } from './deploy.js';
 import { registerTokenHudButton } from './hud.js';
 import { createPartyTokenFromFolder } from './partyToken.js';
 import { recallParty } from './recall.js';
+import { registerMarkerFollow } from './follow.js';
 import { registerPartyInventory } from './inventory.js';
 import { upgradeMarkers } from './markerActor.js';
 import { getPlayersControlMarker, getTrading, registerPartySettings } from './settings.js';
@@ -51,6 +52,7 @@ export const party: Feature = {
     registerTokenHudButton();
     registerPartyInventory();
     registerStash();
+    registerMarkerFollow();
     on('canvasReady', () => {
       // One GM does it, or two GMs online would both create marker actors.
       if (isActiveGM() && getPlayersControlMarker()) void upgradeMarkers(canvas?.scene as never);
