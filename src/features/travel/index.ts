@@ -1,6 +1,5 @@
-import { MODULE_ID } from '../../core/constants.js';
 import type { Feature } from '../../core/feature.js';
-import { notify, on } from '../../core/foundryApi.js';
+import { isActiveGM, notify, on } from '../../core/foundryApi.js';
 import { fmt } from '../../core/i18n.js';
 import { emitSocket, registerSocketHandler } from '../../core/socket.js';
 
@@ -13,23 +12,22 @@ import { emitSocket, registerSocketHandler } from '../../core/socket.js';
  * canvas is drawn, and the active GM decides only from those reports.
  */
 
-type Message =
-  | { kind: 'travel'; op: 'viewing'; userId: string; sceneId: string | null }
-  | { kind: 'travel'; op: 'report' };
+type Message = { kind: 'travel'; op: 'viewing'; sceneId: string | null } | { kind: 'travel'; op: 'report' };
 
-type UserLike = { id: string; name: string; isGM: boolean; active: boolean };
+type UserLike = { id: string; isGM: boolean; active: boolean };
 type SceneLike = { id: string; name: string; activate(): Promise<unknown> };
 
 /** Everyone must stay together this long, so someone clicking through doesn't move the party. */
 const SETTLE_MS = 2000;
 
-/** Active GM only: the scene each user last reported viewing. */
+/**
+ * Active GM only: the scene each user last reported viewing. `null` means a client without a
+ * canvas: it can't travel, so it doesn't hold the others back.
+ */
 const viewing = new Map<string, string | null>();
 let pending: { sceneId: string; timer: ReturnType<typeof setTimeout> } | null = null;
-
-function isActiveGM(): boolean {
-  return Boolean((game.users as unknown as { activeGM?: { isSelf?: boolean } | null }).activeGM?.isSelf);
-}
+/** Whether this client was the active GM last time we looked (another GM can take over). */
+let wasActiveGM = false;
 
 function onlineUsers(): UserLike[] {
   return (game.users as unknown as { contents: UserLike[] }).contents.filter((u) => u.active);
@@ -43,17 +41,34 @@ function myScene(): string | null {
   return (canvas as unknown as { scene?: { id: string } | null } | null)?.scene?.id ?? null;
 }
 
-/** The scene every online user reported viewing, if it is the same for all and a player is among them. */
+/**
+ * The scene everyone online has reported viewing, if they all agree. Users who haven't reported
+ * yet hold it back; users without a canvas don't. At least one player has to be there.
+ */
 export function gatheredScene(online: UserLike[], reports: Map<string, string | null>): string | null {
-  if (!online.some((u) => !u.isGM)) return null;
-  const first = reports.get(online[0].id) ?? null;
-  if (!first) return null;
-  return online.every((u) => reports.get(u.id) === first) ? first : null;
+  let scene: string | null = null;
+  let player = false;
+  for (const u of online) {
+    if (!reports.has(u.id)) return null;
+    const s = reports.get(u.id) ?? null;
+    if (s === null) continue;
+    if (scene !== null && s !== scene) return null;
+    scene = s;
+    if (!u.isGM) player = true;
+  }
+  return player ? scene : null;
 }
 
 function cancelPending(): void {
   if (pending) clearTimeout(pending.timer);
   pending = null;
+}
+
+async function activate(sceneId: string): Promise<void> {
+  const scene = (game.scenes as unknown as { get(id: string): SceneLike | undefined }).get(sceneId);
+  if (!scene) return;
+  await scene.activate();
+  notify().info(fmt('kaiserkram.travel.gathered', 'Everyone is at {scene}, so it is now the active scene.', { scene: scene.name }));
 }
 
 /** Active GM: start (or call off) the short wait before making the gathered scene active. */
@@ -69,45 +84,40 @@ function evaluate(): void {
       pending = null;
       // Still everyone, still there?
       if (gatheredScene(onlineUsers(), viewing) !== sceneId || sceneId === activeSceneId()) return;
-      const scene = (game.scenes as unknown as { get(id: string): SceneLike | undefined }).get(sceneId);
-      if (!scene) return;
-      void scene.activate().then(() =>
-        notify().info(fmt('kaiserkram.travel.gathered', 'Everyone is at {scene}, so it is now the active scene.', { scene: scene.name })),
-      );
+      activate(sceneId).catch((err) => console.error('kaiserkram | travel: activating the scene failed', err));
     }, SETTLE_MS),
   };
 }
 
-function sceneName(id: string | null): string {
-  return (id && (game.scenes as unknown as { get(id: string): SceneLike | undefined }).get(id)?.name) || '—';
-}
-
 function record(userId: string, sceneId: string | null): void {
-  const changed = viewing.get(userId) !== sceneId;
   viewing.set(userId, sceneId);
-  if (changed) {
-    // One line per change, so the GM's console shows what this feature sees.
-    const where = onlineUsers()
-      .map((u) => `${u.name}: ${viewing.has(u.id) ? sceneName(viewing.get(u.id) ?? null) : '(no report)'}`)
-      .join(', ');
-    console.info(`${MODULE_ID} | travel | ${where} | active: ${sceneName(activeSceneId())}`);
-  }
   evaluate();
 }
 
 /** Tell the active GM which scene this client shows (the GM notes its own directly). */
 function report(): void {
-  const userId = game.user?.id;
-  if (!userId) return;
-  if (isActiveGM()) record(userId, myScene());
-  else emitSocket('travel', { kind: 'travel', op: 'viewing', userId, sceneId: myScene() } satisfies Message);
+  if (isActiveGM()) record(game.user!.id, myScene());
+  else emitSocket('travel', { kind: 'travel', op: 'viewing', sceneId: myScene() } satisfies Message);
 }
 
-function onMessage(raw: unknown): void {
+/** Becoming the active GM (logging in, or another GM leaving) starts over: ask everyone where they are. */
+function checkRole(): void {
+  const now = isActiveGM();
+  if (now === wasActiveGM) return;
+  wasActiveGM = now;
+  viewing.clear();
+  cancelPending();
+  if (!now) return;
+  record(game.user!.id, myScene());
+  emitSocket('travel', { kind: 'travel', op: 'report' } satisfies Message);
+}
+
+function onMessage(raw: unknown, senderId: string | undefined): void {
   const msg = raw as Message | undefined;
-  if (msg?.kind !== 'travel') return;
+  if (msg?.kind !== 'travel' || !senderId) return;
   if (msg.op === 'report') report();
-  else if (isActiveGM()) record(msg.userId, msg.sceneId);
+  // Whoever sent it, by Foundry's account: a client can only speak for itself.
+  else if (isActiveGM()) record(senderId, msg.sceneId);
 }
 
 export const travel: Feature = {
@@ -117,6 +127,7 @@ export const travel: Feature = {
   init() {
     on('canvasReady', report);
     on('userConnected', ((user: { id: string }, connected: boolean) => {
+      checkRole();
       if (connected) return;
       viewing.delete(user.id);
       evaluate();
@@ -125,8 +136,7 @@ export const travel: Feature = {
 
   ready() {
     registerSocketHandler('travel', onMessage);
+    checkRole();
     report();
-    // A GM arriving (or taking over) asks everyone where they are.
-    if (isActiveGM()) emitSocket('travel', { kind: 'travel', op: 'report' } satisfies Message);
   },
 };

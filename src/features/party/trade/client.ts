@@ -16,16 +16,18 @@ function activeGM(): UserLike | null {
   return (game.users as unknown as { activeGM?: UserLike | null }).activeGM ?? null;
 }
 
-/** Client → GM. The active GM handles its own requests directly (sockets don't echo to the sender). */
+/**
+ * Client → GM. The active GM handles its own requests directly (sockets don't echo to the
+ * sender). Over the socket the sender isn't in the message: the GM takes it from Foundry.
+ */
 export function sendRequest(msg: RequestBody): void {
-  const full = { ...msg, kind: 'trade', userId: me().id } as TradeRequest;
   const gm = activeGM();
   if (!gm) {
     notify().warn(loc('kaiserkram.party.trade.noGM', 'A GM needs to be online to trade.'));
     return;
   }
-  if (gm.isSelf) void handleRequest(full);
-  else emitSocket('party', full);
+  if (gm.isSelf) void handleRequest({ ...msg, kind: 'trade', userId: me().id } as TradeRequest);
+  else emitSocket('party', { ...msg, kind: 'trade' });
 }
 
 /** GM → everyone, including this client. */
@@ -34,14 +36,16 @@ function broadcast(msg: TradeUpdate): void {
   handleUpdate(msg);
 }
 
-export function onTradeMessage(raw: unknown): void {
+export function onTradeMessage(raw: unknown, senderId: string | undefined): void {
   const msg = raw as TradeMessage | undefined;
-  if (msg?.kind !== 'trade') return;
+  if (msg?.kind !== 'trade' || !senderId) return;
   if (REQUEST_OPS.has(msg.op)) {
-    if (activeGM()?.isSelf) void handleRequest(msg as TradeRequest);
+    // Acting as whoever really sent it, whatever the message claims.
+    if (activeGM()?.isSelf) void handleRequest({ ...(msg as TradeRequest), userId: senderId });
     return;
   }
-  handleUpdate(msg as TradeUpdate);
+  // Trade state only counts when it comes from the GM running the trades.
+  if (senderId === activeGM()?.id) handleUpdate(msg as TradeUpdate);
 }
 
 export function initTradeClient(): void {

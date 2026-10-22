@@ -1,3 +1,4 @@
+import { isActiveGM } from '../../core/foundryApi.js';
 import { emitSocket, registerSocketHandler } from '../../core/socket.js';
 import { loc } from '../../core/i18n.js';
 import { g, type FoundryUser } from './wfrp.js';
@@ -11,11 +12,11 @@ import { g, type FoundryUser } from './wfrp.js';
 export type ActionResult = { ok: boolean; message?: string };
 export type ActionHandler = (payload: Record<string, unknown>, user: FoundryUser) => Promise<ActionResult>;
 
+/** The sender is never in the message: the GM takes it from the socket, so nobody can pose as someone else. */
 type RequestMessage = {
   type: 'request';
   action: string;
   requestId: string;
-  userId: string;
   payload: Record<string, unknown>;
 };
 
@@ -38,17 +39,18 @@ export function registerHandler(action: string, handler: ActionHandler): void {
 }
 
 export function registerSocket(): void {
-  registerSocketHandler('trader', (raw: unknown) => {
+  registerSocketHandler('trader', (raw: unknown, senderId) => {
     const data = raw as RequestMessage | ResponseMessage | ShowMessage | undefined;
+    const fromGM = !!senderId && g().users.get(senderId)?.isGM === true;
     if (data?.type === 'show') {
-      if (!g().user.isGM) showHandler(data.traderUuid);
+      if (fromGM && !g().user.isGM) showHandler(data.traderUuid);
     } else if (data?.type === 'response') {
-      if (data.userId !== g().user.id) return;
+      if (!fromGM || data.userId !== g().user.id) return;
       pending.get(data.requestId)?.(data.result);
       pending.delete(data.requestId);
     } else if (data?.type === 'request') {
-      if (!g().users.activeGM?.isSelf) return;
-      void handleRequest(data);
+      if (!isActiveGM() || !senderId) return;
+      void handleRequest(data, senderId);
     }
   });
 }
@@ -89,12 +91,12 @@ async function runNow(action: string, payload: Record<string, unknown>, user: Fo
   }
 }
 
-async function handleRequest(msg: RequestMessage): Promise<void> {
-  const user = g().users.get(msg.userId);
+async function handleRequest(msg: RequestMessage, senderId: string): Promise<void> {
+  const user = g().users.get(senderId);
   const result: ActionResult = user
     ? await run(msg.action, msg.payload, user)
     : { ok: false, message: 'Unknown user' };
-  const response: ResponseMessage = { type: 'response', requestId: msg.requestId, userId: msg.userId, result };
+  const response: ResponseMessage = { type: 'response', requestId: msg.requestId, userId: senderId, result };
   emitSocket('trader', response);
 }
 
@@ -115,7 +117,7 @@ export async function requestGM(action: string, payload: Record<string, unknown>
         }
       }, TIMEOUT_MS);
     });
-    const request: RequestMessage = { type: 'request', action, requestId, userId: me.id, payload };
+    const request: RequestMessage = { type: 'request', action, requestId, payload };
     emitSocket('trader', request);
     return response;
   })();

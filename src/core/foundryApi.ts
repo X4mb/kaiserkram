@@ -43,6 +43,18 @@ export function flags(doc: unknown): FlagHolder {
 
 export type GameModule = { id: string; title: string; active: boolean; version?: string; api?: Record<string, unknown> };
 
+type UsersWithGM = { activeGM?: { id: string; isSelf?: boolean } | null };
+
+/** Whether this client is the active GM (the one GM that does shared, GM-only work). */
+export function isActiveGM(): boolean {
+  return Boolean((game.users as unknown as UsersWithGM | undefined)?.activeGM?.isSelf);
+}
+
+/** The active GM's user id, if a GM is online. */
+export function activeGMId(): string | null {
+  return (game.users as unknown as UsersWithGM | undefined)?.activeGM?.id ?? null;
+}
+
 export function moduleById(id: string): GameModule | undefined {
   return (game.modules as unknown as { get(id: string): GameModule | undefined } | undefined)?.get(id);
 }
