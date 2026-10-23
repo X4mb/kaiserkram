@@ -15,7 +15,7 @@ import { registerSocketHandler } from '../../core/socket.js';
 import { onItemChanged, onUserLeft } from './trade/authority.js';
 import { giveItems, initTradeClient, onTradeMessage, proposeTrade, refreshTradeWindows } from './trade/client.js';
 import { registerTradeEntryPoints } from './trade/entry.js';
-import { addStashHudButton, openStash, refreshStashWindows, routeMarkerDoubleClick } from './stash.js';
+import { addStashHudButton, openStash, refreshStashWindows, routeDirectoryClick, routeMarkerDoubleClick } from './stash.js';
 
 /** Trading between characters: entry points, and keeping open trade windows current. */
 function registerTrading(): void {
@@ -38,6 +38,7 @@ function registerStash(): void {
   // Before tokens are drawn: each token's mouse handler keeps the click function it was made with.
   on('setup', routeMarkerDoubleClick);
   on('canvasInit', routeMarkerDoubleClick);
+  on('renderActorDirectory', routeDirectoryClick as (...args: never[]) => unknown);
   onActorChanges(refreshStashWindows);
 }
 

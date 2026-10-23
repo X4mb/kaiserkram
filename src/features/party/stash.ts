@@ -92,9 +92,14 @@ function render(win: StashWindow): string {
       <p class="hint">${escapeHtml(
         loc('kaiserkram.party.stash.hint', 'Use the arrows to move an amount, or drag a whole stack to the other side.'),
       )}</p>
-      <button type="button" data-action="sheet"><i class="fa-solid fa-user"></i> ${escapeHtml(
-        loc('kaiserkram.party.stash.sheet', 'Party sheet'),
-      )}</button>
+      ${
+        // Players only need the stash; the GM can still reach the sheet from here.
+        game.user?.isGM
+          ? `<button type="button" data-action="sheet"><i class="fa-solid fa-user"></i> ${escapeHtml(
+              loc('kaiserkram.party.stash.sheet', 'Party sheet'),
+            )}</button>`
+          : ''
+      }
     </div>
     <div class="kk-stash-cols">${column(win, 'stash')}${column(win, 'mine')}</div>
   </div>`;
@@ -256,12 +261,33 @@ export function addStashHudButton(hud: unknown, html: unknown): void {
   column.appendChild(button);
 }
 
+/**
+ * The same in the Actors sidebar: a player clicking the party's actor gets the stash, not the
+ * sheet. Caught before the directory's own handler; dragging and right-click are untouched.
+ */
+export function routeDirectoryClick(_app: unknown, html: unknown): void {
+  const root = toElement(html);
+  if (!root || game.user?.isGM || root.dataset.kkStashRoute) return;
+  root.dataset.kkStashRoute = '1';
+  const intercept = (event: Event) => {
+    const entry = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-entry-id], [data-document-id]');
+    const id = entry?.dataset.entryId ?? entry?.dataset.documentId;
+    const actor = id ? (game.actors?.get(id) as unknown as ActorLike | undefined) : undefined;
+    if (!actor?.isOwner || !isPartyActor(actor)) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    if (event.type === 'click') openStash(actor);
+  };
+  root.addEventListener('click', intercept, true);
+  root.addEventListener('dblclick', intercept, true);
+}
+
 type TokenProto = { _onClickLeft2?(event: unknown): unknown; actor?: ActorLike | null } & Record<symbol, unknown>;
 const PATCHED = Symbol('kaiserkramStashDoubleClick');
 
 /**
- * A player double-clicking the party marker gets the stash rather than the actor sheet (the
- * stash window has a button for the sheet). GMs keep the sheet. Patched on the token class in
+ * A player double-clicking the party marker gets the stash rather than the actor sheet. GMs keep
+ * the sheet. Patched on the token class in
  * use (a system's own Token subclass included) before any token is drawn.
  */
 export function routeMarkerDoubleClick(): void {
