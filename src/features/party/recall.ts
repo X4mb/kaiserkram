@@ -59,15 +59,21 @@ async function confirmRecall(count: number): Promise<boolean> {
 }
 
 /**
+ * Recalls in progress, by party (its marker's id, from the marker or any deployed member): a
+ * second click meanwhile, on either, does nothing.
+ */
+const recalling = new Set<string>();
+
+/**
  * Undoes a deploy: deletes the deployed tokens linked to `tokenDoc` (which may be the party
  * marker itself, or one of the deployed members) and brings the marker back — reusing it in
  * place if it's still on the scene, otherwise recreating one from the source folder.
  */
-/** Recalls in progress, by marker (or member) uuid: a second click meanwhile does nothing. */
-const recalling = new Set<string>();
-
 export async function recallParty(tokenDoc: TokenDocument): Promise<void> {
-  const key = tokenDoc.uuid;
+  const markerId = isPartyMarker(tokenDoc)
+    ? tokenDoc.id
+    : (flags(tokenDoc).getFlag(MODULE_ID, FLAGS.ORIGIN_MARKER_ID) as string | undefined);
+  const key = `${tokenDoc.parent?.id}.${markerId ?? tokenDoc.id}`;
   if (recalling.has(key)) return;
   recalling.add(key);
   try {

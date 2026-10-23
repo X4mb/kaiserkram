@@ -144,6 +144,8 @@ function defineShop() {
       if (cached?.source === source) return cached.html;
       const html = enrich(source);
       this.descriptions.set(item.id, { source, html });
+      // A failed one is tried again on the next render.
+      html.catch(() => this.descriptions.delete(item.id));
       return html;
     }
 
@@ -351,7 +353,8 @@ function defineShop() {
         if (list) list.scrollTop = this.catalogScroll;
         return;
       }
-      this.catalogNode = slot;
+      // An empty catalog (compendium not there, or it failed) is looked for again next time.
+      this.catalogNode = slot.querySelector('.catalog-item') ? slot : null;
       this.bindCatalog(slot);
     }
 

@@ -88,6 +88,8 @@ let VoiceAssignDialogClass: VoiceAssignDialogCtor | undefined;
  * would otherwise unmute the GM (and stop the preview) while another is still being tuned.
  */
 let openDialog: DialogV2Instance | null = null;
+/** Opens one after another, so two quick opens can't both get past closing the old window. */
+let opening: Promise<void> = Promise.resolve();
 
 /** Built on first use so nothing touches DialogV2 unless the feature is enabled and a GM opens it. */
 function voiceAssignDialogClass(): VoiceAssignDialogCtor {
@@ -124,7 +126,13 @@ function defineVoiceAssignDialog(Base: DialogV2Ctor): VoiceAssignDialogCtor {
   };
 }
 
-export async function openVoiceAssignDialogForActor(actor: Actor): Promise<void> {
+export function openVoiceAssignDialogForActor(actor: Actor): Promise<void> {
+  const next = opening.then(() => openNow(actor));
+  opening = next.catch(() => undefined);
+  return next;
+}
+
+async function openNow(actor: Actor): Promise<void> {
   if (openDialog) await openDialog.close();
   const profile = getVoiceProfileForActor(actor) ?? {};
   const currentPreset: VoicePreset = profile.preset ?? 'none';
@@ -391,5 +399,5 @@ export async function openVoiceAssignDialogForActor(actor: Actor): Promise<void>
     onClose,
   );
   openDialog = dialog;
-  void dialog.render({ force: true });
+  await dialog.render({ force: true });
 }

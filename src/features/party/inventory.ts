@@ -2,7 +2,7 @@ import { MODULE_ID } from '../../core/constants.js';
 import { activeGMId, flags, notify, on } from '../../core/foundryApi.js';
 import { fmt } from '../../core/i18n.js';
 import { FLAGS } from './constants.js';
-import { copyForNewOwner, moveContents, quantityOf, quantityPathOf } from './trade/items.js';
+import { copyForNewOwner, isTradeableItem, moveContents, quantityOf, quantityPathOf } from './trade/items.js';
 import { sendRequest } from './trade/client.js';
 
 /**
@@ -113,10 +113,12 @@ function onCreateItem(created: ItemLike, _options: unknown, userId: string): voi
   const had = quantityOf(source);
   const moved = quantityOf(created);
   const part = moved > 0 && moved < had ? moved : null;
+  const counted = isTradeableItem(source as never) && moved > 0;
   // With a GM online, the GM takes it off the source, one move at a time: if two players drag
   // the same stack at once, the second gets their copy taken back instead of a duplicate.
   if (activeGMId()) {
-    sendRequest({ op: 'settle', source: source.uuid, copy: created.uuid, qty: part });
+    // Always the amount copied, so the GM can tell when less than that is left.
+    sendRequest({ op: 'settle', source: source.uuid, copy: created.uuid, qty: counted ? moved : null });
     return;
   }
   const removal =

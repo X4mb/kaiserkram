@@ -1,5 +1,7 @@
 import { escapeHtml, postChat, resolveDocument } from '../../../core/foundryApi.js';
 import { fmt, loc } from '../../../core/i18n.js';
+import { allOrNothing } from '../../../core/items.js';
+import { forgetDrag } from '../inventory.js';
 import { isTradeableItem, moveContents, quantityOf, quantityPathOf, rollback, transferItem, type ActorLike, type ItemLike, type Undo } from './items.js';
 import type { CloseReason, TradeRequest, TradeSession, TradeSide, TradeUpdate } from './types.js';
 import { getTrading } from '../settings.js';
@@ -273,25 +275,39 @@ async function move(sender: UserLike, msg: Extract<TradeRequest, { op: 'move' }>
  * once can't both keep it: whoever comes second gets their copy taken back.
  */
 async function settle(sender: UserLike, msg: Extract<TradeRequest, { op: 'settle' }>): Promise<void> {
+  // The GM creates items here (container contents); they aren't a drag of the GM's own.
+  forgetDrag();
   const notice = (text: string, failed = false) => broadcast({ kind: 'trade', op: 'given', users: [sender.id], text, failed });
-  const source = await resolveDocument<ItemLike & { documentName?: string; parent?: ActorLike | null }>(msg.source);
-  const copy = await resolveDocument<ItemLike & { documentName?: string; parent?: ActorLike | null }>(msg.copy);
+  type Doc = ItemLike & { documentName?: string; parent?: ActorLike | null };
+  const source = await resolveDocument<Doc>(msg.source);
+  const copy = await resolveDocument<Doc>(msg.copy);
   if (copy?.documentName !== 'Item' || !copy.parent?.testUserPermission(sender, 'OWNER')) return;
-  const have = source?.documentName === 'Item' && source.parent?.testUserPermission(sender, 'OWNER') ? quantityOf(source) : 0;
-  const wanted = msg.qty === null ? null : Math.max(1, Math.floor(Number(msg.qty) || 0));
-  // Gone, or less left than was copied: someone else got there first.
-  if (!source || have < 1 || (wanted !== null && wanted > have)) {
+  const takeBack = async () => {
     await copy.delete();
-    return notice(loc('kaiserkram.party.stash.taken', 'Someone else took that first.'), true);
-  }
-  if (wanted !== null && wanted < have) await source.update({ [quantityPathOf(source)]: have - wanted });
-  else {
+    notice(loc('kaiserkram.party.stash.taken', 'Someone else took that first.'), true);
+  };
+  if (source?.documentName !== 'Item' || !source.parent?.testUserPermission(sender, 'OWNER')) return takeBack();
+
+  // Counted goods: the copy holds `wanted`; less than that left means someone else took some.
+  // Things without a count (spells, talents) just move.
+  const counted = isTradeableItem(source) && msg.qty !== null;
+  const have = quantityOf(source);
+  const wanted = Math.max(1, Math.floor(Number(msg.qty) || 0));
+  if (counted && wanted > have) return takeBack();
+
+  // If this fails, what moved goes back, and so does the copy: one of each, never two.
+  await allOrNothing(async (undo) => {
+    undo.push(() => copy.delete());
+    if (counted && wanted < have) {
+      await source.update({ [quantityPathOf(source)]: have - wanted });
+      return;
+    }
     // A whole container takes what is in it along.
     if (source.type === 'container' && source.parent && copy.parent) {
-      await moveContents(source.parent, source.id, copy.parent, copy.id, []);
+      await moveContents(source.parent, source.id, copy.parent, copy.id, undo);
     }
     await source.delete();
-  }
+  });
   notice(
     fmt('kaiserkram.party.notifications.itemMoved', 'Moved {item} from {from} to {to}.', {
       item: copy.name,
@@ -310,6 +326,13 @@ async function handleOne(msg: TradeRequest): Promise<void> {
       await settle(sender, msg);
     } catch (err) {
       console.error('[kaiserkram] party: finishing an item move failed', err);
+      broadcast({
+        kind: 'trade',
+        op: 'given',
+        users: [sender.id],
+        text: loc('kaiserkram.party.stash.error', "Moving that failed; see the GM's console."),
+        failed: true,
+      });
     }
     return;
   }
