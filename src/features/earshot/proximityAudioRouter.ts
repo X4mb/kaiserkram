@@ -245,13 +245,18 @@ function glideTo(param: AudioParam, value: number): void {
 
 export const proximityRouter = new ProximityAudioRouter();
 
-let rafScheduled = false;
+let refreshScheduled = false;
 
+/**
+ * Recompute every gain once, soon: many changes in a row (a token move updates several things)
+ * become one pass. A timer rather than an animation frame, because browsers pause frames in a
+ * background tab, and a player there would keep hearing a whisper or a departed speaker.
+ */
 export function scheduleProximityRefresh(): void {
-  if (rafScheduled) return;
-  rafScheduled = true;
-  requestAnimationFrame(() => {
-    rafScheduled = false;
+  if (refreshScheduled) return;
+  refreshScheduled = true;
+  setTimeout(() => {
+    refreshScheduled = false;
     proximityRouter.refreshAllGains();
-  });
+  }, 0);
 }

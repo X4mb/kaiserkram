@@ -70,6 +70,7 @@ function isLiveVoiceActor(actorId: string): boolean {
 interface DialogV2Instance {
   element: HTMLElement;
   render(options?: { force?: boolean }): Promise<unknown>;
+  close(options?: unknown): Promise<unknown>;
   _onRender(context: unknown, options: unknown): void;
   _onClose(options: unknown): void;
 }
@@ -81,6 +82,12 @@ type VoiceAssignDialogCtor = new (
 ) => DialogV2Instance;
 
 let VoiceAssignDialogClass: VoiceAssignDialogCtor | undefined;
+
+/**
+ * One Assign Voice window at a time: they share the GM's mute and the preview, so closing one
+ * would otherwise unmute the GM (and stop the preview) while another is still being tuned.
+ */
+let openDialog: DialogV2Instance | null = null;
 
 /** Built on first use so nothing touches DialogV2 unless the feature is enabled and a GM opens it. */
 function voiceAssignDialogClass(): VoiceAssignDialogCtor {
@@ -117,7 +124,8 @@ function defineVoiceAssignDialog(Base: DialogV2Ctor): VoiceAssignDialogCtor {
   };
 }
 
-export function openVoiceAssignDialogForActor(actor: Actor): void {
+export async function openVoiceAssignDialogForActor(actor: Actor): Promise<void> {
+  if (openDialog) await openDialog.close();
   const profile = getVoiceProfileForActor(actor) ?? {};
   const currentPreset: VoicePreset = profile.preset ?? 'none';
   const pitchShift = profile.pitchShift ?? 0;
@@ -310,6 +318,7 @@ export function openVoiceAssignDialogForActor(actor: Actor): void {
   };
 
   const onClose = (): void => {
+    if (openDialog === dialog) openDialog = null;
     voicePreviewer.stop();
     // Recovery net: if something ended the live mic capture (e.g. a device conflict from a
     // second getUserMedia), re-acquire it — otherwise the GM stays silent to players.
@@ -381,5 +390,6 @@ export function openVoiceAssignDialogForActor(actor: Actor): void {
     wire,
     onClose,
   );
+  openDialog = dialog;
   void dialog.render({ force: true });
 }

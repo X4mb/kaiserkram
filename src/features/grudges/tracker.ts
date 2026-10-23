@@ -22,7 +22,13 @@ type TrackerWindow = AppInstance & { filter: string };
 
 let instance: TrackerWindow | null = null;
 
+/**
+ * Who a feeling is about, as the viewer should see them. Players get the name and picture they
+ * saw on the token when they set it (a "Hooded Stranger" stays one); the GM sees the actor as it
+ * is now.
+ */
 function targetOfRelation(rel: Relation): { uuid: string; name: string; img: string } {
+  if (!game.user?.isGM) return { uuid: rel.target, name: rel.name, img: rel.img };
   const live = resolveHolder(rel.target);
   return { uuid: rel.target, name: live?.name ?? rel.name, img: live?.img ?? rel.img };
 }

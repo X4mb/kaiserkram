@@ -40,7 +40,7 @@ function addTokenMenuEntry(_app: unknown, options: Record<string, unknown>[]): v
   // Not via contextEntry: the target here is often the placeable, not an element.
   const open = (target: unknown): void => {
     const actor = resolveActor(target);
-    if (actor) openVoiceAssignDialogForActor(actor);
+    if (actor) void openVoiceAssignDialogForActor(actor);
     else notify().warn(loc('kaiserkram.earshot.VOICE.noActor', 'Within Earshot: could not find the actor for this entry.'));
   };
   options.push({
@@ -73,7 +73,7 @@ function addHudButton(app: unknown, html: unknown): void {
   btn.addEventListener('click', (ev) => {
     ev.preventDefault();
     ev.stopPropagation();
-    openVoiceAssignDialogForActor(actor);
+    void openVoiceAssignDialogForActor(actor);
   });
   col.appendChild(btn);
 }
@@ -108,7 +108,7 @@ function addTokenConfigSection(app: unknown, html: unknown): void {
   btn.addEventListener('click', (ev) => {
     ev.preventDefault();
     ev.stopPropagation();
-    openVoiceAssignDialogForActor(actor);
+    void openVoiceAssignDialogForActor(actor);
   });
   const hint = document.createElement('p');
   hint.className = 'hint';
@@ -132,7 +132,7 @@ function addActorMenuEntry(_app: unknown, options: Record<string, unknown>[]): v
         const entry = li.closest<HTMLElement>('[data-entry-id], [data-document-id], [data-actor-id]') ?? li;
         const id = entry.dataset.entryId ?? entry.dataset.documentId ?? entry.dataset.actorId;
         const actor = id ? game.actors?.get(id) : null;
-        if (actor) openVoiceAssignDialogForActor(actor);
+        if (actor) void openVoiceAssignDialogForActor(actor);
         else notify().warn(loc('kaiserkram.earshot.VOICE.noActor', 'Within Earshot: could not find the actor for this entry.'));
       },
     }),

@@ -34,7 +34,12 @@ export type TradeRequest =
   /** A one-way handover: no session, no answer; it happens at once. */
   | { kind: 'trade'; op: 'give'; userId: string; from: string; to: string; items: Record<string, number> }
   /** The party stash: move items between two actors the sender owns. */
-  | { kind: 'trade'; op: 'move'; userId: string; from: string; to: string; itemId: string; qty: number };
+  | { kind: 'trade'; op: 'move'; userId: string; from: string; to: string; itemId: string; qty: number }
+  /**
+   * A dragged item was copied onto the other side: take it off where it came from (`qty`, or all
+   * of it when null), or, if that is already gone, take the copy back.
+   */
+  | { kind: 'trade'; op: 'settle'; userId: string; source: string; copy: string; qty: number | null };
 
 /** GM → clients. */
 export type TradeUpdate =
@@ -45,7 +50,7 @@ export type TradeUpdate =
 
 export type TradeMessage = TradeRequest | TradeUpdate;
 
-export const REQUEST_OPS = new Set(['propose', 'respond', 'offer', 'accept', 'cancel', 'give', 'move']);
+export const REQUEST_OPS = new Set(['propose', 'respond', 'offer', 'accept', 'cancel', 'give', 'move', 'settle']);
 
 /** A request without the fields the sender fills in itself. */
 export type RequestBody = {

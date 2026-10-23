@@ -12,7 +12,21 @@ export interface DeployPartyOptions {
   afterDeployBehavior?: string;
 }
 
+/** Markers being deployed right now: a second click meanwhile would spawn everyone twice. */
+const deploying = new Set<string>();
+
 export async function deployParty(tokenDoc: TokenDocument, options: DeployPartyOptions = {}): Promise<void> {
+  const key = tokenDoc.uuid;
+  if (deploying.has(key)) return;
+  deploying.add(key);
+  try {
+    await deployOnce(tokenDoc, options);
+  } finally {
+    deploying.delete(key);
+  }
+}
+
+async function deployOnce(tokenDoc: TokenDocument, options: DeployPartyOptions): Promise<void> {
   if (!game.user?.isGM) {
     ui.notifications?.warn(loc('kaiserkram.party.notifications.gmOnly', 'Only the GM can do that.'));
     return;

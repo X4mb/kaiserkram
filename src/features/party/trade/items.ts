@@ -55,7 +55,7 @@ export function quantityOf(item: { system?: Record<string, any> }): number {
   return 0;
 }
 
-function quantityPath(item: { system?: Record<string, any> }): string {
+export function quantityPathOf(item: { system?: Record<string, any> }): string {
   return shapeOf(item.system) === 'number' ? 'system.quantity' : 'system.quantity.value';
 }
 
@@ -80,6 +80,31 @@ export function copyForNewOwner(item: { toObject(): Record<string, any> }): Reco
   return data;
 }
 
+/** Where an item is kept: the id of the container it is in (WFRP4e), or '' when loose. */
+function locationOf(item: ItemLike): string {
+  return String(item.system?.location?.value ?? '');
+}
+
+/**
+ * Move everything inside the container `fromId` on `source` into the container `toId` on
+ * `target`, containers within it included, recording undo steps.
+ */
+export async function moveContents(source: ActorLike, fromId: string, target: ActorLike, toId: string, undo: Undo): Promise<void> {
+  const inside = source.items.contents.filter((i) => locationOf(i) === fromId);
+  for (const item of inside) {
+    const data = copyForNewOwner(item);
+    if (data.system?.location && typeof data.system.location === 'object') data.system.location.value = toId;
+    const created = (await target.createEmbeddedDocuments('Item', [data])) as ItemLike[] | undefined;
+    const copy = Array.isArray(created) ? created[0] : undefined;
+    if (!copy) continue;
+    undo.push(() => copy.delete());
+    if (item.type === 'container') await moveContents(source, item.id, target, copy.id, undo);
+    const original = item.toObject();
+    await item.delete();
+    undo.push(() => source.createEmbeddedDocuments('Item', [original], { keepId: true }));
+  }
+}
+
 /**
  * Move `qty` of `item` onto `target`: stacked onto the same goods there, or as a new item.
  * If taking it off the source fails, the copy on the target is taken back, so nothing is doubled.
@@ -92,24 +117,28 @@ export async function transferItem(item: ItemLike, qty: number, target: ActorLik
   const had = quantityOf(item);
   const steps: Undo = [];
   const stack = target.items.contents.find((i) => isTradeableItem(i) && sameGoods(i, item));
+  let copy: ItemLike | undefined;
   if (stack) {
     const before = quantityOf(stack);
-    await stack.update({ [quantityPath(stack)]: before + qty });
-    steps.push(() => stack.update({ [quantityPath(stack)]: before }));
+    await stack.update({ [quantityPathOf(stack)]: before + qty });
+    steps.push(() => stack.update({ [quantityPathOf(stack)]: before }));
   } else {
     const data = copyForNewOwner(item);
     if (shapeOf(data.system) === 'number') data.system.quantity = qty;
     else data.system.quantity.value = qty;
     const created = (await target.createEmbeddedDocuments('Item', [data])) as ItemLike[] | undefined;
-    const copy = Array.isArray(created) ? created[0] : undefined;
-    if (copy) steps.push(() => copy.delete());
+    copy = Array.isArray(created) ? created[0] : undefined;
+    const made = copy;
+    if (made) steps.push(() => made.delete());
   }
   try {
     if (qty < had) {
-      await item.update({ [quantityPath(item)]: had - qty });
-      steps.push(() => item.update({ [quantityPath(item)]: had }));
+      await item.update({ [quantityPathOf(item)]: had - qty });
+      steps.push(() => item.update({ [quantityPathOf(item)]: had }));
     } else {
       const source = item.parent;
+      // A whole container goes with what is in it.
+      if (source && copy && item.type === 'container') await moveContents(source, item.id, target, copy.id, steps);
       const original = item.toObject();
       await item.delete();
       if (source) steps.push(() => source.createEmbeddedDocuments('Item', [original], { keepId: true }));

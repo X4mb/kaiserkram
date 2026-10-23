@@ -21,6 +21,8 @@ class VoicePreviewer {
   /** Live track we switched to raw processing for the monitor; restored on stop. */
   private tappedTrack: MediaStreamTrack | null = null;
   private tappedOriginal: MediaTrackConstraints | null = null;
+  /** Bumped by stop(): a start() still awaiting something sees it and undoes its own work. */
+  private generation = 0;
 
   isActive(): boolean {
     return this.ctx !== null;
@@ -29,6 +31,17 @@ class VoicePreviewer {
   async start(profile: VoiceProfile): Promise<void> {
     if (this.starting || this.ctx) return;
     this.starting = true;
+    const gen = ++this.generation;
+    // Stopped (the dialog closed) while this was still waiting: leave nothing running.
+    const cancelled = () => gen !== this.generation;
+    let ownMic: MediaStream | null = null;
+    let tapped: { track: MediaStreamTrack; original: MediaTrackConstraints } | null = null;
+    let ctx: AudioContext | null = null;
+    const abandon = () => {
+      if (tapped) void tapped.track.applyConstraints(tapped.original).catch(() => { /* */ });
+      for (const t of ownMic?.getTracks() ?? []) t.stop();
+      if (ctx && ctx !== this.ctx) void ctx.close().catch(() => { /* */ });
+    };
     try {
       // Prefer tapping the raw mic stream the live A/V path already holds: a second
       // getUserMedia on the same device with different constraints can end/silence the first
@@ -62,8 +75,7 @@ class VoicePreviewer {
               noiseSuppression: false,
               autoGainControl: false,
             });
-            this.tappedTrack = track;
-            this.tappedOriginal = original;
+            tapped = { track, original };
           } catch {
             // Constraint change unsupported: preview still works, just through the browser's
             // processing.
@@ -84,9 +96,12 @@ class VoicePreviewer {
           constraints.deviceId = { ideal: audioSrc };
         }
         mic = await navigator.mediaDevices.getUserMedia({ audio: constraints });
+        ownMic = mic;
         this.ownsMicStream = true;
       }
-      const ctx = new AudioContext({ sampleRate: 48000 });
+      if (cancelled()) return abandon();
+      ctx = new AudioContext({ sampleRate: 48000 });
+      const audio = ctx;
       // The preview may auto-start with the dialog, where the opening gesture can already have
       // expired — never await resume (it can stay pending under autoplay policy); retry on the
       // next pointer gesture instead.
@@ -95,7 +110,7 @@ class VoicePreviewer {
         window.addEventListener(
           'pointerdown',
           () => {
-            if (this.ctx?.state === 'suspended') void this.ctx.resume().catch(() => { /* */ });
+            if (this.ctx === audio && audio.state === 'suspended') void audio.resume().catch(() => { /* */ });
           },
           { once: true },
         );
@@ -113,15 +128,21 @@ class VoicePreviewer {
       } catch {
         this.workletReady = false; // EQ-only preview, same degradation as the live chain
       }
+      if (cancelled()) return abandon();
+      this.tappedTrack = tapped?.track ?? null;
+      this.tappedOriginal = tapped?.original ?? null;
       this.micStream = mic;
       this.ctx = ctx;
       this.source = ctx.createMediaStreamSource(mic);
       this.chain = buildVoiceChain(ctx, this.source, ctx.destination, profile, this.workletReady);
     } catch (err) {
+      if (cancelled()) return abandon();
+      abandon();
       this.stop();
       throw err;
     } finally {
-      this.starting = false;
+      // A stop() meanwhile already cleared it, and a newer start() may own it now.
+      if (!cancelled()) this.starting = false;
     }
   }
 
@@ -133,6 +154,8 @@ class VoicePreviewer {
   }
 
   stop(): void {
+    this.generation += 1;
+    this.starting = false;
     teardownVoiceChain(this.chain, this.source);
     this.chain = null;
     try { this.source?.disconnect(); } catch { /* */ }
@@ -147,7 +170,7 @@ class VoicePreviewer {
     }
     this.ownsMicStream = false;
     this.micStream = null;
-    try { void this.ctx?.close(); } catch { /* */ }
+    void this.ctx?.close().catch(() => { /* */ });
     this.ctx = null;
     this.workletReady = false;
   }

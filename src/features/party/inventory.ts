@@ -1,8 +1,9 @@
 import { MODULE_ID } from '../../core/constants.js';
-import { flags, notify, on } from '../../core/foundryApi.js';
+import { activeGMId, flags, notify, on } from '../../core/foundryApi.js';
 import { fmt } from '../../core/i18n.js';
 import { FLAGS } from './constants.js';
-import { copyForNewOwner } from './trade/items.js';
+import { copyForNewOwner, moveContents, quantityOf, quantityPathOf } from './trade/items.js';
+import { sendRequest } from './trade/client.js';
 
 /**
  * The actor behind a party marker doubles as the party's shared inventory. Items dragged between
@@ -11,6 +12,7 @@ import { copyForNewOwner } from './trade/items.js';
 
 type ItemLike = {
   id: string;
+  uuid: string;
   name: string;
   type: string;
   documentName?: string;
@@ -108,21 +110,33 @@ function onCreateItem(created: ItemLike, _options: unknown, userId: string): voi
   if (source.name !== created.name || source.type !== created.type) return;
   dragged = null;
 
-  const had = Number(source.system?.quantity?.value);
-  const moved = Number(created.system?.quantity?.value);
+  const had = quantityOf(source);
+  const moved = quantityOf(created);
+  const part = moved > 0 && moved < had ? moved : null;
+  // With a GM online, the GM takes it off the source, one move at a time: if two players drag
+  // the same stack at once, the second gets their copy taken back instead of a duplicate.
+  if (activeGMId()) {
+    sendRequest({ op: 'settle', source: source.uuid, copy: created.uuid, qty: part });
+    return;
+  }
   const removal =
-    Number.isFinite(had) && Number.isFinite(moved) && moved > 0 && moved < had
-      ? source.update({ 'system.quantity.value': had - moved })
-      : source.delete();
-  void removal.then(() =>
-    notify().info(
-      fmt('kaiserkram.party.notifications.itemMoved', 'Moved {item} from {from} to {to}.', {
-        item: created.name,
-        from: source.parent?.name ?? '?',
-        to: target?.name ?? '?',
-      }),
-    ),
-  );
+    part !== null
+      ? source.update({ [quantityPathOf(source)]: had - part })
+      : (source.type === 'container' && source.parent && target
+          ? moveContents(source.parent as never, source.id, target as never, created.id, [])
+          : Promise.resolve()
+        ).then(() => source.delete());
+  removal
+    .then(() =>
+      notify().info(
+        fmt('kaiserkram.party.notifications.itemMoved', 'Moved {item} from {from} to {to}.', {
+          item: created.name,
+          from: source.parent?.name ?? '?',
+          to: target?.name ?? '?',
+        }),
+      ),
+    )
+    .catch((err: unknown) => console.error('[kaiserkram] party: taking the moved item off its source failed', err));
 }
 
 type TokenLike = { document: { actor?: ActorLike | null }; bounds?: { contains(x: number, y: number): boolean } };

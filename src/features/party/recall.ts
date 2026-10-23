@@ -63,7 +63,21 @@ async function confirmRecall(count: number): Promise<boolean> {
  * marker itself, or one of the deployed members) and brings the marker back — reusing it in
  * place if it's still on the scene, otherwise recreating one from the source folder.
  */
+/** Recalls in progress, by marker (or member) uuid: a second click meanwhile does nothing. */
+const recalling = new Set<string>();
+
 export async function recallParty(tokenDoc: TokenDocument): Promise<void> {
+  const key = tokenDoc.uuid;
+  if (recalling.has(key)) return;
+  recalling.add(key);
+  try {
+    await recallOnce(tokenDoc);
+  } finally {
+    recalling.delete(key);
+  }
+}
+
+async function recallOnce(tokenDoc: TokenDocument): Promise<void> {
   if (!game.user?.isGM) {
     ui.notifications?.warn(loc('kaiserkram.party.notifications.gmOnly', 'Only the GM can do that.'));
     return;

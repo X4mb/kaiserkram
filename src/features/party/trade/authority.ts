@@ -1,6 +1,6 @@
 import { escapeHtml, postChat, resolveDocument } from '../../../core/foundryApi.js';
 import { fmt, loc } from '../../../core/i18n.js';
-import { isTradeableItem, quantityOf, rollback, transferItem, type ActorLike, type ItemLike, type Undo } from './items.js';
+import { isTradeableItem, moveContents, quantityOf, quantityPathOf, rollback, transferItem, type ActorLike, type ItemLike, type Undo } from './items.js';
 import type { CloseReason, TradeRequest, TradeSession, TradeSide, TradeUpdate } from './types.js';
 import { getTrading } from '../settings.js';
 
@@ -157,7 +157,7 @@ async function execute(s: Session): Promise<void> {
     throw err;
   }
 
-  await postChat({
+  await record({
     content: `<div class="kaiserkram-trade-card">${fmt(
       'kaiserkram.party.trade.chat',
       '<b>{a}</b> traded {gaveA} to <b>{b}</b> for {gaveB}.',
@@ -165,6 +165,18 @@ async function execute(s: Session): Promise<void> {
     )}</div>`,
   });
   close(s, 'done');
+}
+
+/**
+ * The chat card recording a finished trade or gift. The items have already moved by then, so a
+ * card that can't be posted mustn't turn the outcome into "failed".
+ */
+async function record(data: Parameters<typeof postChat>[0]): Promise<void> {
+  try {
+    await postChat(data);
+  } catch (err) {
+    console.error('[kaiserkram] party: posting the chat card failed', err);
+  }
 }
 
 /** Trades and gifts run through here one at a time, so two can't spend the same item. */
@@ -204,7 +216,7 @@ async function give(sender: UserLike, msg: Extract<TradeRequest, { op: 'give' }>
     await rollback(undo);
     throw err;
   }
-  await postChat({
+  await record({
     content: `<div class="kaiserkram-trade-card">${fmt('kaiserkram.party.give.chat', '<b>{a}</b> gave {what} to <b>{b}</b>.', {
       a: escapeHtml(from.name),
       b: escapeHtml(to.name),
@@ -255,10 +267,52 @@ async function move(sender: UserLike, msg: Extract<TradeRequest, { op: 'move' }>
   );
 }
 
+/**
+ * Finish a drag between the party and a character: the copy is already on the target; take the
+ * same amount off the source. Run here, one at a time, so two players dragging the same stack at
+ * once can't both keep it: whoever comes second gets their copy taken back.
+ */
+async function settle(sender: UserLike, msg: Extract<TradeRequest, { op: 'settle' }>): Promise<void> {
+  const notice = (text: string, failed = false) => broadcast({ kind: 'trade', op: 'given', users: [sender.id], text, failed });
+  const source = await resolveDocument<ItemLike & { documentName?: string; parent?: ActorLike | null }>(msg.source);
+  const copy = await resolveDocument<ItemLike & { documentName?: string; parent?: ActorLike | null }>(msg.copy);
+  if (copy?.documentName !== 'Item' || !copy.parent?.testUserPermission(sender, 'OWNER')) return;
+  const have = source?.documentName === 'Item' && source.parent?.testUserPermission(sender, 'OWNER') ? quantityOf(source) : 0;
+  const wanted = msg.qty === null ? null : Math.max(1, Math.floor(Number(msg.qty) || 0));
+  // Gone, or less left than was copied: someone else got there first.
+  if (!source || have < 1 || (wanted !== null && wanted > have)) {
+    await copy.delete();
+    return notice(loc('kaiserkram.party.stash.taken', 'Someone else took that first.'), true);
+  }
+  if (wanted !== null && wanted < have) await source.update({ [quantityPathOf(source)]: have - wanted });
+  else {
+    // A whole container takes what is in it along.
+    if (source.type === 'container' && source.parent && copy.parent) {
+      await moveContents(source.parent, source.id, copy.parent, copy.id, []);
+    }
+    await source.delete();
+  }
+  notice(
+    fmt('kaiserkram.party.notifications.itemMoved', 'Moved {item} from {from} to {to}.', {
+      item: copy.name,
+      from: source.parent?.name ?? '?',
+      to: copy.parent?.name ?? '?',
+    }),
+  );
+}
+
 async function handleOne(msg: TradeRequest): Promise<void> {
   const sender = userById(msg.userId);
   if (!sender) return;
 
+  if (msg.op === 'settle') {
+    try {
+      await settle(sender, msg);
+    } catch (err) {
+      console.error('[kaiserkram] party: finishing an item move failed', err);
+    }
+    return;
+  }
   if (msg.op === 'move') {
     try {
       await move(sender, msg);

@@ -1,6 +1,7 @@
 import { MODULE_ID } from '../../core/constants.js';
 import { dialogV2, escapeHtml, postChat, renderTemplate, resolveDocument, speakerFor } from '../../core/foundryApi.js';
 import { fmt, loc } from '../../core/i18n.js';
+import { sameGoods } from '../../core/items.js';
 import { CARD_CLASS, FLAGS, TEMPLATES } from './constants.js';
 import { g, type WfrpActor, type WfrpItem } from './wfrp.js';
 import { canHaggle, resetHaggling, startHaggle } from './haggle.js';
@@ -125,8 +126,26 @@ function defineShop() {
     };
 
     static PARTS = {
-      main: { template: TEMPLATES.SHOP, scrollable: ['.shop-body', '.catalog-list'] },
+      main: { template: TEMPLATES.SHOP, scrollable: ['.shop-body'] },
     };
+
+    /**
+     * The trappings catalog as drawn the first time (hundreds of rows): later renders put this
+     * same element back instead of drawing it again, filters, listeners and scroll included.
+     */
+    private catalogNode: HTMLElement | null = null;
+    private catalogScroll = 0;
+    /** Enriched descriptions by item id, redone only when the description changes. */
+    private descriptions = new Map<string, { source: string; html: Promise<string> }>();
+
+    private describe(item: WfrpItem): Promise<string> {
+      const source = String(item.system?.description?.value ?? '');
+      const cached = this.descriptions.get(item.id);
+      if (cached?.source === source) return cached.html;
+      const html = enrich(source);
+      this.descriptions.set(item.id, { source, html });
+      return html;
+    }
 
     /** Who the viewer is buying/selling as. */
     customerId: string | null = null;
@@ -201,7 +220,7 @@ function defineShop() {
             override: override === null ? '' : formatBP(override),
             canHaggle: Boolean(customer) && haggleOn && canHaggle(state, customer?.id ?? '', item.id),
             // Only the Buy tab shows descriptions; enriching is the slow part of a render.
-            description: this.tab === 'buy' ? await enrich(item.system?.description?.value ?? '') : '',
+            description: this.tab === 'buy' ? await this.describe(item) : '',
           };
         }),
       );
@@ -241,7 +260,8 @@ function defineShop() {
         }))
         .filter((s) => s.deals || s.tried);
 
-      const catalog = isGM && this.tab === 'manage' ? await loadCatalog() : null;
+      const keepCatalog = isGM && this.tab === 'manage' && this.catalogNode !== null;
+      const catalog = isGM && this.tab === 'manage' && !keepCatalog ? await loadCatalog() : null;
 
       const forSale = stock.filter((s) => s.forSale && (isGM || !s.soldOut));
       return {
@@ -275,6 +295,7 @@ function defineShop() {
         sellableCount: sellable.length,
         standings,
         haggleOn,
+        keepCatalog,
         catalog: catalog
           ? {
               source: catalog.source,
@@ -309,7 +330,7 @@ function defineShop() {
         );
       }
 
-      if (this.isGM) this.bindCatalog(root);
+      if (this.isGM) this.placeCatalog(root);
 
       // The window frame outlives re-renders, so only bind the drop target once.
       const content = root.querySelector<HTMLElement>('.window-content') ?? root;
@@ -320,10 +341,25 @@ function defineShop() {
       }
     }
 
+    /** Put the kept catalog back where this render left room for it, or keep the one just drawn. */
+    private placeCatalog(root: HTMLElement): void {
+      const slot = root.querySelector<HTMLElement>('.trader-catalog');
+      if (!slot) return;
+      if (slot.hasAttribute('data-kept-catalog') && this.catalogNode) {
+        slot.replaceWith(this.catalogNode);
+        const list = this.catalogNode.querySelector<HTMLElement>('.catalog-list');
+        if (list) list.scrollTop = this.catalogScroll;
+        return;
+      }
+      this.catalogNode = slot;
+      this.bindCatalog(slot);
+    }
+
     /** The trappings list: remember the filters, filter rows in place, drag rows out. */
-    private bindCatalog(root: HTMLElement): void {
-      const box = root.querySelector<HTMLElement>('.trader-catalog');
-      if (!box) return;
+    private bindCatalog(box: HTMLElement): void {
+      box
+        .querySelector<HTMLElement>('.catalog-list')
+        ?.addEventListener('scroll', (ev) => (this.catalogScroll = (ev.currentTarget as HTMLElement).scrollTop), { passive: true });
       // The side panel needs room; widen the window once when the GM first sees it.
       const pos = (this as unknown as { position?: { width?: number }; setPosition?(p: Record<string, unknown>): void });
       if (!this.widened && (pos.position?.width ?? 0) < MANAGE_WIDTH) {
@@ -360,11 +396,14 @@ function defineShop() {
       apply();
     }
 
-    /** Add `item` to the stock: onto a same-named stack if there is one, else as a new item. */
+    /**
+     * Add `item` to the stock: onto the same goods if the trader has them (not just something of
+     * the same name: a sword with other qualities gets its own row), else as a new item.
+     */
     private async addToStock(item: WfrpItem): Promise<void> {
       const qty = Math.max(1, stockQuantity(item));
-      const stack = this.trader.items.contents.find((i) => i.name === item.name && i.type === item.type && isTradeable(i));
-      if (stack && stack.type !== 'container') {
+      const stack = this.trader.items.contents.find((i) => isTradeable(i) && sameGoods(i, item));
+      if (stack) {
         await stack.update({ 'system.quantity.value': stockQuantity(stack) + qty });
         return;
       }
@@ -382,6 +421,8 @@ function defineShop() {
 
     async close(options?: unknown): Promise<unknown> {
       openShops.delete(this.trader.uuid);
+      this.catalogNode = null;
+      this.descriptions.clear();
       return super.close(options);
     }
 

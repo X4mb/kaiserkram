@@ -288,6 +288,9 @@
               <p class="hint">{{localize "kaiserkram.trader.catalog.none"}}</p>
             {{/if}}
           </aside>
+        {{else if keepCatalog}}
+          {{!-- The catalog is drawn once and kept; the window puts it back here. --}}
+          <aside class="trader-catalog" data-kept-catalog></aside>
         {{/if}}
       </div>
     {{/if}}
