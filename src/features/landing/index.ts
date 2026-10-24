@@ -5,7 +5,9 @@ import { fmt, loc } from '../../core/i18n.js';
 
 const SETTINGS = {
   DEFAULT_SCENE: 'landingDefaultSceneId',
-  /** When the server last booted, as the active GM saw it (ms since the epoch, server clock). */
+  /** The world launch the active GM last handled (the world's `lastPlayed` stamp). */
+  LAST_LAUNCH: 'landingLastLaunch',
+  /** Fallback when the world has no launch stamp: when the server last booted (ms, server clock). */
   LAST_BOOT: 'landingLastBootEpoch',
   /** Shown read-only in Configure Settings (filled in on render), never written. */
   DEFAULT_SCENE_INFO: 'landingDefaultSceneInfo',
@@ -143,6 +145,37 @@ function isNewBoot(boot: number | null): boolean {
   return Math.abs(boot - last) > SAME_BOOT_MS;
 }
 
+/**
+ * When this world was launched: Foundry stamps it each time the world starts, from Setup or
+ * with the server. The server's uptime alone misses a world relaunched without restarting the
+ * server.
+ */
+function launchStamp(): string | null {
+  const stamp = (game as unknown as { world?: { lastPlayed?: unknown } }).world?.lastPlayed;
+  return typeof stamp === 'string' && stamp ? stamp : null;
+}
+
+type Launch = { fresh: boolean; record?: () => Promise<unknown>; how: string };
+
+/** Whether this is the first visit since the world started, and how to remember it was seen. */
+async function checkLaunch(): Promise<Launch> {
+  const stamp = launchStamp();
+  if (stamp) {
+    const last = String(settings().get(MODULE_ID, SETTINGS.LAST_LAUNCH) ?? '');
+    return {
+      fresh: stamp !== last,
+      record: () => settings().set(MODULE_ID, SETTINGS.LAST_LAUNCH, stamp),
+      how: `world launched ${stamp}, last handled ${last || 'never'}`,
+    };
+  }
+  const boot = await serverBootTime();
+  return {
+    fresh: isNewBoot(boot),
+    record: boot === null ? undefined : () => settings().set(MODULE_ID, SETTINGS.LAST_BOOT, boot),
+    how: boot === null ? 'no launch stamp, server uptime unreadable' : `no launch stamp, server booted ${new Date(boot).toISOString()}`,
+  };
+}
+
 function landingScene(): SceneLike | null {
   const sceneId = defaultSceneId();
   if (!sceneId) return null;
@@ -152,8 +185,8 @@ function landingScene(): SceneLike | null {
 }
 
 /**
- * GM: on the first GM visit after a restart, make the landing scene active for everyone, and
- * note the uptime so later visits in the same run (a GM leaving and rejoining) do nothing.
+ * GM: on the first GM visit after the world starts, make the landing scene active for everyone,
+ * and note that start so later visits in the same run (a GM leaving and rejoining) do nothing.
  * Players: after a restart, until a GM has been in, show them the landing scene themselves
  * (only a GM can make a scene active).
  */
@@ -161,12 +194,12 @@ async function onReady(): Promise<void> {
   const scene = landingScene();
   // Other GMs leave it to the active one; players have nothing to do without a landing scene.
   if (game.user?.isGM ? !isActiveGM() : !scene) return;
-  const boot = await serverBootTime();
-  const fresh = isNewBoot(boot);
+  const { fresh, record, how } = await checkLaunch();
+  log(`${fresh ? 'new world start' : 'same world start'} (${how})`);
 
   if (game.user?.isGM) {
     // Noted even with no landing scene set, so setting one later doesn't count as a restart.
-    if (boot !== null && fresh) await settings().set(MODULE_ID, SETTINGS.LAST_BOOT, boot);
+    if (fresh) await record?.();
     if (!fresh || !scene || scenes().active?.id === scene.id) return;
     await scene.activate();
     log(`activated default scene "${scene.name}" on world start`);
@@ -189,6 +222,12 @@ export const landing: Feature = {
 
   init() {
     settings().register(MODULE_ID, SETTINGS.DEFAULT_SCENE, {
+      scope: 'world',
+      config: false,
+      type: String,
+      default: '',
+    });
+    settings().register(MODULE_ID, SETTINGS.LAST_LAUNCH, {
       scope: 'world',
       config: false,
       type: String,
