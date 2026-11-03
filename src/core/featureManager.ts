@@ -13,6 +13,13 @@ const TEXT: Record<FeatureId, { name: [string, string]; hint: [string, string] }
       'When every user logged in, players and GMs, is viewing the same scene (through a map tile or the scene navigation), it becomes the active scene. Viewing a scene on your own moves nobody else.',
     ],
   },
+  alchemist: {
+    name: ['kaiserkram.features.alchemist.name', 'Dungeon Alchemist Import'],
+    hint: [
+      'kaiserkram.features.alchemist.hint',
+      "Imports a multi-level Dungeon Alchemist export as one scene with Scene Levels (walls, lights and heights set up), and adds a Stairs tool to link levels.",
+    ],
+  },
   grudges: {
     name: ['kaiserkram.features.grudges.name', 'Grudges'],
     hint: [
