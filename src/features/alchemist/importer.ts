@@ -1,7 +1,9 @@
 import { MODULE_ID } from '../../core/constants.js';
 import { dialogV2, escapeHtml, notify, settings } from '../../core/foundryApi.js';
 import { fmt, loc } from '../../core/i18n.js';
-import { buildScene, filesOfMap, isDaMap, nameFromPrefix, type DaMap, type LevelFile } from './build.js';
+import { buildScene, filesOfMap, isDaMap, isRoof, nameFromPrefix, type BuildOptions, type DaMap, type LevelFile } from './build.js';
+import { cutPicture, ensureFolder, filePicker, folderOf, route, upload } from './files.js';
+import { outlineFromWalls } from './outline.js';
 import { SETTINGS } from './settings.js';
 
 /**
@@ -10,22 +12,6 @@ import { SETTINGS } from './settings.js';
  * high a level is. Then one Scene with a Level per file.
  */
 
-type Picker = {
-  browse(source: string, target: string, options?: Record<string, unknown>): Promise<{ files: string[]; target: string }>;
-  upload(source: string, path: string, file: File, body?: unknown, options?: Record<string, unknown>): Promise<{ path?: string } | false | void>;
-  createDirectory(source: string, target: string, options?: Record<string, unknown>): Promise<unknown>;
-};
-type PickerCtor = (new (options: Record<string, unknown>) => { render(force?: boolean): unknown }) & Picker;
-
-function filePicker(): PickerCtor {
-  return (foundry.applications as unknown as { apps: { FilePicker: { implementation: PickerCtor } } }).apps.FilePicker.implementation;
-}
-
-function route(path: string): string {
-  const getRoute = (foundry.utils as unknown as { getRoute?(p: string): string }).getRoute;
-  return getRoute ? getRoute(path) : `/${path}`;
-}
-
 /** Foundry may hand back paths with spaces as %20; names are compared decoded. */
 function decoded(path: string): string {
   try {
@@ -33,11 +19,6 @@ function decoded(path: string): string {
   } catch {
     return path;
   }
-}
-
-function folderOf(path: string): string {
-  const i = path.lastIndexOf('/');
-  return i >= 0 ? path.slice(0, i) : '';
 }
 
 function slug(text: string): string {
@@ -56,6 +37,7 @@ function constants() {
     EDGE_SENSE_TYPES?: Record<string, number>;
     WALL_SENSE_TYPES?: Record<string, number>;
     WALL_MOVEMENT_TYPES: Record<string, number>;
+    OCCLUSION_MODES?: Record<string, number>;
   };
   const sense = C.EDGE_SENSE_TYPES ?? C.WALL_SENSE_TYPES ?? {};
   return {
@@ -64,30 +46,89 @@ function constants() {
     senseNormal: sense.NORMAL ?? 20,
     moveNone: C.WALL_MOVEMENT_TYPES.NONE ?? 0,
     moveNormal: C.WALL_MOVEMENT_TYPES.NORMAL ?? 20,
+    fade: C.OCCLUSION_MODES?.FADE ?? 1,
   };
 }
 
-/** Make `path` (and its parents) under the user data folder; existing folders are fine. */
-async function ensureFolder(path: string): Promise<void> {
-  let current = '';
-  for (const part of path.split('/')) {
-    current = current ? `${current}/${part}` : part;
-    try {
-      await filePicker().createDirectory('data', current, { notify: false });
-    } catch {
-      // Already there (or not ours to make): the upload says so if it really can't go there.
-    }
-  }
+type Options = { sceneName: string; firstLevel: number; levelHeight: number; cut: boolean };
+
+/** One level as read: its data, its picture's path in Foundry, and the picture itself if it came from this computer. */
+type Source = { number: number; map: DaMap; image: string | null; blob?: Blob };
+
+/** Where this import puts its uploads: the pictures, and the cut copies. */
+function uploadFolder(sceneName: string): string {
+  const world = (game as unknown as { world: { id: string } }).world.id;
+  return `${world ? `worlds/${world}` : 'kaiserkram'}/${MODULE_ID}/dungeon-alchemist/${slug(sceneName)}`;
 }
 
-type Options = { sceneName: string; firstLevel: number; levelHeight: number };
+/** Name of the cut copy of `image`: "Tower_02.webp" → "Tower_02-cut-<stamp>.webp". */
+export function cutName(image: string): string {
+  const base = (decoded(image).split('/').pop() ?? 'level').replace(/\.[^.]+$/, '');
+  return `${base}-cut-${Date.now().toString(36)}.webp`;
+}
 
-async function createScene(files: LevelFile[], options: Options): Promise<void> {
+/** Cut `source`'s picture to `outline` and upload it; its new path. */
+export async function uploadCut(folder: string, picture: string | Blob, name: string, size: { width: number; height: number }, outline: number[][]): Promise<string> {
+  const blob = await cutPicture(picture, size.width, size.height, outline);
+  return upload(folder, new File([blob], name, { type: 'image/webp' }));
+}
+
+function outlineOf(map: DaMap): number[][] {
+  const cell = Math.max(5, Math.round(map.grid / 5));
+  return outlineFromWalls(
+    map.width,
+    map.height,
+    (map.walls ?? []).filter((w) => Array.isArray(w.c) && w.c.length === 4).map((w) => w.c),
+    // About half a square of margin around the walls; posts under two squares alone are dropped.
+    { cell, grow: 2, minCells: 50 },
+  );
+}
+
+/**
+ * The levels above the ground floor cut to their walls, and the roof to the floor below it, so
+ * the floors underneath show around the building. Ground floor and cellars keep their whole
+ * picture.
+ */
+async function cutFloors(sources: Source[], options: Options, folder: string): Promise<{ files: LevelFile[]; roof: BuildOptions['roofTile'] }> {
+  const sorted = [...sources].sort((a, b) => a.number - b.number);
+  const files: LevelFile[] = sorted.map((s) => ({ number: s.number, map: s.map, image: s.image }));
+  if (!options.cut) return { files, roof: null };
+  const firstNumber = sorted[0].number;
+  const levelOf = (s: Source) => options.firstLevel + (s.number - firstNumber);
+  // The ground floor: level 0, or the bottom level if the map has none.
+  const groundNumber = (sorted.find((s) => levelOf(s) === 0) ?? sorted[0]).number;
+  const roofIndex = sorted.length > 1 && isRoof(sorted.at(-1)!.map) ? sorted.length - 1 : -1;
+  let lastOutline: number[][] | null = null;
+  for (const [i, s] of sorted.entries()) {
+    if (s.number <= groundNumber || i === roofIndex || !s.image || !s.map.walls?.length) continue;
+    const outline = outlineOf(s.map);
+    if (!outline.length) continue;
+    lastOutline = outline;
+    files[i].source = s.image;
+    files[i].outline = outline;
+    files[i].image = await uploadCut(folder, s.blob ?? s.image, cutName(s.image), s.map, outline);
+  }
+  let roof: BuildOptions['roofTile'] = null;
+  const top = roofIndex >= 0 ? sorted[roofIndex] : null;
+  // The roof follows the highest floor's walls (or the ground floor's in a one-storey house).
+  const roofOutline = lastOutline ?? outlineOf(sorted.find((s) => s.number === groundNumber)!.map);
+  if (top?.image && roofOutline.length) {
+    roof = { image: await uploadCut(folder, top.blob ?? top.image, cutName(top.image), top.map, roofOutline), outline: roofOutline, source: top.image };
+  }
+  return { files, roof };
+}
+
+async function createScene(sources: Source[], options: Options, folder: string): Promise<void> {
+  const { files, roof } = await cutFloors(sources, options, folder);
   const built = buildScene(files, {
     ...options,
     newId: () => foundry.utils.randomID(16),
     levelName,
     constants: constants(),
+    roofTile: roof,
+    scope: MODULE_ID,
+    outlineName: (level) => fmt('kaiserkram.alchemist.outlineName', 'Visible area: {level}', { level }),
+    roofName: loc('kaiserkram.alchemist.roofName', 'Roof area'),
   });
   const Scene = (CONFIG as unknown as { Scene: { documentClass: { create(d: unknown): Promise<{ name: string } | undefined> } } })
     .Scene.documentClass;
@@ -116,32 +157,29 @@ async function importFromFoundry(first: string, options: Options): Promise<void>
   // Match on readable names ("Untitled Map_00"), load from the paths Foundry gave.
   const map = filesOfMap(decoded(first), listing.files.map((path) => ({ name: decoded(path), path })));
   if (!map?.levels.length) throw new Error(`no level files found next to ${first}`);
-  const files: LevelFile[] = [];
+  const sources: Source[] = [];
   for (const level of map.levels) {
     const response = await fetch(route(level.json.path), { cache: 'no-store' });
     if (!response.ok) throw new Error(`could not read ${level.json.name} (${response.status})`);
-    files.push({ number: level.number, map: await readJson(response.text(), level.json.name), image: level.image?.path ?? null });
+    sources.push({ number: level.number, map: await readJson(response.text(), level.json.name), image: level.image?.path ?? null });
   }
-  await createScene(files, options);
+  const folder = uploadFolder(options.sceneName);
+  if (options.cut) await ensureFolder(folder);
+  await createScene(sources, options, folder);
 }
 
 /** The export is on this computer: upload its images into the world, then build the scene. */
 async function importFromComputer(all: File[], first: string, options: Options): Promise<void> {
   const map = filesOfMap(first, all);
   if (!map?.levels.length) throw new Error(`no level files found next to ${first}`);
-  const world = (game as unknown as { world: { id: string } }).world.id;
-  const target = `worlds/${world}/${MODULE_ID}/dungeon-alchemist/${slug(options.sceneName)}`;
-  await ensureFolder(target);
-  const files: LevelFile[] = [];
+  const folder = uploadFolder(options.sceneName);
+  await ensureFolder(folder);
+  const sources: Source[] = [];
   for (const level of map.levels) {
-    let image: string | null = null;
-    if (level.image) {
-      const result = await filePicker().upload('data', target, level.image, {}, { notify: false });
-      image = (result && result.path) || `${target}/${level.image.name}`;
-    }
-    files.push({ number: level.number, map: await readJson(level.json.text(), level.json.name), image });
+    const image = level.image ? await upload(folder, level.image) : null;
+    sources.push({ number: level.number, map: await readJson(level.json.text(), level.json.name), image, blob: level.image ?? undefined });
   }
-  await createScene(files, options);
+  await createScene(sources, options, folder);
 }
 
 function render(levelHeight: number, firstLevel: number): string {
@@ -180,6 +218,11 @@ function render(levelHeight: number, firstLevel: number): string {
       <div class="form-fields"><input type="number" name="levelHeight" min="1" step="any" value="${levelHeight}" /></div>
     </div>
     <div class="form-group">
+      <label>${t('kaiserkram.alchemist.cut', 'See-through upper floors')}</label>
+      <div class="form-fields"><input type="checkbox" name="cut" checked /></div>
+      <p class="hint">${t('kaiserkram.alchemist.cutHint', 'Floors above the ground floor are cut to their walls so the floors below show around the building, and the roof fades when a token goes under it. Each cut follows a region you can edit (add a balcony, say); the picture is cut again when you change it.')}</p>
+    </div>
+    <div class="form-group">
       <label>${t('kaiserkram.alchemist.sceneName', 'Scene name')}</label>
       <div class="form-fields"><input type="text" name="sceneName" /></div>
     </div>
@@ -187,7 +230,7 @@ function render(levelHeight: number, firstLevel: number): string {
   </div>`;
 }
 
-type Choice = { source: string; first: string; path: string; firstLevel: number; levelHeight: number; sceneName: string };
+type Choice = { source: string; first: string; path: string; firstLevel: number; levelHeight: number; sceneName: string; cut: boolean };
 
 /** GM: ask for the export and its levels, then import it. */
 export async function openImport(): Promise<void> {
@@ -268,6 +311,7 @@ export async function openImport(): Promise<void> {
             firstLevel: Math.round(Number(f.firstLevel?.value) || 0),
             levelHeight: Number(f.levelHeight?.value) > 0 ? Number(f.levelHeight.value) : levelHeight,
             sceneName: f.sceneName?.value.trim() ?? '',
+            cut: Boolean(f.cut?.checked),
           };
         },
       },
@@ -290,6 +334,7 @@ export async function openImport(): Promise<void> {
     sceneName: choice.sceneName || nameFromPrefix(prefix.split('/').pop() ?? prefix),
     firstLevel: choice.firstLevel,
     levelHeight: choice.levelHeight,
+    cut: choice.cut,
   };
   await settings().set(MODULE_ID, SETTINGS.FIRST_LEVEL, options.firstLevel);
   notify().info(loc('kaiserkram.alchemist.working', 'Importing… this can take a moment for large maps.'));

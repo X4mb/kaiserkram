@@ -413,5 +413,10 @@
   "kaiserkram.alchemist.stairs.nameUp": "Stairs up",
   "kaiserkram.alchemist.stairs.nameDown": "Stairs down",
   "kaiserkram.alchemist.stairs.nameBoth": "Stairs",
-  "kaiserkram.alchemist.stairs.placed": "Stairs placed. Tokens stepping onto them go to the other level."
+  "kaiserkram.alchemist.stairs.placed": "Stairs placed. Tokens stepping onto them go to the other level.",
+  "kaiserkram.alchemist.cut": "See-through upper floors",
+  "kaiserkram.alchemist.cutHint": "Floors above the ground floor are cut to their walls so the floors below show around the building, and the roof fades when a token goes under it. Each cut follows a region you can edit (add a balcony, say); the picture is cut again when you change it.",
+  "kaiserkram.alchemist.outlineName": "Visible area: {level}",
+  "kaiserkram.alchemist.roofName": "Roof area",
+  "kaiserkram.alchemist.recut": "{name}: picture cut again to the new outline."
 }

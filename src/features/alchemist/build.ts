@@ -24,8 +24,15 @@ export type DaMap = {
   walls?: DaWall[];
 };
 
-/** One exported level: its number at the end of the file name, its data, and its picture. */
-export type LevelFile = { number: number; map: DaMap; image: string | null };
+/**
+ * One exported level: its number at the end of the file name, its data, and its picture. With
+ * `outline`, `image` is the picture cut to that outline and `source` the uncut original (kept for
+ * cutting again when the GM edits the outline).
+ */
+export type LevelFile = { number: number; map: DaMap; image: string | null; outline?: number[][]; source?: string | null };
+
+/** The flag on an outline region: what it cuts, and from which original picture. */
+export type Cutout = { source: string; target: 'level' | 'roof'; id: string };
 
 export type BuildOptions = {
   sceneName: string;
@@ -38,7 +45,17 @@ export type BuildOptions = {
   /** The display name for level `n`; `roof` for a top level with nothing to walk into. */
   levelName: (n: number, roof: boolean) => string;
   /** Foundry's wall and light constants (passed in, so this file needs no globals). */
-  constants: { senseNone: number; senseLimited: number; senseNormal: number; moveNone: number; moveNormal: number };
+  constants: { senseNone: number; senseLimited: number; senseNormal: number; moveNone: number; moveNormal: number; fade: number };
+  /**
+   * The roof as an overhead picture on the ground floor that fades when a token goes under it,
+   * instead of a level of its own: the cut roof picture, its outline and the uncut original.
+   */
+  roofTile?: { image: string; outline: number[][]; source: string } | null;
+  /** Flag scope for the outline regions (the module id). */
+  scope: string;
+  /** Names for the outline regions. */
+  outlineName: (level: string) => string;
+  roofName: string;
 };
 
 export type BuiltScene = { data: Record<string, unknown>; levels: { id: string; name: string; level: number }[] };
@@ -99,6 +116,11 @@ export function filesOfMap<T extends { name: string }>(
   return { prefix: start.prefix, levels };
 }
 
+/** The top file of a building with nothing to walk into: the roof. */
+export function isRoof(map: DaMap): boolean {
+  return !map.walls?.length && !map.lights?.length;
+}
+
 /** Whether data read from a file looks like a Dungeon Alchemist map. */
 export function isDaMap(data: unknown): data is DaMap {
   const d = data as Partial<DaMap> | null;
@@ -119,11 +141,24 @@ export function buildScene(files: LevelFile[], options: BuildOptions): BuiltScen
   const levelData: Record<string, unknown>[] = [];
   const walls: Record<string, unknown>[] = [];
   const lights: Record<string, unknown>[] = [];
+  const regions: Record<string, unknown>[] = [];
+  const tiles: Record<string, unknown>[] = [];
 
+  const outlineRegion = (name: string, outline: number[][], level: string, cutout: Cutout) => ({
+    name,
+    color: '#4fc3f7',
+    shapes: outline.map((points) => ({ type: 'polygon', points })),
+    levels: [level],
+    flags: { [options.scope]: { cutout } },
+  });
+
+  const roofIndex = sorted.length > 1 && isRoof(sorted.at(-1)!.map) ? sorted.length - 1 : -1;
   sorted.forEach((file, index) => {
     const n = options.firstLevel + (file.number - firstNumber);
     const bottom = n * options.levelHeight;
-    const roof = index === sorted.length - 1 && sorted.length > 1 && !file.map.walls?.length && !file.map.lights?.length;
+    const roof = index === roofIndex;
+    // A roof shown as a fading picture over the ground floor isn't a level of its own.
+    if (roof && options.roofTile) return;
     const id = options.newId();
     const name = options.levelName(n, roof);
     levels.push({ id, name, level: n });
@@ -132,8 +167,13 @@ export function buildScene(files: LevelFile[], options: BuildOptions): BuiltScen
       name,
       elevation: { bottom, top: bottom + options.levelHeight },
       background: { src: file.image },
+      // A floor cut to its walls shows the floors below around the building.
+      visibility: { levels: file.outline ? levels.slice(0, -1).map((l) => l.id) : [] },
       sort: index,
     });
+    if (file.outline && file.source) {
+      regions.push(outlineRegion(options.outlineName(name), file.outline, id, { source: file.source, target: 'level', id }));
+    }
     for (const w of file.map.walls ?? []) {
       if (!Array.isArray(w.c) || w.c.length !== 4) continue;
       const [x0, y0, x1, y1] = w.c.map((v) => Math.round(Number(v)));
@@ -166,6 +206,26 @@ export function buildScene(files: LevelFile[], options: BuildOptions): BuiltScen
 
   // Open on the ground floor (level 0) if there is one, else on the bottom level.
   const initial = levels.find((l) => l.level === 0) ?? levels[0];
+
+  if (options.roofTile && roofIndex >= 0) {
+    const ground = levelData.find((l) => l._id === initial.id) as { elevation: { bottom: number; top: number } };
+    const tileId = options.newId();
+    tiles.push({
+      _id: tileId,
+      texture: { src: options.roofTile.image },
+      x: 0,
+      y: 0,
+      width: base.width,
+      height: base.height,
+      // Above the ground floor's tokens, so it covers them from outside and fades over them.
+      elevation: ground.elevation.top,
+      levels: [initial.id],
+      occlusion: { modes: [options.constants.fade], alpha: 0 },
+    });
+    regions.push(
+      outlineRegion(options.roofName, options.roofTile.outline, initial.id, { source: options.roofTile.source, target: 'roof', id: tileId }),
+    );
+  }
   return {
     levels,
     data: {
@@ -187,6 +247,8 @@ export function buildScene(files: LevelFile[], options: BuildOptions): BuiltScen
       levels: levelData,
       walls,
       lights,
+      regions,
+      tiles,
     },
   };
 }
