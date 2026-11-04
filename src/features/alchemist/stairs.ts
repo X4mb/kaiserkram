@@ -178,11 +178,6 @@ type TokenDoc = {
   update(data: Record<string, unknown>): Promise<unknown>;
 };
 
-function centre(doc: TokenDoc): { x: number; y: number } {
-  const size = doc.parent?.grid.size ?? 100;
-  return { x: doc.x + (doc.width * size) / 2, y: doc.y + (doc.height * size) / 2 };
-}
-
 function inside(stairs: Stairs, p: { x: number; y: number }): boolean {
   return p.x >= stairs.x && p.x <= stairs.x + stairs.width && p.y >= stairs.y && p.y <= stairs.y + stairs.height;
 }
@@ -208,42 +203,48 @@ async function askWay(up: LevelLike, down: LevelLike): Promise<string | null> {
   return way === up.id || way === down.id ? way : null;
 }
 
-/** Token centres before this client's own moves, to tell stepping onto stairs from moving on them. */
-const before = new Map<string, { x: number; y: number }>();
+type Position = { x: number; y: number; level?: string };
 
-function onPreUpdate(doc: TokenDoc, change: Record<string, unknown>, _options: unknown, userId: string): void {
-  if (userId === game.user?.id && ('x' in change || 'y' in change)) before.set(doc.id, centre(doc));
+function centreAt(doc: TokenDoc, p: Position): { x: number; y: number } {
+  const size = doc.parent?.grid.size ?? 100;
+  return { x: p.x + (doc.width * size) / 2, y: p.y + (doc.height * size) / 2 };
 }
 
-function onUpdate(doc: TokenDoc, change: Record<string, unknown>, _options: unknown, userId: string): void {
+/**
+ * A token finished a move (Foundry's own movement event, with where it started and where it
+ * ended): if that took it onto stairs on its level, send it to the other level.
+ */
+function onMove(doc: TokenDoc, movement: { origin: Position; destination: Position }, _operation: unknown, user: { id: string }): void {
   // Only the client that moved the token acts on it, so it happens once.
-  if (userId !== game.user?.id) return;
-  // Changed level some other way (Foundry's own behavior, the token config): stand on its floor.
-  if ('level' in change && !('elevation' in change)) {
-    const level = doc.level ? doc.parent?.levels.get(doc.level) : undefined;
-    const bottom = level?.elevation.bottom;
-    const top = level?.elevation.top;
-    if (typeof bottom === 'number' && (doc.elevation < bottom || (typeof top === 'number' && doc.elevation >= top))) {
-      void doc.update({ elevation: bottom });
-    }
-  }
-  if (!('x' in change) && !('y' in change)) return;
-  const was = before.get(doc.id);
-  before.delete(doc.id);
-  const now = centre(doc);
+  if (user?.id !== game.user?.id || !movement?.origin || !movement.destination) return;
+  const level = movement.destination.level ?? doc.level;
+  if (!level) return;
+  const from = centreAt(doc, movement.origin);
+  const to = centreAt(doc, movement.destination);
   for (const region of doc.parent?.regions.contents ?? []) {
     const stairs = flags(region).getFlag(MODULE_ID, STAIRS_FLAG) as Stairs | undefined;
-    if (!stairs || !doc.level || ![stairs.from, stairs.up, stairs.down].includes(doc.level)) continue;
+    if (!stairs || ![stairs.from, stairs.up, stairs.down].includes(level)) continue;
     // Stepping onto them, not moving about on them (or arriving on them from the other level).
-    if (!inside(stairs, now) || (was && inside(stairs, was))) continue;
-    void takeStairs(doc, stairs);
+    if (!inside(stairs, to) || inside(stairs, from)) continue;
+    void takeStairs(doc, stairs, level);
     return;
   }
 }
 
-async function takeStairs(doc: TokenDoc, stairs: Stairs): Promise<void> {
+/** A token changed level some other way (Foundry's own behavior, the token config): stand on its floor. */
+function onUpdate(doc: TokenDoc, change: Record<string, unknown>, _options: unknown, userId: string): void {
+  if (userId !== game.user?.id || !('level' in change) || 'elevation' in change) return;
+  const level = doc.level ? doc.parent?.levels.get(doc.level) : undefined;
+  const bottom = level?.elevation.bottom;
+  const top = level?.elevation.top;
+  if (typeof bottom === 'number' && (doc.elevation < bottom || (typeof top === 'number' && doc.elevation >= top))) {
+    void doc.update({ elevation: bottom });
+  }
+}
+
+async function takeStairs(doc: TokenDoc, stairs: Stairs, level: string): Promise<void> {
   let target: string | null | undefined;
-  if (doc.level !== stairs.from) target = stairs.from;
+  if (level !== stairs.from) target = stairs.from;
   else if (stairs.up && stairs.down) {
     const up = doc.parent?.levels.get(stairs.up);
     const down = doc.parent?.levels.get(stairs.down);
@@ -253,6 +254,6 @@ async function takeStairs(doc: TokenDoc, stairs: Stairs): Promise<void> {
 }
 
 export function registerStairs(): void {
-  on('preUpdateToken', onPreUpdate as (...args: never[]) => unknown);
+  on('moveToken', onMove as (...args: never[]) => unknown);
   on('updateToken', onUpdate as (...args: never[]) => unknown);
 }

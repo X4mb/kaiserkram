@@ -217,8 +217,9 @@ export function buildScene(files: LevelFile[], options: BuildOptions): BuiltScen
       y: 0,
       width: base.width,
       height: base.height,
-      // Above the ground floor's tokens, so it covers them from outside and fades over them.
-      elevation: ground.elevation.top,
+      // Above the ground floor's tokens (so it covers them and fades over them), but still inside
+      // the ground floor's height range (its top belongs to the floor above).
+      elevation: ground.elevation.bottom + options.levelHeight * 0.9,
       levels: [initial.id],
       occlusion: { modes: [options.constants.fade], alpha: 0 },
     });
