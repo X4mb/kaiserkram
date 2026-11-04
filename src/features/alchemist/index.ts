@@ -5,7 +5,7 @@ import { loc } from '../../core/i18n.js';
 import { addTokenTools } from '../../core/sceneTools.js';
 import { openImport } from './importer.js';
 import { registerAlchemistSettings } from './settings.js';
-import { placeStairs } from './stairs.js';
+import { placeStairs, registerStairs } from './stairs.js';
 
 /** GM: an "Import from Dungeon Alchemist" button at the top of the Scenes sidebar. */
 function addImportButton(_app: unknown, html: unknown): void {
@@ -29,6 +29,7 @@ export const alchemist: Feature = {
   init() {
     registerAlchemistSettings();
     on('renderSceneDirectory', addImportButton as (...args: never[]) => unknown);
+    registerStairs();
     addTokenTools(() =>
       game.user?.isGM
         ? [

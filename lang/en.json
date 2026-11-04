@@ -413,5 +413,5 @@
   "kaiserkram.alchemist.stairs.nameUp": "Stairs up",
   "kaiserkram.alchemist.stairs.nameDown": "Stairs down",
   "kaiserkram.alchemist.stairs.nameBoth": "Stairs",
-  "kaiserkram.alchemist.stairs.placed": "Stairs placed. Tokens stepping onto them are offered the other level."
+  "kaiserkram.alchemist.stairs.placed": "Stairs placed. Tokens stepping onto them go to the other level."
 }

@@ -1,11 +1,13 @@
 import { MODULE_ID } from '../../core/constants.js';
-import { dialogV2, notify } from '../../core/foundryApi.js';
+import { dialogV2, flags, notify, on } from '../../core/foundryApi.js';
 import { loc } from '../../core/i18n.js';
 
 /**
  * Stairs in two steps: the GM drags a box over a staircase on the level they are viewing, then
- * picks Up, Down or Both. That becomes a Region on those levels with Foundry's own Change Level
- * behavior, which offers tokens stepping in the move to the other level.
+ * picks Up, Down or Both. That becomes a Region on those levels, marked as stairs. A token
+ * stepping onto it goes straight to the other level, feet on its floor: no question about how it
+ * moves (Foundry's own Change Level behavior asks that every time). Only stairs that lead both
+ * ways ask, from the middle floor, whether up or down.
  */
 
 type LevelLike = { id: string; name: string; elevation: { bottom: number | null; top: number | null } };
@@ -34,13 +36,6 @@ function neighbours(scene: SceneLike, current: LevelLike): { below?: LevelLike; 
 }
 
 type Box = { x: number; y: number; width: number; height: number };
-
-/** Every way a token moves (walk, fly, climb…), so any of them on the stairs offers the change. */
-function movementActions(): string[] {
-  const actions = (CONFIG as unknown as { Token?: { movement?: { actions?: Record<string, unknown> } } }).Token?.movement?.actions;
-  // `displace` (being pushed) never triggers a level change.
-  return Object.keys(actions ?? {}).filter((a) => a !== 'displace');
-}
 
 /** Let the GM drag a box over the canvas; resolves with it in scene coordinates, or null (Esc). */
 function dragBox(c: CanvasLike): Promise<Box | null> {
@@ -145,8 +140,119 @@ export async function placeStairs(): Promise<void> {
       color: '#f5c542',
       shapes: [{ type: 'rectangle', x: Math.round(area.x), y: Math.round(area.y), width: Math.round(area.width), height: Math.round(area.height) }],
       levels: [current.id, ...to.map((l) => l.id)],
-      behaviors: [{ type: 'changeLevel', name, system: { movementActions: movementActions() } }],
+      flags: {
+        [MODULE_ID]: {
+          [STAIRS_FLAG]: {
+            x: Math.round(area.x),
+            y: Math.round(area.y),
+            width: Math.round(area.width),
+            height: Math.round(area.height),
+            from: current.id,
+            up: way === 'up' || way === 'both' ? above?.id : undefined,
+            down: way === 'down' || way === 'both' ? below?.id : undefined,
+          } satisfies Stairs,
+        },
+      },
     },
   ]);
-  notify().info(loc('kaiserkram.alchemist.stairs.placed', 'Stairs placed. Tokens stepping onto them are offered the other level.'));
+  notify().info(loc('kaiserkram.alchemist.stairs.placed', 'Stairs placed. Tokens stepping onto them go to the other level.'));
+}
+
+/** Where a staircase is and what it links: the level it was drawn on, and the one above and/or below. */
+type Stairs = { x: number; y: number; width: number; height: number; from: string; up?: string; down?: string };
+const STAIRS_FLAG = 'stairs';
+
+type TokenDoc = {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  elevation: number;
+  level?: string;
+  parent: {
+    grid: { size: number };
+    regions: { contents: unknown[] };
+    levels: { get(id: string): LevelLike | undefined };
+  } | null;
+  update(data: Record<string, unknown>): Promise<unknown>;
+};
+
+function centre(doc: TokenDoc): { x: number; y: number } {
+  const size = doc.parent?.grid.size ?? 100;
+  return { x: doc.x + (doc.width * size) / 2, y: doc.y + (doc.height * size) / 2 };
+}
+
+function inside(stairs: Stairs, p: { x: number; y: number }): boolean {
+  return p.x >= stairs.x && p.x <= stairs.x + stairs.width && p.y >= stairs.y && p.y <= stairs.y + stairs.height;
+}
+
+/** Put `doc` on `levelId`, standing on its floor. */
+async function moveToLevel(doc: TokenDoc, levelId: string): Promise<void> {
+  const level = doc.parent?.levels.get(levelId);
+  if (!level) return;
+  await doc.update({ level: levelId, elevation: level.elevation.bottom ?? doc.elevation });
+}
+
+/** From the middle of stairs that go both ways: up or down? */
+async function askWay(up: LevelLike, down: LevelLike): Promise<string | null> {
+  const way = (await dialogV2().wait({
+    window: { title: loc('kaiserkram.alchemist.stairs.title', 'Stairs'), icon: 'fa-solid fa-stairs' },
+    content: '',
+    rejectClose: false,
+    buttons: [
+      { action: up.id, label: `${loc('kaiserkram.alchemist.stairs.up', 'Up')}: ${up.name}`, icon: 'fa-solid fa-arrow-up', default: true },
+      { action: down.id, label: `${loc('kaiserkram.alchemist.stairs.down', 'Down')}: ${down.name}`, icon: 'fa-solid fa-arrow-down' },
+    ],
+  })) as string | null;
+  return way === up.id || way === down.id ? way : null;
+}
+
+/** Token centres before this client's own moves, to tell stepping onto stairs from moving on them. */
+const before = new Map<string, { x: number; y: number }>();
+
+function onPreUpdate(doc: TokenDoc, change: Record<string, unknown>, _options: unknown, userId: string): void {
+  if (userId === game.user?.id && ('x' in change || 'y' in change)) before.set(doc.id, centre(doc));
+}
+
+function onUpdate(doc: TokenDoc, change: Record<string, unknown>, _options: unknown, userId: string): void {
+  // Only the client that moved the token acts on it, so it happens once.
+  if (userId !== game.user?.id) return;
+  // Changed level some other way (Foundry's own behavior, the token config): stand on its floor.
+  if ('level' in change && !('elevation' in change)) {
+    const level = doc.level ? doc.parent?.levels.get(doc.level) : undefined;
+    const bottom = level?.elevation.bottom;
+    const top = level?.elevation.top;
+    if (typeof bottom === 'number' && (doc.elevation < bottom || (typeof top === 'number' && doc.elevation >= top))) {
+      void doc.update({ elevation: bottom });
+    }
+  }
+  if (!('x' in change) && !('y' in change)) return;
+  const was = before.get(doc.id);
+  before.delete(doc.id);
+  const now = centre(doc);
+  for (const region of doc.parent?.regions.contents ?? []) {
+    const stairs = flags(region).getFlag(MODULE_ID, STAIRS_FLAG) as Stairs | undefined;
+    if (!stairs || !doc.level || ![stairs.from, stairs.up, stairs.down].includes(doc.level)) continue;
+    // Stepping onto them, not moving about on them (or arriving on them from the other level).
+    if (!inside(stairs, now) || (was && inside(stairs, was))) continue;
+    void takeStairs(doc, stairs);
+    return;
+  }
+}
+
+async function takeStairs(doc: TokenDoc, stairs: Stairs): Promise<void> {
+  let target: string | null | undefined;
+  if (doc.level !== stairs.from) target = stairs.from;
+  else if (stairs.up && stairs.down) {
+    const up = doc.parent?.levels.get(stairs.up);
+    const down = doc.parent?.levels.get(stairs.down);
+    target = up && down ? await askWay(up, down) : (up ?? down)?.id;
+  } else target = stairs.up ?? stairs.down;
+  if (target) await moveToLevel(doc, target);
+}
+
+export function registerStairs(): void {
+  on('preUpdateToken', onPreUpdate as (...args: never[]) => unknown);
+  on('updateToken', onUpdate as (...args: never[]) => unknown);
 }
