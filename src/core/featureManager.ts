@@ -108,7 +108,7 @@ function renderContent(): string {
         'Every feature is off until you tick it. A disabled feature registers nothing: no settings, hooks, keybindings or sheets. Changes apply after a reload.',
       ),
     )}</p>
-    ${sections}
+    <div class="kaiserkram-feature-list">${sections}</div>
     <footer class="form-footer">
       <button type="submit"><i class="fa-solid fa-floppy-disk"></i> ${escapeHtml(loc('kaiserkram.manager.save', 'Save Changes'))}</button>
     </footer>`;
@@ -163,7 +163,7 @@ function featureManagerClass(): AppV2Constructor {
       id: `${MODULE_ID}-features`,
       tag: 'form',
       classes: [`${MODULE_ID}-features`],
-      window: { title: 'kaiserkram.manager.title', icon: 'fa-solid fa-toolbox', contentClasses: ['standard-form'] },
+      window: { title: 'kaiserkram.manager.title', icon: 'fa-solid fa-toolbox', contentClasses: ['standard-form'], resizable: true },
       position: { width: 560, height: 'auto' },
       form: {
         handler: FeatureManager.onSubmit,

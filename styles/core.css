@@ -1,4 +1,26 @@
 /* Kaiserkram Features window. Feature styles (e.g. trader.css) are injected only when that feature is active. */
+
+/* Never taller than the screen: the list scrolls, Save stays in view at the bottom. */
+.kaiserkram-features {
+  max-height: calc(100vh - 2rem);
+}
+
+.kaiserkram-features .window-content {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.kaiserkram-features .kaiserkram-feature-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.kaiserkram-features .form-footer {
+  flex: none;
+}
 .kaiserkram-features fieldset {
   margin: 0 0 0.75rem;
 }
