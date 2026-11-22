@@ -52,6 +52,21 @@ export function getCenterPointFromTokenDocument(doc: TokenDocument): { x: number
  * fallbacks. If you control a token you do **not** own (e.g. GM puppet, observer), we still anchor to
  * your character’s token so proximity isn’t computed from someone else’s position.
  */
+/**
+ * The token of `user`'s assigned character on this scene: one they own if there is one, the
+ * first by id, so every client picks the same. Null without a character or its token here. The
+ * same rule for where a player hears from and where they are heard.
+ */
+export function characterTokenDoc(user: User): TokenDocument | null {
+  const actor = user.character;
+  if (!actor || !canvas?.scene) return null;
+  const docs = Array.from(canvas.scene.tokens).filter((d) => d.actor?.id === actor.id);
+  const owned = docs.filter((d) => d.testUserPermission(user, 'OWNER'));
+  const pool = owned.length > 0 ? owned : docs;
+  pool.sort((a, b) => (a.id ?? '').localeCompare(b.id ?? ''));
+  return pool[0] ?? null;
+}
+
 export function getListenerTokenForProximity(): Token | null {
   if (!canvas?.tokens || !canvas?.scene) return null;
   const u = game.user;
@@ -63,26 +78,12 @@ export function getListenerTokenForProximity(): Token | null {
     return controlled;
   }
 
-  const actor = u.character;
-
-  if (actor) {
-    const docs = Array.from(canvas.scene.tokens).filter((d) => d.actor?.id === actor.id);
-    if (docs.length > 0) {
-      const owned = docs.filter((d) => d.testUserPermission(u, 'OWNER'));
-      const pool = owned.length > 0 ? owned : docs;
-      pool.sort((a, b) => (a.id ?? '').localeCompare(b.id ?? ''));
-      const primaryDoc = pool[0];
-      const primaryId = primaryDoc?.id;
-      const primaryTok = primaryId ? canvas.tokens.get(primaryId) : null;
-      if (primaryTok) {
-        if (controlled) {
-          const ctrlDoc = controlled.document;
-          const ctrlIsThisCharacter = docs.some((d) => d.id === ctrlDoc.id);
-          if (ctrlIsThisCharacter) return controlled;
-        }
-        return primaryTok;
-      }
-    }
+  const primaryDoc = characterTokenDoc(u);
+  const primaryTok = primaryDoc?.id ? canvas.tokens.get(primaryDoc.id) : null;
+  if (primaryTok) {
+    // Controlling another token of the same character (not owned, e.g. a GM-made copy): hear from it.
+    if (controlled && controlled.document.actor?.id === u.character?.id) return controlled;
+    return primaryTok;
   }
 
   if (controlled) return controlled;
@@ -117,7 +118,3 @@ export function gridDistanceBetween(a: { x: number; y: number }, b: { x: number;
   return 0;
 }
 
-/** Stable center from token document (no mesh jitter). Use for proximity distance + wall rays. */
-export function getProximityCenterFromToken(token: Token): { x: number; y: number; elevation: number } {
-  return getCenterPointFromTokenDocument(token.document);
-}

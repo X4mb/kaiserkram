@@ -1,6 +1,7 @@
 import { proximityRouter } from './proximityAudioRouter.js';
 import { getSpeakingRings } from './settings.js';
 import { getSpeakerTokenForUser } from './voiceToken.js';
+import { positionIn, strokeCircle } from './draw.js';
 
 /**
  * A soft ring around a token while its player talks. The level comes from what this client
@@ -17,26 +18,6 @@ type Ring = { g: PIXI.Graphics; size: string; alpha: number };
 const rings = new Map<string, Ring>();
 const lastLoud = new Map<string, number>();
 
-type Drawable = PIXI.Graphics & Record<string, unknown>;
-
-function strokeCircle(g: PIXI.Graphics, r: number, width: number): void {
-  const gfx = g as Drawable;
-  if (typeof gfx.circle === 'function' && typeof gfx.stroke === 'function') {
-    const v8 = gfx as unknown as {
-      circle(x: number, y: number, r: number): void;
-      stroke(o: { width: number; color: number; alpha: number }): void;
-    };
-    v8.circle(0, 0, r);
-    v8.stroke({ width, color: COLOR, alpha: 1 });
-    return;
-  }
-  const v7 = gfx as unknown as {
-    lineStyle(width: number, color: number, alpha: number): void;
-    drawCircle(x: number, y: number, r: number): void;
-  };
-  v7.lineStyle(width, COLOR, 1);
-  v7.drawCircle(0, 0, r);
-}
 
 /** Whether this client's own user is talking, per Foundry's A/V (voice activation or push-to-talk). */
 function selfSpeaking(): boolean {
@@ -58,9 +39,6 @@ export function destroySpeakingRings(): void {
   rings.clear();
   lastLoud.clear();
 }
-
-/** Reused every frame, rather than a new point per ring (made on first use, not at load). */
-let scratchPoint: PIXI.Point | null = null;
 
 /** Per frame: place, fade in or fade out each speaker's ring. */
 export function updateSpeakingRings(): void {
@@ -102,7 +80,7 @@ export function updateSpeakingRings(): void {
     const size = `${w}x${h}`;
     if (ring.size !== size) {
       ring.g.clear();
-      strokeCircle(ring.g, Math.max(w, h) / 2 + cellPx * 0.06, Math.max(3, cellPx * 0.05));
+      strokeCircle(ring.g, 0, 0, Math.max(w, h) / 2 + cellPx * 0.06, Math.max(3, cellPx * 0.05), COLOR);
       ring.size = size;
     }
     // Ease towards on/off so short pauses between words don't flicker.
@@ -115,9 +93,7 @@ export function updateSpeakingRings(): void {
     }
     ring.g.alpha = ring.alpha;
     ring.g.visible = true;
-    const pt = (scratchPoint ??= new PIXI.Point());
-    token.getGlobalPosition(pt);
-    layer.toLocal(pt, undefined, pt);
+    const pt = positionIn(layer, token);
     ring.g.position.set(pt.x + w / 2, pt.y + h / 2);
   }
 }

@@ -130,6 +130,21 @@ export function expandObject(obj: Record<string, unknown>): Record<string, unkno
   return (foundry.utils as unknown as { expandObject(o: object): Record<string, unknown> }).expandObject(obj);
 }
 
+/** A row of a sidebar directory (Actors, Scenes…): Foundry puts the document's id on it. */
+export const ENTRY_SELECTOR = '[data-entry-id], [data-document-id]';
+
+/** The id of the directory entry `el` is in (or is), if any. */
+export function entryIdOf(el: Element | null | undefined): string | null {
+  const row = el?.closest<HTMLElement>(ENTRY_SELECTOR);
+  return row?.dataset.entryId ?? row?.dataset.documentId ?? null;
+}
+
+/** A path under Foundry's own address, honouring a configured route prefix (https://host/foundry/…). */
+export function route(path: string): string {
+  const getRoute = (foundry.utils as unknown as { getRoute?(p: string): string }).getRoute;
+  return getRoute ? getRoute(path) : `/${path}`;
+}
+
 /** Accept either a bare HTMLElement or a jQuery-wrapped one (hook arguments vary by app version). */
 export function toElement(html: unknown): HTMLElement | null {
   if (html instanceof HTMLElement) return html;
@@ -146,10 +161,7 @@ export type MenuEntry = {
   onClick: (target: HTMLElement) => unknown;
 };
 
-/**
- * The entry in both shapes: v14 reads label / visible / onClick, v13 name / condition / callback
- * (v14 still accepts those, with a deprecation warning).
- */
+/** The entry as Foundry v14 reads it (label / visible / onClick), with the clicked row as an element. */
 export function contextEntry(entry: MenuEntry): Record<string, unknown> {
   const visible = (target: unknown) => (entry.visible ? entry.visible(toElement(target) ?? (target as HTMLElement)) : true);
   const run = (target: unknown) => entry.onClick(toElement(target) ?? (target as HTMLElement));
@@ -158,8 +170,5 @@ export function contextEntry(entry: MenuEntry): Record<string, unknown> {
     icon: entry.icon,
     visible,
     onClick: (_event: unknown, target: unknown) => run(target),
-    name: entry.label,
-    condition: visible,
-    callback: run,
   };
 }

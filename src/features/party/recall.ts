@@ -1,6 +1,6 @@
 import { MODULE_ID } from '../../core/constants.js';
 import { flags } from '../../core/foundryApi.js';
-import { loc } from '../../core/i18n.js';
+import { fmt, loc } from '../../core/i18n.js';
 import { FLAGS, OWN_MOVE } from './constants.js';
 import { sceneTokens } from './views.js';
 import { createPartyTokenFromFolder, isActorFolder } from './partyToken.js';
@@ -45,10 +45,11 @@ export function centerOf(members: TokenDocument[], scene: Scene): { x: number; y
 async function confirmRecall(count: number): Promise<boolean> {
   const result = await foundry.applications.api.DialogV2.confirm({
     window: { title: loc('kaiserkram.party.recall.confirmTitle', 'Recall Party') },
-    content: `<p>${loc(
+    content: `<p>${fmt(
       'kaiserkram.party.recall.confirmBody',
       'Recall {count} token(s)? They will be deleted from the scene — any HP, conditions, or other changes tracked on an unlinked token will be lost.',
-    ).replace('{count}', String(count))}</p>`,
+      { count },
+    )}</p>`,
     rejectClose: false,
     modal: true,
   });
@@ -135,6 +136,6 @@ async function recallOnce(tokenDoc: TokenDocument): Promise<void> {
   }
 
   ui.notifications?.info(
-    loc('kaiserkram.party.notifications.recalled', 'Recalled {count} token(s).').replace('{count}', String(members.length)),
+    fmt('kaiserkram.party.notifications.recalled', 'Recalled {count} token(s).', { count: members.length }),
   );
 }

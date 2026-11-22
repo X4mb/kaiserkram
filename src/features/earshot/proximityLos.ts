@@ -1,4 +1,4 @@
-import { getCenterPointFromTokenDocument, getProximityCenterFromToken } from './proximity.js';
+import { getCenterPointFromTokenDocument } from './proximity.js';
 import { getThroughWallGain } from './settings.js';
 
 /**
@@ -79,7 +79,7 @@ export function getVoiceLosMultiplier(listenerToken: Token, speakerDoc: TokenDoc
 
   if (!dim || !SoundPoly?.testCollision) return 1;
 
-  const l = getProximityCenterFromToken(listenerToken);
+  const l = getCenterPointFromTokenDocument(listenerToken.document);
   const g = getCenterPointFromTokenDocument(speakerDoc);
   const snap = (n: number) => Math.round(n * 10) / 10;
 

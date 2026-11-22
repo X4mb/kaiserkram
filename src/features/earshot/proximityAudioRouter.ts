@@ -3,15 +3,13 @@ import {
   computeProximityGain,
   getCenterPointFromTokenDocument,
   getListenerTokenForProximity,
-  getProximityCenterFromToken,
   gridDistanceBetween,
 } from './proximity.js';
 import { getVoiceLosMultiplier } from './proximityLos.js';
 import { getSpeakerTokenDocumentForUser, getVoiceTokenIdFromUser } from './voiceToken.js';
 import { getGmVoiceGlobal, getMaxRange, getMuteUnresolvedSpeaker, getWhisperRange } from './settings.js';
 import { isWhispering } from './whisper.js';
-import { clearClientGainStateForPeer, getFoundryClientGainForPeer } from './avClientGain.js';
-import { pushAvSessionLog } from './avSessionLog.js';
+import { getFoundryClientGainForPeer } from './avClientGain.js';
 
 interface PeerAudio {
   source: MediaStreamAudioSourceNode;
@@ -99,14 +97,11 @@ class ProximityAudioRouter {
     const samples = new Float32Array(new ArrayBuffer(analyser.fftSize * 4));
     this.peers.set(userId, { source, profileGain, clientGain, proximityGain, analyser, samples, stream });
     this.lastStableEnvGain.delete(userId);
-    pushAvSessionLog('peer:attach', { userId });
     this.refreshGain(userId);
   }
 
   detachPeer(userId: string): void {
     this.lastStableEnvGain.delete(userId);
-    clearClientGainStateForPeer(userId);
-    pushAvSessionLog('peer:detach', { userId });
     const p = this.peers.get(userId);
     if (!p) return;
     try {
@@ -204,7 +199,7 @@ class ProximityAudioRouter {
       return 1;
     }
 
-    const lp = getProximityCenterFromToken(listenerToken);
+    const lp = getCenterPointFromTokenDocument(listenerToken.document);
     const sp = getCenterPointFromTokenDocument(speakerDoc);
     const listenerPoint = { x: lp.x, y: lp.y };
     const speakerPoint = { x: sp.x, y: sp.y };

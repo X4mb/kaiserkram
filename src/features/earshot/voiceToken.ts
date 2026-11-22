@@ -2,7 +2,7 @@ import { MODULE_ID } from '../../core/constants.js';
 import { flags, notify } from '../../core/foundryApi.js';
 import { fmt, loc } from '../../core/i18n.js';
 import { FLAGS } from './constants.js';
-import { soleOwnedTokenDoc } from './proximity.js';
+import { characterTokenDoc, soleOwnedTokenDoc } from './proximity.js';
 import { voiceChangerProcessor } from './voiceChangerProcessor.js';
 import { getVoiceProfileForActor } from './voiceProfile.js';
 
@@ -30,15 +30,8 @@ export function getSpeakerTokenDocumentForUser(remoteUser: User): TokenDocument 
 
   if (!canvas?.scene) return null;
 
-  const actor = remoteUser.character;
-  if (actor) {
-    const docs = Array.from(canvas.scene.tokens).filter((d) => d.actor?.id === actor.id);
-    if (docs.length === 0) return null;
-    const owned = docs.filter((d) => d.testUserPermission(remoteUser, 'OWNER'));
-    const pool = owned.length > 0 ? owned : docs;
-    pool.sort((a, b) => (a.id ?? '').localeCompare(b.id ?? ''));
-    return pool[0] ?? null;
-  }
+  // With a character, its token (none on this scene: no position); without, the same token the listener side uses.
+  if (remoteUser.character) return characterTokenDoc(remoteUser);
 
   /** No assigned actor: the same token the listener side uses for them. */
   return soleOwnedTokenDoc(remoteUser);

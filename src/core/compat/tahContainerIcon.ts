@@ -1,5 +1,5 @@
 import { MODULE_ID } from '../constants.js';
-import { moduleById, notify, on, settings } from '../foundryApi.js';
+import { moduleById, notify, on, route, settings } from '../foundryApi.js';
 import { fmt } from '../i18n.js';
 
 /**
@@ -83,8 +83,7 @@ function patchHud(): void {
 /** Whether the installed module still ships the broken icon; null when it can't be read. */
 async function sourceHasBug(): Promise<boolean | null> {
   try {
-    const route = (foundry.utils as unknown as { getRoute?(p: string): string }).getRoute?.(SOURCE) ?? SOURCE;
-    const res = await fetch(route, { cache: 'no-cache' });
+    const res = await fetch(route(SOURCE), { cache: 'no-cache' });
     if (!res.ok) return null;
     return (await res.text()).includes(BUG);
   } catch {

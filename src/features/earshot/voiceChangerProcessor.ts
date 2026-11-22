@@ -1,5 +1,4 @@
 import { PITCH_SHIFT_WORKLET_CODE } from './pitchShiftWorklet.js';
-import { pushAvSessionLog } from './avSessionLog.js';
 import { buildVoiceChain, teardownVoiceChain } from './voiceChain.js';
 import type { VoiceChainNodes } from './voiceChain.js';
 import type { VoiceProfile } from './voiceProfile.js';
@@ -80,7 +79,6 @@ class VoiceChangerProcessor {
       this.pendingProfile = null;
 
       this.state = 'ready';
-      pushAvSessionLog('voiceChanger:initialized', {});
     } catch (err) {
       this.state = 'uninitialized';
       throw err;
@@ -94,7 +92,6 @@ class VoiceChangerProcessor {
       return;
     }
     await this.buildChain(profile ?? { preset: 'none' });
-    pushAvSessionLog('voiceChanger:applyProfile', { preset: profile?.preset ?? 'none' });
   }
 
   dispose(): void {
@@ -120,7 +117,6 @@ class VoiceChangerProcessor {
     this.workletReady = false;
     this.workletFailed = false;
     this.pendingProfile = null;
-    pushAvSessionLog('voiceChanger:disposed', {});
   }
 
   reset(): void {

@@ -49,7 +49,7 @@ export type Undo = (() => Promise<unknown>)[];
  * Put back what the given steps did, newest first. Keeps going past a failed step, so as much as
  * possible is restored.
  */
-export async function rollback(undo: Undo): Promise<void> {
+async function rollback(undo: Undo): Promise<void> {
   for (const step of undo.splice(0).reverse()) {
     try {
       await step();
@@ -125,8 +125,17 @@ export function quantityPathOf(item: { system?: Record<string, any> }): string {
 }
 
 /** Sort coins from the most valuable down. */
-export function byCoinValue(a: { system?: Record<string, any> }, b: { system?: Record<string, any> }): number {
+function byCoinValue(a: { system?: Record<string, any> }, b: { system?: Record<string, any> }): number {
   return Number(b.system?.coinValue?.value ?? 0) - Number(a.system?.coinValue?.value ?? 0);
+}
+
+/** What an actor has to hand over: counted goods by name, and coins from the most valuable down. */
+export function goodsAndMoney<T extends ItemLike>(actor: { items: { contents: T[] } } | null | undefined): { goods: T[]; money: T[] } {
+  const items = (actor?.items.contents ?? []).filter((i) => isTradeableItem(i) && quantityOf(i) > 0);
+  return {
+    goods: items.filter((i) => !isMoney(i)).sort((a, b) => a.name.localeCompare(b.name)),
+    money: items.filter(isMoney).sort(byCoinValue),
+  };
 }
 
 /**
@@ -199,7 +208,7 @@ export async function receiveItem(item: ItemLike, qty: number, target: ActorLike
  * Take `qty` of `item` off its owner: fewer of them, or the item gone when none are left (a whole
  * container moves its contents to `moveTo` first, when given). Undo steps go to `undo`.
  */
-export async function takeFrom(item: ItemLike, qty: number, undo: Undo, moveTo?: { actor: ActorLike; container: ItemLike }): Promise<void> {
+async function takeFrom(item: ItemLike, qty: number, undo: Undo, moveTo?: { actor: ActorLike; container: ItemLike }): Promise<void> {
   const had = quantityOf(item);
   if (qty < had) {
     await item.update({ [quantityPathOf(item)]: had - qty });

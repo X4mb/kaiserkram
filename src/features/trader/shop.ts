@@ -1,5 +1,5 @@
 import { MODULE_ID } from '../../core/constants.js';
-import { dialogV2, escapeHtml, postChat, renderTemplate, resolveDocument, speakerFor } from '../../core/foundryApi.js';
+import { dialogV2, escapeHtml, notify, postChat, renderTemplate, resolveDocument, speakerFor } from '../../core/foundryApi.js';
 import { fmt, loc } from '../../core/i18n.js';
 import { quantityOf, receiveItem } from '../../core/items.js';
 import { CARD_CLASS, FLAGS, TEMPLATES } from './constants.js';
@@ -50,10 +50,6 @@ const OWNERSHIP = { NONE: 0, LIMITED: 1 } as const;
 export type ShopTab = 'buy' | 'sell' | 'manage';
 
 type ActionFn = (this: TraderShop, event: Event, target: HTMLElement) => unknown;
-
-function notify(kind: 'info' | 'warn', message: string): void {
-  (ui.notifications as unknown as Record<string, (m: string) => void>)[kind](message);
-}
 
 function dataId(target: HTMLElement): string {
   return target.closest<HTMLElement>('[data-item-id]')?.dataset.itemId ?? '';
@@ -206,10 +202,8 @@ function defineShop() {
             id: item.id,
             name: item.name,
             img: item.img,
-            type: item.type,
             qty,
             infinite,
-            qtyLabel: infinite ? '∞' : String(qty),
             soldOut: !infinite && qty <= 0,
             forSale: isForSale(item),
             book: formatBP(bookPriceBP(item)),
@@ -268,7 +262,6 @@ function defineShop() {
       return {
         ...context,
         isGM,
-        tab: this.tab,
         tabs: {
           buy: this.tab === 'buy',
           sell: this.tab === 'sell',
@@ -436,7 +429,7 @@ function defineShop() {
 
     /** Say a typed price couldn't be read, and show the stored one again. */
     private badPrice(text: string): void {
-      notify('warn', fmt('kaiserkram.trader.notifications.badPrice', 'Could not read "{text}" as a price (try "1 gc 5 ss" or "1/5/0").', { text }));
+      notify().warn(fmt('kaiserkram.trader.notifications.badPrice', 'Could not read "{text}" as a price (try "1 gc 5 ss" or "1/5/0").', { text }));
       void this.render();
     }
 
@@ -507,7 +500,7 @@ function defineShop() {
     private async sellItem(customer: WfrpActor, item: WfrpItem): Promise<void> {
       const trader = this.trader;
       if (!traderConfig(trader).buysFromPlayers) {
-        notify('warn', fmt('kaiserkram.trader.notifications.doesntBuy', '{trader} doesn\'t buy from customers.', {
+        notify().warn(fmt('kaiserkram.trader.notifications.doesntBuy', '{trader} doesn\'t buy from customers.', {
           trader: trader.name,
         }));
         return;
@@ -609,8 +602,7 @@ function defineShop() {
       else await announceShop(trader);
       showToPlayers(trader.uuid);
       const players = g().users.contents.filter((u) => u.active && !u.isGM).length;
-      notify(
-        'info',
+      notify().info(
         players
           ? fmt('kaiserkram.trader.gm.shownToPlayers', 'Showed {trader} to {count} player(s).', { trader: trader.name, count: players })
           : loc('kaiserkram.trader.gm.noPlayers', 'No players are connected; they can open the shop from its token or the Actors sidebar.'),

@@ -1,6 +1,7 @@
 import { VOICE_INDICATOR_LAYER } from './constants.js';
 import { getVoiceSourceTokenForDisplay } from './voiceToken.js';
 import { isWhispering } from './whisper.js';
+import { fillCircle, positionIn } from './draw.js';
 
 const DOT_COLOR = 0x33ffcc;
 /** While whispering. */
@@ -9,6 +10,11 @@ const WHISPER_DOT_COLOR = 0xb388ff;
 let rafId = 0;
 /** What the dot was last drawn for; the per-frame redraw is skipped while this is unchanged. */
 let lastDrawn = '';
+/**
+ * The token the dot sits on, looked up when something changes (token hooks call
+ * scheduleVoiceIndicatorRedraw), not every frame; `undefined` means "look it up again".
+ */
+let source: Token | null | undefined;
 
 /**
  * Never parent to `canvas.tokens.objects` — on dnd5e, that container only accepts Token5e
@@ -29,10 +35,7 @@ function ensureGraphics(layer: NonNullable<Canvas['tokens']>): PIXI.Graphics {
 }
 
 function positionOnTokenLayer(layer: NonNullable<Canvas['tokens']>, g: PIXI.Graphics, token: Token): void {
-  const pt = new PIXI.Point();
-  token.getGlobalPosition(pt);
-  layer.toLocal(pt, undefined, pt);
-  g.position.copyFrom(pt);
+  g.position.copyFrom(positionIn(layer, token));
   g.rotation = token.rotation;
 }
 
@@ -45,7 +48,8 @@ export function redrawVoiceIndicator(): void {
   const g = ensureGraphics(tokenLayer);
 
   const user = game.user;
-  const token = user ? getVoiceSourceTokenForDisplay(user) : null;
+  if (source === undefined || source?.destroyed) source = user ? getVoiceSourceTokenForDisplay(user) : null;
+  const token = source;
   if (!token) {
     if (lastDrawn) g.clear();
     lastDrawn = '';
@@ -68,26 +72,7 @@ export function redrawVoiceIndicator(): void {
   const dx = tw - dotR * 0.6;
   const dy = th - dotR * 0.6;
 
-  const gfx = g as PIXI.Graphics & Record<string, unknown>;
-  if (typeof gfx.circle === 'function' && typeof gfx.fill === 'function') {
-    const v8 = gfx as unknown as {
-      circle: (x: number, y: number, r: number) => void;
-      fill: (o: { color: number; alpha: number }) => void;
-    };
-    v8.circle(dx, dy, dotR);
-    v8.fill({ color, alpha: 1 });
-  } else {
-    const leg = gfx as {
-      beginFill?: (c: number, a?: number) => void;
-      drawCircle?: (x: number, y: number, r: number) => void;
-      endFill?: () => void;
-    };
-    if (typeof leg.beginFill === 'function' && typeof leg.drawCircle === 'function') {
-      leg.beginFill(color, 1);
-      leg.drawCircle(dx, dy, dotR);
-      leg.endFill?.();
-    }
-  }
+  fillCircle(g, dx, dy, dotR, color);
 }
 
 /** Hide the dot (e.g. while A/V is off). */
@@ -100,6 +85,7 @@ export function clearVoiceIndicator(): void {
 
 export function scheduleVoiceIndicatorRedraw(): void {
   lastDrawn = '';
+  source = undefined;
   if (rafId) cancelAnimationFrame(rafId);
   rafId = requestAnimationFrame(() => {
     rafId = 0;
@@ -109,6 +95,7 @@ export function scheduleVoiceIndicatorRedraw(): void {
 
 export function destroyVoiceIndicatorLayer(): void {
   lastDrawn = '';
+  source = undefined;
   if (rafId) {
     cancelAnimationFrame(rafId);
     rafId = 0;

@@ -1,4 +1,4 @@
-import { isActiveGM } from '../../core/foundryApi.js';
+import { isActiveGM, notify } from '../../core/foundryApi.js';
 import { emitSocket, registerSocketHandler } from '../../core/socket.js';
 import { loc } from '../../core/i18n.js';
 import { g, type FoundryUser } from './wfrp.js';
@@ -123,9 +123,8 @@ export async function requestGM(action: string, payload: Record<string, unknown>
   })();
 
   if (result.message) {
-    const notify = ui.notifications as unknown as { info(m: string): void; warn(m: string): void };
-    if (result.ok) notify.info(result.message);
-    else notify.warn(result.message);
+    if (result.ok) notify().info(result.message);
+    else notify().warn(result.message);
   }
   return result;
 }

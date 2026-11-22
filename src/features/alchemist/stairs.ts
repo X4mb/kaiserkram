@@ -1,6 +1,6 @@
 import { MODULE_ID } from '../../core/constants.js';
 import { dialogV2, flags, notify, on } from '../../core/foundryApi.js';
-import { loc } from '../../core/i18n.js';
+import { fmt, loc } from '../../core/i18n.js';
 
 /**
  * Stairs in two steps: the GM drags a box over a staircase on the level they are viewing, then
@@ -120,7 +120,7 @@ export async function placeStairs(): Promise<void> {
   ].filter(Boolean);
   const way = (await dialogV2().wait({
     window: { title: loc('kaiserkram.alchemist.stairs.title', 'Stairs'), icon: 'fa-solid fa-stairs' },
-    content: `<p>${loc('kaiserkram.alchemist.stairs.where', 'Where do these stairs lead from {level}?').replace('{level}', current.name)}</p>`,
+    content: `<p>${fmt('kaiserkram.alchemist.stairs.where', 'Where do these stairs lead from {level}?', { level: current.name })}</p>`,
     rejectClose: false,
     buttons,
   })) as string | null;

@@ -1,3 +1,5 @@
+import { route } from '../../core/foundryApi.js';
+
 /** Foundry's file browser and uploads, shared by the import and the re-cutting of pictures. */
 
 type Picker = {
@@ -9,11 +11,6 @@ export type PickerCtor = (new (options: Record<string, unknown>) => { render(for
 
 export function filePicker(): PickerCtor {
   return (foundry.applications as unknown as { apps: { FilePicker: { implementation: PickerCtor } } }).apps.FilePicker.implementation;
-}
-
-export function route(path: string): string {
-  const getRoute = (foundry.utils as unknown as { getRoute?(p: string): string }).getRoute;
-  return getRoute ? getRoute(path) : `/${path}`;
 }
 
 export function folderOf(path: string): string {

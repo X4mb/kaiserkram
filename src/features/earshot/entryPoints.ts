@@ -1,5 +1,5 @@
 import { MODULE_ID } from '../../core/constants.js';
-import { contextEntry, notify, on, toElement } from '../../core/foundryApi.js';
+import { contextEntry, entryIdOf, notify, on, toElement } from '../../core/foundryApi.js';
 import { loc } from '../../core/i18n.js';
 import { getDebug } from './settings.js';
 import { openVoiceAssignDialogForActor } from './voiceAssignDialog.js';
@@ -45,13 +45,10 @@ function addTokenMenuEntry(_app: unknown, options: Record<string, unknown>[]): v
   };
   options.push({
     label: assignLabel(),
-    name: assignLabel(),
     icon: ICON,
     // Always visible for the GM: a failing resolver must not silently hide the entry.
     visible: () => true,
-    condition: () => true,
     onClick: (_event: unknown, target: unknown) => open(target),
-    callback: open,
   });
 }
 
@@ -129,8 +126,7 @@ function addActorMenuEntry(_app: unknown, options: Record<string, unknown>[]): v
       label: assignLabel(),
       icon: ICON,
       onClick: (li) => {
-        const entry = li.closest<HTMLElement>('[data-entry-id], [data-document-id], [data-actor-id]') ?? li;
-        const id = entry.dataset.entryId ?? entry.dataset.documentId ?? entry.dataset.actorId;
+        const id = entryIdOf(li);
         const actor = id ? game.actors?.get(id) : null;
         if (actor) void openVoiceAssignDialogForActor(actor);
         else notify().warn(loc('kaiserkram.earshot.VOICE.noActor', 'Within Earshot: could not find the actor for this entry.'));

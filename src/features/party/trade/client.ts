@@ -1,9 +1,9 @@
 import { MODULE_ID } from '../../../core/constants.js';
-import { dialogV2, escapeHtml, notify } from '../../../core/foundryApi.js';
+import { activeGMId, dialogV2, escapeHtml, isActiveGM, notify } from '../../../core/foundryApi.js';
 import { fmt, loc } from '../../../core/i18n.js';
 import { emitSocket } from '../../../core/socket.js';
 import { handleRequest, setBroadcaster } from './authority.js';
-import { byCoinValue, isMoney, isTradeableItem, quantityOf, type ActorLike } from '../../../core/items.js';
+import { goodsAndMoney, isMoney, isTradeableItem, quantityOf, type ActorLike } from '../../../core/items.js';
 import { REQUEST_OPS, type CloseReason, type RequestBody, type TradeMessage, type TradeRequest, type TradeSession, type TradeUpdate } from './types.js';
 
 type UserLike = { id: string; isGM: boolean; isSelf?: boolean };
@@ -12,21 +12,16 @@ function me(): UserLike {
   return game.user as unknown as UserLike;
 }
 
-function activeGM(): UserLike | null {
-  return (game.users as unknown as { activeGM?: UserLike | null }).activeGM ?? null;
-}
-
 /**
  * Client → GM. The active GM handles its own requests directly (sockets don't echo to the
  * sender). Over the socket the sender isn't in the message: the GM takes it from Foundry.
  */
 export function sendRequest(msg: RequestBody): void {
-  const gm = activeGM();
-  if (!gm) {
+  if (!activeGMId()) {
     notify().warn(loc('kaiserkram.party.trade.noGM', 'A GM needs to be online to trade.'));
     return;
   }
-  if (gm.isSelf) void handleRequest({ ...msg, kind: 'trade', userId: me().id } as TradeRequest);
+  if (isActiveGM()) void handleRequest({ ...msg, kind: 'trade', userId: me().id } as TradeRequest);
   else emitSocket('party', { ...msg, kind: 'trade' });
 }
 
@@ -41,11 +36,11 @@ export function onTradeMessage(raw: unknown, senderId: string | undefined): void
   if (msg?.kind !== 'trade' || !senderId) return;
   if (REQUEST_OPS.has(msg.op)) {
     // Acting as whoever really sent it, whatever the message claims.
-    if (activeGM()?.isSelf) void handleRequest({ ...(msg as TradeRequest), userId: senderId });
+    if (isActiveGM()) void handleRequest({ ...(msg as TradeRequest), userId: senderId });
     return;
   }
   // Trade state only counts when it comes from the GM running the trades.
-  if (senderId === activeGM()?.id) handleUpdate(msg as TradeUpdate);
+  if (senderId === activeGMId()) handleUpdate(msg as TradeUpdate);
 }
 
 export function initTradeClient(): void {
@@ -63,24 +58,19 @@ export function proposeTrade(from: ActorLike, to: ActorLike): void {
  * amounts in a dialog, and the GM hands them over at once.
  */
 export async function giveItems(from: ActorLike, to: ActorLike): Promise<void> {
-  const items = from.items.contents.filter((i) => isTradeableItem(i) && quantityOf(i) > 0);
-  if (!items.length) {
+  const { goods: goodsItems, money: coins } = goodsAndMoney(from);
+  if (!goodsItems.length && !coins.length) {
     notify().warn(fmt('kaiserkram.party.give.empty', '{name} has nothing to give.', { name: from.name }));
     return;
   }
-  const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name);
-  const row = (i: (typeof items)[number]) => `<li class="kk-give-item ${isMoney(i) ? 'coin' : ''}" data-item-id="${escapeHtml(i.id)}">
+  const row = (i: (typeof goodsItems)[number]) => `<li class="kk-give-item ${isMoney(i) ? 'coin' : ''}" data-item-id="${escapeHtml(i.id)}">
       <img src="${escapeHtml(i.img)}" alt="" />
       <span class="name">${escapeHtml(i.name)}</span>
       <input type="number" name="${escapeHtml(i.id)}" min="0" max="${quantityOf(i)}" step="1" value="0" />
       <span class="max">/ ${quantityOf(i)}</span>
     </li>`;
-  const goods = items.filter((i) => !isMoney(i)).sort(byName).map(row).join('');
-  const money = items
-    .filter(isMoney)
-    .sort(byCoinValue)
-    .map(row)
-    .join('');
+  const goods = goodsItems.map(row).join('');
+  const money = coins.map(row).join('');
   const content = `<div class="kk-give">
     <p class="hint">${escapeHtml(
       fmt('kaiserkram.party.give.hint', 'Set how much of each to give {name}. It changes hands at once.', { name: to.name }),
@@ -249,10 +239,8 @@ function renderSide(win: TradeWindow, index: 0 | 1): string {
 /** Your inventory beside the offer: goods to drag (or click) in, and money to type an amount of. */
 function renderInventory(win: TradeWindow): string {
   const offered = offerMap(win);
-  const items = (myActor(win)?.items.contents ?? []).filter((i) => isTradeableItem(i) && quantityOf(i) > 0);
-  const goods = items
-    .filter((i) => !isMoney(i))
-    .sort((a, b) => a.name.localeCompare(b.name))
+  const owned = goodsAndMoney(myActor(win));
+  const goods = owned.goods
     .map((i) => {
       const left = quantityOf(i) - (offered[i.id] ?? 0);
       return `<li class="kk-trade-item kk-trade-good ${left <= 0 ? 'all-offered' : ''}" draggable="true"
@@ -264,9 +252,7 @@ function renderInventory(win: TradeWindow): string {
       </li>`;
     })
     .join('');
-  const money = items
-    .filter(isMoney)
-    .sort(byCoinValue)
+  const money = owned.money
     .map(
       (i) => `<li class="kk-trade-item kk-trade-coin" data-item-id="${escapeHtml(i.id)}">
         <img src="${escapeHtml(i.img)}" alt="" />

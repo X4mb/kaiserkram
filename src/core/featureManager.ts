@@ -153,11 +153,10 @@ type AppV2Constructor = new (options?: Record<string, unknown>) => {
 
 let FeatureManagerClass: AppV2Constructor | undefined;
 
-/** The "Kaiserkram Features" window. Built lazily so nothing touches ApplicationV2 until `init`. */
 /**
- * Never taller than the screen: the feature list scrolls and Save stays in view. Set here rather
- * than only in core.css, which module.json loads without a version stamp (a cached old copy would
- * leave the window unscrollable).
+ * Never taller than the screen: the feature list scrolls and Save stays in view. Set here, not in
+ * core.css, which module.json loads without a version stamp (a cached old copy would leave the
+ * window unscrollable).
  */
 function fitToScreen(content: HTMLElement): void {
   const app = content.closest<HTMLElement>('.application') ?? content.parentElement;
@@ -171,6 +170,7 @@ function fitToScreen(content: HTMLElement): void {
   if (footer) footer.style.flex = 'none';
 }
 
+/** The "Kaiserkram Features" window. Built lazily so nothing touches ApplicationV2 until `init`. */
 function featureManagerClass(): AppV2Constructor {
   if (FeatureManagerClass) return FeatureManagerClass;
   const Base = (foundry.applications.api as unknown as { ApplicationV2: AppV2Constructor }).ApplicationV2;

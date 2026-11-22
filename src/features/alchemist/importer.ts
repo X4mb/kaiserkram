@@ -2,7 +2,8 @@ import { MODULE_ID } from '../../core/constants.js';
 import { dialogV2, escapeHtml, notify, settings } from '../../core/foundryApi.js';
 import { fmt, loc } from '../../core/i18n.js';
 import { buildScene, filesOfMap, isDaMap, isRoof, nameFromPrefix, type BuildOptions, type DaMap, type LevelFile } from './build.js';
-import { cutPicture, ensureFolder, filePicker, folderOf, route, upload } from './files.js';
+import { route } from '../../core/foundryApi.js';
+import { cutPicture, ensureFolder, filePicker, folderOf, upload } from './files.js';
 import { outlineFromWalls } from './outline.js';
 import { SETTINGS } from './settings.js';
 

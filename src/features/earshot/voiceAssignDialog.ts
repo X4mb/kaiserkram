@@ -368,17 +368,8 @@ async function openNow(actor: Actor): Promise<void> {
       ...readProfileFromForm(form),
     };
 
+    // The actor update applies it to the live voice (feature index: updateActor).
     await persistVoiceProfileFlag(targetActor, newProfile);
-
-    if (isLiveVoiceActor(targetActor.id as string)) {
-      void voiceChangerProcessor.applyProfile(newProfile).catch((err: unknown) => {
-        notify().warn(
-          fmt('kaiserkram.earshot.VOICE.cannotApplyProfile', 'Within Earshot: could not apply voice profile ({error})', {
-            error: String(err),
-          }),
-        );
-      });
-    }
   };
 
   const Dialog = voiceAssignDialogClass();

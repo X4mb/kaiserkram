@@ -1,5 +1,6 @@
 import { whisperApplies } from './proximityAudioRouter.js';
 import { getSpeakerTokenForUser } from './voiceToken.js';
+import { fillCircle, positionIn } from './draw.js';
 
 /**
  * A small speech-bubble badge on a whispering user's token, visible to everyone who can see that
@@ -10,37 +11,14 @@ const COLOR = 0xb388ff;
 const badges = new Map<string, { g: PIXI.Graphics; cellPx: number }>();
 let whisperers = new Set<string>();
 
-type Drawable = PIXI.Graphics & Record<string, unknown>;
-
-/** PIXI v7 and v8 spell shape drawing differently. */
-function circle(g: PIXI.Graphics, x: number, y: number, r: number, color: number): void {
-  const gfx = g as Drawable;
-  if (typeof gfx.circle === 'function' && typeof gfx.fill === 'function') {
-    const v8 = gfx as unknown as {
-      circle(x: number, y: number, r: number): void;
-      fill(o: { color: number; alpha: number }): void;
-    };
-    v8.circle(x, y, r);
-    v8.fill({ color, alpha: 1 });
-    return;
-  }
-  const v7 = gfx as unknown as {
-    beginFill(c: number, a?: number): void;
-    drawCircle(x: number, y: number, r: number): void;
-    endFill(): void;
-  };
-  v7.beginFill(color, 1);
-  v7.drawCircle(x, y, r);
-  v7.endFill();
-}
 
 /** A purple disc with three white dots, centred on the Graphics' origin. */
 function drawBadge(g: PIXI.Graphics, cellPx: number): void {
   g.clear();
   const r = Math.max(8, cellPx * 0.13);
-  circle(g, 0, 0, r, COLOR);
+  fillCircle(g, 0, 0, r, COLOR);
   const dot = r * 0.17;
-  for (const dx of [-r * 0.42, 0, r * 0.42]) circle(g, dx, 0, dot, 0xffffff);
+  for (const dx of [-r * 0.42, 0, r * 0.42]) fillCircle(g, dx, 0, dot, 0xffffff);
 }
 
 /** Recompute who is whispering (after a user's flags change, or someone leaves). */
@@ -86,9 +64,7 @@ export function updateWhisperBadges(): void {
       badge.cellPx = cellPx;
     }
     // Top-left corner of the token, slightly inset; follows movement animation.
-    const pt = new PIXI.Point();
-    token.getGlobalPosition(pt);
-    layer.toLocal(pt, undefined, pt);
+    const pt = positionIn(layer, token);
     const r = Math.max(8, cellPx * 0.13);
     badge.g.position.set(pt.x + r * 0.9, pt.y + r * 0.9);
     badge.g.visible = true;

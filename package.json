@@ -12,7 +12,8 @@
     "release-pack": "npm run build && node scripts/package-release.mjs",
     "typecheck": "tsc --noEmit",
     "check:i18n": "node scripts/check-i18n.mjs",
-    "smoke": "npm run bundle && node scripts/smoke-test.mjs"
+    "smoke": "npm run bundle && node scripts/smoke-test.mjs",
+    "test": "node scripts/unit-test.mjs"
   },
   "devDependencies": {
     "@league-of-foundry-developers/foundry-vtt-types": "^13.346.0-beta.20250812191140",

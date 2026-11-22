@@ -48,7 +48,6 @@ export type WfrpActor = {
   unsetFlag(scope: string, key: string): Promise<unknown>;
   update(data: Record<string, unknown>): Promise<unknown>;
   testUserPermission(user: unknown, level: string | number): boolean;
-  getActiveTokens(linked?: boolean, document?: boolean): WfrpTokenDoc[];
   createEmbeddedDocuments(type: 'Item', data: Record<string, unknown>[], options?: Record<string, unknown>): Promise<WfrpItem[]>;
   updateEmbeddedDocuments(type: 'Item', data: Record<string, unknown>[]): Promise<unknown[]>;
   deleteEmbeddedDocuments(type: 'Item', ids: string[]): Promise<unknown[]>;
@@ -57,22 +56,6 @@ export type WfrpActor = {
     context?: Record<string, unknown>,
     options?: Record<string, unknown>,
   ): Promise<WfrpTest | undefined>;
-};
-
-export type WfrpTokenDoc = {
-  id: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  actor: WfrpActor | null;
-  parent: WfrpScene | null;
-};
-
-export type WfrpScene = {
-  id: string;
-  grid: { size: number; distance: number };
-  tokens: { contents: WfrpTokenDoc[] };
 };
 
 export type FoundryUser = {
@@ -88,22 +71,7 @@ export type GameView = {
   user: FoundryUser;
   users: { get(id: string): FoundryUser | undefined; activeGM: FoundryUser | null; contents: FoundryUser[] };
   actors: { get(id: string): WfrpActor | undefined; contents: WfrpActor[] };
-  scenes: { viewed: WfrpScene | null };
-  system: { id: string };
   packs: { get(id: string): { getDocuments(query?: Record<string, unknown>): Promise<WfrpItem[]> } | undefined };
-  socket: {
-    emit(name: string, data: unknown): void;
-    on(name: string, fn: (data: any) => void): void;
-  };
-  i18n: {
-    localize(key: string): string;
-    format(key: string, data: Record<string, unknown>): string;
-  };
-  settings: {
-    register(namespace: string, key: string, data: Record<string, unknown>): void;
-    get(namespace: string, key: string): unknown;
-  };
-  modules: { get(id: string): { api?: Record<string, unknown> } | undefined };
 };
 
 /** `game`, seen through the WFRP4e types above. */

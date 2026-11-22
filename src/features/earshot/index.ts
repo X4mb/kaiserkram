@@ -1,7 +1,7 @@
 import { MODULE_ID } from '../../core/constants.js';
 import type { Feature } from '../../core/feature.js';
 import { notify, on } from '../../core/foundryApi.js';
-import { clearAvSessionLog, copyAvSessionLogToClipboard, getAvSessionLogSnapshot } from './avSessionLog.js';
+import { fmt } from '../../core/i18n.js';
 import { proximityClientClass } from './proximityClient.js';
 import { proximityRouter, scheduleProximityRefresh } from './proximityAudioRouter.js';
 import { registerVoiceEntryPoints } from './entryPoints.js';
@@ -17,7 +17,7 @@ import {
   redrawVoiceIndicator,
   scheduleVoiceIndicatorRedraw,
 } from './voiceIndicatorLayer.js';
-import { getVoiceProfileForActor, persistVoiceProfileFlag, type VoiceProfile } from './voiceProfile.js';
+import { getVoiceProfileForActor, persistVoiceProfileFlag } from './voiceProfile.js';
 import { clearVoiceTokenFlagForCurrentUser, getVoiceTokenIdFromUser } from './voiceToken.js';
 import { registerVoiceTokenKeybinding } from './voiceTokenInput.js';
 import { clearWhisperForCurrentUser, isWhispering, registerWhisperControls, setWhisper, toggleWhisper } from './whisper.js';
@@ -120,7 +120,13 @@ function registerHooks(): void {
       if (game.user?.isGM && voiceChangerProcessor.isInitialized()) {
         const pinnedId = getVoiceTokenIdFromUser(game.user);
         if (pinnedId && canvas?.scene?.tokens.get(pinnedId)?.actor?.id === doc.id) {
-          void voiceChangerProcessor.applyProfile(getVoiceProfileForActor(doc));
+          voiceChangerProcessor.applyProfile(getVoiceProfileForActor(doc)).catch((err: unknown) =>
+            notify().warn(
+              fmt('kaiserkram.earshot.VOICE.cannotApplyProfile', 'Within Earshot: could not apply voice profile ({error})', {
+                error: String(err),
+              }),
+            ),
+          );
         }
       }
     }
@@ -133,15 +139,6 @@ function registerHooks(): void {
     /** Per-user A/V volume & mute live under core rtc client settings (not always covered by rtcSettingsChanged). */
     if (full === 'core.rtcClientSettings') scheduleProximityRefresh();
   }) as (...args: never[]) => unknown);
-}
-
-async function setVoiceProfileForActor(actor: Actor, profile: VoiceProfile | null): Promise<void> {
-  await persistVoiceProfileFlag(actor, profile);
-  const uid = game.users?.find((u) => u.character?.id === actor.id)?.id;
-  if (uid) {
-    proximityRouter.updateProfileGainForUser(uid);
-    scheduleProximityRefresh();
-  }
 }
 
 export const earshot: Feature = {
@@ -175,14 +172,12 @@ export const earshot: Feature = {
   api() {
     return {
       getVoiceProfileForActor,
-      setVoiceProfileForActor,
+      // Saving the flag is enough: the actor update re-applies gains and the live voice.
+      setVoiceProfileForActor: persistVoiceProfileFlag,
       openVoiceAssignDialogForActor,
       isWhispering,
       setWhisper,
       scheduleProximityRefresh,
-      getAvSessionLog: getAvSessionLogSnapshot,
-      clearAvSessionLog,
-      copyAvSessionLogToClipboard,
     };
   },
 };

@@ -1,6 +1,6 @@
 import { MODULE_ID } from '../../core/constants.js';
 import { flags } from '../../core/foundryApi.js';
-import { loc } from '../../core/i18n.js';
+import { fmt, loc } from '../../core/i18n.js';
 import { FLAGS } from './constants.js';
 import { createPartyTokenFromFolder } from './partyToken.js';
 import { findDeployedMembers } from './recall.js';
@@ -38,10 +38,7 @@ async function deployOnce(tokenDoc: TokenDocument, options: DeployPartyOptions):
   if (!(folder instanceof Folder)) {
     const name = (flags(tokenDoc).getFlag(MODULE_ID, FLAGS.FOLDER_NAME) as string | undefined) ?? tokenDoc.name ?? '';
     ui.notifications?.warn(
-      loc('kaiserkram.party.notifications.folderMissing', 'The source folder for "{name}" no longer exists.').replace(
-        '{name}',
-        name,
-      ),
+      fmt('kaiserkram.party.notifications.folderMissing', 'The source folder for "{name}" no longer exists.', { name }),
     );
     return;
   }
@@ -52,10 +49,7 @@ async function deployOnce(tokenDoc: TokenDocument, options: DeployPartyOptions):
   const actors = collectActorsInFolder(folder, getIncludeSubfolders());
   if (!actors.length) {
     ui.notifications?.warn(
-      loc('kaiserkram.party.notifications.folderEmpty', 'The folder "{name}" has no actors to deploy.').replace(
-        '{name}',
-        folder.name,
-      ),
+      fmt('kaiserkram.party.notifications.folderEmpty', 'The folder "{name}" has no actors to deploy.', { name: folder.name }),
     );
     return;
   }
@@ -69,10 +63,7 @@ async function deployOnce(tokenDoc: TokenDocument, options: DeployPartyOptions):
   const newActors = actors.filter((a) => !a.id || !alreadyDeployedIds.has(a.id));
   if (!newActors.length) {
     ui.notifications?.info(
-      loc('kaiserkram.party.notifications.allDeployed', 'Everyone from "{name}" is already deployed.').replace(
-        '{name}',
-        folder.name,
-      ),
+      fmt('kaiserkram.party.notifications.allDeployed', 'Everyone from "{name}" is already deployed.', { name: folder.name }),
     );
     return;
   }
@@ -93,9 +84,7 @@ async function deployOnce(tokenDoc: TokenDocument, options: DeployPartyOptions):
   await applyAfterDeployBehavior(tokenDoc, options.afterDeployBehavior);
 
   ui.notifications?.info(
-    loc('kaiserkram.party.notifications.deployed', 'Deployed {count} token(s) from "{name}".')
-      .replace('{count}', String(newActors.length))
-      .replace('{name}', folder.name),
+    fmt('kaiserkram.party.notifications.deployed', 'Deployed {count} token(s) from "{name}".', { count: newActors.length, name: folder.name }),
   );
 }
 

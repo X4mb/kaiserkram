@@ -61,25 +61,25 @@ export type BuildOptions = {
 export type BuiltScene = { data: Record<string, unknown>; levels: { id: string; name: string; level: number }[] };
 
 /** "Untitled Map_03" → { prefix: "Untitled Map_", number: 3 }; null without a number at the end. */
-export function splitName(base: string): { prefix: string; number: number } | null {
+function splitName(base: string): { prefix: string; number: number } | null {
   const match = /^(.*?)(\d+)$/.exec(base);
   return match ? { prefix: match[1], number: Number(match[2]) } : null;
 }
 
 /** File name without folder and extension. */
-export function baseName(path: string): string {
+function baseName(path: string): string {
   const file = path.split('/').pop() ?? path;
   return file.replace(/\.[^.]+$/, '');
 }
 
-export function extensionOf(path: string): string {
+function extensionOf(path: string): string {
   const match = /\.([^./]+)$/.exec(path);
   return match ? match[1].toLowerCase() : '';
 }
 
 const IMAGE_EXTENSIONS = ['webp', 'png', 'jpg', 'jpeg'];
 
-export function isImage(path: string): boolean {
+function isImage(path: string): boolean {
   return IMAGE_EXTENSIONS.includes(extensionOf(path));
 }
 

@@ -5,6 +5,7 @@ import { addTokenTools, type TokenTool } from '../../../core/sceneTools.js';
 import { addTokenMenuEntries, type MenuToken, type TokenMenuEntry } from '../../../core/tokenMenu.js';
 import type { ActorLike } from '../../../core/items.js';
 import { giveItems, proposeTrade } from './client.js';
+import { addHudButton, hudColumn } from '../hud.js';
 
 /**
  * Ways to start a trade:
@@ -122,27 +123,17 @@ const HUD_BUTTONS: { mode: Mode; cls: string; icon: string; title: () => string 
 ];
 
 /** Your own token's HUD: Trade and Give buttons. */
-function addHudButton(hud: unknown, html: unknown): void {
+function addTradeHudButtons(hud: unknown, html: unknown): void {
   const token = (hud as { object?: TokenLike }).object;
   if (!token?.actor?.isOwner) return;
-  const root = toElement(html);
-  const column = root?.querySelector('.col.left') ?? root?.querySelector('.col.right') ?? root;
+  const column = hudColumn(html, 'left');
   if (!column) return;
   for (const { mode, cls, icon, title } of HUD_BUTTONS) {
-    if (column.querySelector(`.${cls}`)) continue;
-    const button = document.createElement('div');
-    button.classList.add('control-icon', cls);
-    button.setAttribute('role', 'button');
-    button.title = title();
-    button.innerHTML = `<i class="fa-solid ${icon}"></i>`;
-    button.addEventListener('click', (event) => {
-      event.preventDefault();
-      event.stopPropagation();
+    addHudButton(column, cls, icon, title(), () =>
       void pickPartner(token, mode).then((partner) => {
         if (partner) act(mode, token.actor!, partner);
-      });
-    });
-    column.appendChild(button);
+      }),
+    );
   }
 }
 
@@ -168,12 +159,9 @@ function addTokenMenuEntry(_app: unknown, options: Record<string, unknown>[]): v
   for (const [mode, label, icon] of entries) {
     options.push({
       label,
-      name: label,
       icon: `<i class="fa-solid ${icon}"></i>`,
       visible,
-      condition: visible,
       onClick: (_event: unknown, target: unknown) => startTrade(resolve(target), mode),
-      callback: (target: unknown) => startTrade(resolve(target), mode),
     });
   }
 }
@@ -245,7 +233,7 @@ function tradeTools(): TokenTool[] {
 }
 
 export function registerTradeEntryPoints(): void {
-  on('renderTokenHUD', addHudButton);
+  on('renderTokenHUD', addTradeHudButtons);
   on('getTokenPlaceableContextOptions', addTokenMenuEntry as (...args: never[]) => unknown);
   addTokenTools(tradeTools);
   addTokenMenuEntries(tokenMenuEntries());

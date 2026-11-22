@@ -3,7 +3,15 @@ import { isDeployedMember, isPartyMarker, recallParty } from './recall.js';
 import { toElement } from '../../core/foundryApi.js';
 import { loc } from '../../core/i18n.js';
 
-function addHudButton(
+/** A Token HUD column to put buttons in: `side` first, the other one if it is missing. */
+export function hudColumn(html: unknown, side: 'left' | 'right'): Element | null {
+  const root = toElement(html);
+  const other = side === 'left' ? 'right' : 'left';
+  return root?.querySelector(`.col.${side}`) ?? root?.querySelector(`.col.${other}`) ?? root;
+}
+
+/** One icon button on the Token HUD (once per render), whose click doesn't reach the token. */
+export function addHudButton(
   column: Element,
   className: string,
   icon: string,
@@ -40,10 +48,8 @@ export function registerTokenHudButton(): void {
     const isMember = isDeployedMember(doc);
     if (!isMarker && !isMember) return;
 
-    const root = toElement(html);
-    if (!root) return;
-
-    const column = root.querySelector('.col.right') ?? root.querySelector('.col.left') ?? root;
+    const column = hudColumn(html, 'right');
+    if (!column) return;
 
     if (isMarker) {
       addHudButton(

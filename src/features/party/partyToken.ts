@@ -1,6 +1,6 @@
 import { MODULE_ID } from '../../core/constants.js';
 import { expandObject } from '../../core/foundryApi.js';
-import { loc } from '../../core/i18n.js';
+import { fmt, loc } from '../../core/i18n.js';
 import { DEFAULT_TOKEN_IMAGE, FLAGS } from './constants.js';
 import { tokenCreator } from './views.js';
 import { collectActorsInFolder } from './spawn.js';
@@ -58,10 +58,11 @@ export async function createPartyTokenFromFolder(
 
   if (warnIfEmpty && !collectActorsInFolder(folder, getIncludeSubfolders()).length) {
     ui.notifications?.warn(
-      loc(
+      fmt(
         'kaiserkram.party.notifications.markerEmptyFolder',
         'The folder "{name}" has no actors to deploy yet — add some (or enable subfolders) before deploying this marker.',
-      ).replace('{name}', folder.name),
+        { name: folder.name },
+      ),
     );
   }
 

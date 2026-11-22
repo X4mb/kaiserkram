@@ -1,0 +1,9 @@
+/** Bundle tests/unit.ts with esbuild and run it (`npm run test`). A failed check exits non-zero. */
+import { build } from 'esbuild';
+import { join, dirname } from 'path';
+import { fileURLToPath, pathToFileURL } from 'url';
+
+const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+const outfile = join(root, 'dist', 'unit-tests.mjs');
+await build({ entryPoints: [join(root, 'tests', 'unit.ts')], bundle: true, platform: 'node', format: 'esm', outfile, logLevel: 'error' });
+await import(pathToFileURL(outfile).href);

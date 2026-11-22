@@ -1,5 +1,5 @@
 import { MODULE_ID } from '../../core/constants.js';
-import { contextEntry, dialogV2, escapeHtml, expandObject, notify, on, toElement } from '../../core/foundryApi.js';
+import { contextEntry, dialogV2, entryIdOf, escapeHtml, expandObject, notify, on, toElement } from '../../core/foundryApi.js';
 import { applyPurse, parsePrice, planCredit, purseOf } from './money.js';
 import { getNumber, SETTINGS } from './settings.js';
 import { fmt, loc } from '../../core/i18n.js';
@@ -241,9 +241,7 @@ function addDirectoryButtons(_app: unknown, html: unknown): void {
 }
 
 function actorFromRow(li: HTMLElement): WfrpActor | undefined {
-  // The clicked element may be a child of the entry; look upward for the id carrier.
-  const entry = li.closest<HTMLElement>('[data-entry-id], [data-document-id]') ?? li;
-  const id = entry.dataset.entryId ?? entry.dataset.documentId;
+  const id = entryIdOf(li);
   return id ? g().actors.get(id) : undefined;
 }
 

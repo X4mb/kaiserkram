@@ -127,7 +127,7 @@ export type BuyQuote = {
   deal: number;
 };
 
-function roundPrice(bp: number, base: number): number {
+export function roundPrice(bp: number, base: number): number {
   // Never round something that costs money down to free.
   const rounded = Math.round(bp);
   return base > 0 ? Math.max(1, rounded) : Math.max(0, rounded);

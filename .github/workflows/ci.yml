@@ -38,8 +38,11 @@ jobs:
       - name: Smoke test (bundle loads, features register only when enabled)
         run: npm run smoke
 
-      - name: Build + package release zip (verify it assembles)
-        run: npm run release-pack
+      - name: Unit tests (money, item moves, map import)
+        run: npm run test
+
+      - name: Package release zip (verify it assembles; the smoke test built the bundle)
+        run: node scripts/package-release.mjs
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v7

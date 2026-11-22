@@ -1,7 +1,6 @@
 import { escapeHtml, postChat, resolveDocument } from '../../../core/foundryApi.js';
 import { fmt, loc } from '../../../core/i18n.js';
-import { allOrNothing } from '../../../core/items.js';
-import { isTradeableItem, moveContents, quantityOf, quantityPathOf, rollback, transferItem, type ActorLike, type ItemLike, type Undo } from '../../../core/items.js';
+import { allOrNothing, isTradeableItem, moveContents, quantityOf, quantityPathOf, transferItem, type ActorLike, type ItemLike } from '../../../core/items.js';
 import type { CloseReason, TradeRequest, TradeSession, TradeSide, TradeUpdate } from './types.js';
 import { getTrading } from '../settings.js';
 
@@ -149,14 +148,10 @@ async function execute(s: Session): Promise<void> {
   const gaveB = summary(b, actorB);
 
   // All of it or none: if one move fails, the ones before it are put back.
-  const undo: Undo = [];
-  try {
+  await allOrNothing(async (undo) => {
     for (const [id, qty] of Object.entries(a.items)) await transferItem(actorA.items.get(id)!, qty, actorB, undo);
     for (const [id, qty] of Object.entries(b.items)) await transferItem(actorB.items.get(id)!, qty, actorA, undo);
-  } catch (err) {
-    await rollback(undo);
-    throw err;
-  }
+  });
 
   await record({
     content: `<div class="kaiserkram-trade-card">${fmt(
@@ -210,13 +205,9 @@ async function give(sender: UserLike, msg: Extract<TradeRequest, { op: 'give' }>
   }
   if (!items.length) return fail(loc('kaiserkram.party.give.nothing', 'Choose something to give.'));
   const what = items.map(([item, qty]) => `${qty}× ${escapeHtml(item.name)}`).join(', ');
-  const undo: Undo = [];
-  try {
+  await allOrNothing(async (undo) => {
     for (const [item, qty] of items) await transferItem(item, qty, to, undo);
-  } catch (err) {
-    await rollback(undo);
-    throw err;
-  }
+  });
   await record({
     content: `<div class="kaiserkram-trade-card">${fmt('kaiserkram.party.give.chat', '<b>{a}</b> gave {what} to <b>{b}</b>.', {
       a: escapeHtml(from.name),
@@ -318,54 +309,21 @@ async function handleOne(msg: TradeRequest): Promise<void> {
   const sender = userById(msg.userId);
   if (!sender) return;
 
-  if (msg.op === 'settle') {
+  /** Run a one-shot request; if it fails, log it and tell the sender. */
+  const attempt = async (work: () => Promise<void>, failed: string) => {
     try {
-      await settle(sender, msg);
+      await work();
     } catch (err) {
-      console.error('[kaiserkram] party: finishing an item move failed', err);
-      broadcast({
-        kind: 'trade',
-        op: 'given',
-        users: [sender.id],
-        text: loc('kaiserkram.party.stash.error', "Moving that failed; see the GM's console."),
-        failed: true,
-      });
+      console.error(`[kaiserkram] party: ${msg.op} failed`, err);
+      broadcast({ kind: 'trade', op: 'given', users: [sender.id], text: failed, failed: true });
     }
-    return;
-  }
-  if (msg.op === 'move') {
-    try {
-      await move(sender, msg);
-    } catch (err) {
-      console.error('[kaiserkram] party: stash move failed', err);
-      broadcast({
-        kind: 'trade',
-        op: 'given',
-        users: [sender.id],
-        text: loc('kaiserkram.party.stash.error', "Moving that failed; see the GM's console."),
-        failed: true,
-      });
-    }
-    return;
-  }
+  };
+  const moveFailed = loc('kaiserkram.party.stash.error', "Moving that failed; see the GM's console.");
+  if (msg.op === 'settle') return attempt(() => settle(sender, msg), moveFailed);
+  if (msg.op === 'move') return attempt(() => move(sender, msg), moveFailed);
   // Trading and giving can be switched off on their own; the stash can't.
   if (!getTrading()) return;
-
-  if (msg.op === 'give') {
-    try {
-      await give(sender, msg);
-    } catch (err) {
-      console.error('[kaiserkram] party: give failed', err);
-      broadcast({
-        kind: 'trade',
-        op: 'given',
-        users: [sender.id],
-        text: loc('kaiserkram.party.give.error', "Giving failed; see the GM's console."),
-        failed: true,
-      });
-    }
-    return;
-  }
+  if (msg.op === 'give') return attempt(() => give(sender, msg), loc('kaiserkram.party.give.error', "Giving failed; see the GM's console."));
 
   if (msg.op === 'propose') {
     const from = await actorOf(msg.from);

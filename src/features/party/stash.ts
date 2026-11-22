@@ -1,9 +1,10 @@
 import { MODULE_ID } from '../../core/constants.js';
-import { activeGMId, escapeHtml, notify, toElement } from '../../core/foundryApi.js';
+import { activeGMId, entryIdOf, escapeHtml, notify, toElement } from '../../core/foundryApi.js';
 import { sendRequest } from './trade/client.js';
 import { fmt, loc } from '../../core/i18n.js';
 import { isPartyActor } from './inventory.js';
-import { byCoinValue, isMoney, isTradeableItem, quantityOf, transferItem, type ActorLike, type ItemLike } from '../../core/items.js';
+import { addHudButton, hudColumn } from './hud.js';
+import { goodsAndMoney, quantityOf, transferItem, type ActorLike, type ItemLike } from '../../core/items.js';
 
 /**
  * The party stash: the party marker's actor inventory beside one of your characters, to put
@@ -38,7 +39,6 @@ function characterOf(win: StashWindow): ActorLike | null {
 }
 
 function rows(actor: ActorLike | null, side: Side): { goods: string; money: string } {
-  const items = (actor?.items.contents ?? []).filter((i) => isTradeableItem(i) && quantityOf(i) > 0);
   const label =
     side === 'stash' ? loc('kaiserkram.party.stash.take', 'Take') : loc('kaiserkram.party.stash.put', 'Put in');
   const icon = side === 'stash' ? 'fa-arrow-right' : 'fa-arrow-left';
@@ -57,10 +57,10 @@ function rows(actor: ActorLike | null, side: Side): { goods: string; money: stri
       <button type="button" data-action="move" data-side="${side}" data-tooltip="${escapeHtml(label)}"><i class="fa-solid ${icon}"></i></button>
     </li>`;
   };
-  const byName = (a: ItemLike, b: ItemLike) => a.name.localeCompare(b.name);
+  const { goods, money } = goodsAndMoney(actor);
   return {
-    goods: items.filter((i) => !isMoney(i)).sort(byName).map((i) => row(i, false)).join(''),
-    money: items.filter(isMoney).sort(byCoinValue).map((i) => row(i, true)).join(''),
+    goods: goods.map((i) => row(i, false)).join(''),
+    money: money.map((i) => row(i, true)).join(''),
   };
 }
 
@@ -245,20 +245,8 @@ export function refreshStashWindows(changed: Set<string>): void {
 export function addStashHudButton(hud: unknown, html: unknown): void {
   const actor = (hud as { object?: { actor?: ActorLike | null } }).object?.actor;
   if (!actor || !isPartyActor(actor) || !actor.isOwner) return;
-  const root = toElement(html);
-  const column = root?.querySelector('.col.left') ?? root?.querySelector('.col.right') ?? root;
-  if (!column || column.querySelector(`.${MODULE_ID}-party-stash`)) return;
-  const button = document.createElement('div');
-  button.classList.add('control-icon', `${MODULE_ID}-party-stash`);
-  button.setAttribute('role', 'button');
-  button.title = loc('kaiserkram.party.stash.hud', 'Party stash');
-  button.innerHTML = '<i class="fa-solid fa-box-open"></i>';
-  button.addEventListener('click', (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    openStash(actor);
-  });
-  column.appendChild(button);
+  const column = hudColumn(html, 'left');
+  if (column) addHudButton(column, `${MODULE_ID}-party-stash`, 'fa-box-open', loc('kaiserkram.party.stash.hud', 'Party stash'), () => openStash(actor));
 }
 
 /**
@@ -270,8 +258,7 @@ export function routeDirectoryClick(_app: unknown, html: unknown): void {
   if (!root || game.user?.isGM || root.dataset.kkStashRoute) return;
   root.dataset.kkStashRoute = '1';
   const intercept = (event: Event) => {
-    const entry = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-entry-id], [data-document-id]');
-    const id = entry?.dataset.entryId ?? entry?.dataset.documentId;
+    const id = entryIdOf(event.target as Element | null);
     const actor = id ? (game.actors?.get(id) as unknown as ActorLike | undefined) : undefined;
     if (!actor?.isOwner || !isPartyActor(actor)) return;
     event.preventDefault();

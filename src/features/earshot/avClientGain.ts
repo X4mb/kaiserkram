@@ -1,12 +1,3 @@
-import { pushAvSessionLog } from './avSessionLog.js';
-
-const lastClientState = new Map<string, string>();
-
-/** Call when WebRTC peer disconnects so the next connection logs fresh state. */
-export function clearClientGainStateForPeer(userId: string): void {
-  lastClientState.delete(userId);
-}
-
 /**
  * Foundry stores per-remote-user hearing preferences (volume, mute, block) in client AV settings.
  * Default SimplePeer routes audio through the video element volume; we use Web Audio, so we must
@@ -18,44 +9,12 @@ export function clearClientGainStateForPeer(userId: string): void {
  *   3. otherwise        → volume (0–1; schema default is 1, so a persisted 0 is an explicit mute)
  */
 export function getFoundryClientGainForPeer(userId: string): number {
-  let tag: string;
-  let result: number;
-
   const settings = game.webrtc?.settings;
-  if (!settings) {
-    tag = 'no_webrtc_settings';
-    result = 1;
-  } else if (settings.client.muteAll) {
-    tag = 'muteAll';
-    result = 0;
-  } else {
-    const u = settings.getUser(userId);
-    if (!u) {
-      tag = 'no_user_row';
-      result = 1;
-    } else if (u.muted) {
-      tag = 'muted';
-      result = 0;
-    } else if (u.blocked) {
-      tag = 'blocked';
-      result = 0;
-    } else {
-      const v = u.volume;
-      if (typeof v !== 'number' || !Number.isFinite(v)) {
-        tag = 'volume_invalid';
-        result = 1;
-      } else {
-        tag = 'volume';
-        result = Math.min(1, Math.max(0, v));
-      }
-    }
-  }
-
-  const sig = `${tag}:${result}`;
-  if (lastClientState.get(userId) !== sig) {
-    lastClientState.set(userId, sig);
-    pushAvSessionLog('clientGain', { userId, tag, result });
-  }
-
-  return result;
+  if (!settings) return 1;
+  if (settings.client.muteAll) return 0;
+  const u = settings.getUser(userId);
+  if (!u) return 1;
+  if (u.muted || u.blocked) return 0;
+  const v = u.volume;
+  return typeof v === 'number' && Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 1;
 }

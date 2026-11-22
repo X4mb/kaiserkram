@@ -1,11 +1,11 @@
-import { dialogV2, escapeHtml, postChat, renderTemplate, speakerFor } from '../../core/foundryApi.js';
+import { dialogV2, escapeHtml, notify, postChat, renderTemplate, speakerFor } from '../../core/foundryApi.js';
 import { fmt, loc } from '../../core/i18n.js';
 import { CARD_CLASS, TEMPLATES } from './constants.js';
 import { type FoundryUser, type WfrpActor, type WfrpItem } from './wfrp.js';
 import { formatBP } from './money.js';
 import { getBool, getNumber, SETTINGS } from './settings.js';
 import { registerHandler, requestGM, type ActionResult } from './socket.js';
-import { buyQuote, haggleState, isForSale, saveHaggleState, standingOf, type HaggleState } from './trader.js';
+import { buyQuote, haggleState, isForSale, roundPrice, saveHaggleState, standingOf, type HaggleState } from './trader.js';
 import { ACTIONS, resolveParties } from './transactions.js';
 
 /** Largest discount a player can ask for, in %. */
@@ -48,8 +48,7 @@ export function canHaggle(state: HaggleState, customerId: string, itemId: string
 /** Player side: ask how much off, roll Haggle, and hand the result to the GM to settle. */
 export async function startHaggle(trader: WfrpActor, item: WfrpItem, customer: WfrpActor): Promise<void> {
   if (!canHaggle(haggleState(trader), customer.id, item.id)) {
-    const notify = ui.notifications as unknown as { warn(m: string): void };
-    notify.warn(
+    notify().warn(
       fmt('kaiserkram.trader.notifications.alreadyHaggled', '{trader} won\'t haggle over {item} with you again.', {
         trader: trader.name,
         item: item.name,
@@ -82,7 +81,7 @@ export async function startHaggle(trader: WfrpActor, item: WfrpItem, customer: W
         const mod = askToModifier(v);
         out('[data-out="ask"]', `${v}%`);
         // Winning keeps the better of this ask and a deal already won, both off the asking price.
-        out('[data-out="price"]', formatBP(Math.max(1, Math.round(quote.list * (1 - Math.max(v, quote.deal) / 100)))));
+        out('[data-out="price"]', formatBP(roundPrice(quote.list * (1 - Math.max(v, quote.deal) / 100), quote.list)));
         out('[data-out="modifier"]', mod === 0 ? '±0' : String(mod));
       };
       input?.addEventListener('input', update);
