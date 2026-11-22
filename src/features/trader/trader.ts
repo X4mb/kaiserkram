@@ -1,4 +1,5 @@
 import { MODULE_ID } from '../../core/constants.js';
+import { quantityOf } from '../../core/items.js';
 import { FLAGS } from './constants.js';
 import type { WfrpActor, WfrpItem } from './wfrp.js';
 import { priceToBP } from './money.js';
@@ -101,14 +102,10 @@ export function isForSale(item: WfrpItem): boolean {
   return isTradeable(item) && !item.getFlag(MODULE_ID, FLAGS.NOT_FOR_SALE);
 }
 
-export function stockQuantity(item: WfrpItem): number {
-  return Math.max(0, Number(item.system?.quantity?.value) || 0);
-}
-
 /** Items the trader offers; sold-out items stay listed for the GM but not for players. */
 export function stockOf(trader: WfrpActor, { includeSoldOut = false } = {}): WfrpItem[] {
   return trader.items.contents.filter(
-    (i) => isForSale(i) && (includeSoldOut || isInfinite(i) || stockQuantity(i) > 0),
+    (i) => isForSale(i) && (includeSoldOut || isInfinite(i) || quantityOf(i) > 0),
   );
 }
 

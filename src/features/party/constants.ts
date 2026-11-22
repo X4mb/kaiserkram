@@ -21,4 +21,5 @@ export const FLAGS = {
 /** Update option for the module's own marker moves (following, recall), so they don't count as placing it. */
 export const OWN_MOVE = 'kaiserkramPartyMove';
 
+
 export const DEFAULT_TOKEN_IMAGE = `${MODULE_PATH}/assets/party-token.svg`;

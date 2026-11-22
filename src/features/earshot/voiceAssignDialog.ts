@@ -217,6 +217,9 @@ async function openNow(actor: Actor): Promise<void> {
     };
   };
 
+  /** A slider change waiting to reach the preview and live voice (debounced). */
+  let applyTimer: number | undefined;
+
   const wire = (root: HTMLElement): void => {
     // AppV2 may call _onRender more than once; only wire the controls a single time.
     if (root.dataset.weaWired) return;
@@ -251,7 +254,6 @@ async function openNow(actor: Actor): Promise<void> {
     // Live apply: rebuild the headphone preview and — when this actor is the pinned live
     // voice — the outgoing chain (muted above, so only the GM hears the tuning). Debounced:
     // range inputs fire continuously while dragging and a chain rebuild per event would glitch.
-    let applyTimer: number | undefined;
     const applyLive = (): void => {
       window.clearTimeout(applyTimer);
       applyTimer = window.setTimeout(() => {
@@ -327,6 +329,8 @@ async function openNow(actor: Actor): Promise<void> {
 
   const onClose = (): void => {
     if (openDialog === dialog) openDialog = null;
+    // A slider change still waiting must not reach the live voice after it was restored.
+    window.clearTimeout(applyTimer);
     voicePreviewer.stop();
     // Recovery net: if something ended the live mic capture (e.g. a device conflict from a
     // second getUserMedia), re-acquire it — otherwise the GM stays silent to players.

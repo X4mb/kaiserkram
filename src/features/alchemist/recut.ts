@@ -26,6 +26,8 @@ type SceneLike = {
 
 const WAIT_MS = 800;
 const timers = new Map<string, ReturnType<typeof setTimeout>>();
+/** The newest re-cut per region: an older one that finishes later must not put back an older outline. */
+const latest = new Map<string, number>();
 
 async function recut(region: RegionLike): Promise<void> {
   const cutout = flags(region).getFlag(MODULE_ID, 'cutout') as Cutout | undefined;
@@ -36,7 +38,10 @@ async function recut(region: RegionLike): Promise<void> {
   const current = cutout.target === 'roof' ? (target as { texture: { src: string | null } }).texture.src : (target as { background: { src: string | null } }).background.src;
   const outline = region.polygons.map((p) => Array.from(p.points));
   if (!outline.length) return;
+  const run = (latest.get(region.id) ?? 0) + 1;
+  latest.set(region.id, run);
   const path = await uploadCut(folderOf(current ?? cutout.source), cutout.source, cutName(cutout.source), scene, outline);
+  if (latest.get(region.id) !== run) return;
   await target.update(cutout.target === 'roof' ? { 'texture.src': path } : { 'background.src': path });
   notify().info(fmt('kaiserkram.alchemist.recut', '{name}: picture cut again to the new outline.', { name: region.name }));
 }

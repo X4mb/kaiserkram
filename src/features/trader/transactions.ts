@@ -1,7 +1,6 @@
-import { MODULE_ID } from '../../core/constants.js';
 import { escapeHtml, postChat, speakerFor } from '../../core/foundryApi.js';
 import { fmt } from '../../core/i18n.js';
-import { allOrNothing, sameGoods, type Undo } from '../../core/items.js';
+import { allOrNothing, quantityOf, receiveItem, transferItem } from '../../core/items.js';
 import { CARD_CLASS } from './constants.js';
 import {
   resolveActor,
@@ -22,7 +21,6 @@ import {
   saveHaggleState,
   sellQuote,
   standingOf,
-  stockQuantity,
   totalFor,
   traderConfig,
 } from './trader.js';
@@ -61,57 +59,6 @@ function isResult(v: TradeParties | ActionResult): v is ActionResult {
   return 'ok' in v;
 }
 
-/** Item data for a copy of `item` that changes hands: no shop flags, nothing equipped. */
-function transferData(item: WfrpItem, qty: number): Record<string, unknown> {
-  const data = item.toObject();
-  delete data._id;
-  if (data.flags) delete data.flags[MODULE_ID];
-  data.system.quantity = { value: qty };
-  if (data.system.location) data.system.location.value = '';
-  for (const key of ['equipped', 'worn']) {
-    if (data.system[key] && typeof data.system[key] === 'object' && 'value' in data.system[key]) {
-      data.system[key].value = false;
-    }
-  }
-  return data;
-}
-
-/**
- * Put `qty` of `item` into `actor`'s inventory, stacking onto the same goods if they are there
- * (not just something of the same name: a sword with other qualities stays separate).
- */
-async function receiveItem(
-  actor: WfrpActor,
-  item: WfrpItem,
-  qty: number,
-  undo: Undo,
-  canStack: (i: WfrpItem) => boolean = isTradeable,
-): Promise<void> {
-  const match = actor.items.contents.find((i) => canStack(i) && sameGoods(i, item));
-  if (match) {
-    const before = stockQuantity(match);
-    await match.update({ 'system.quantity.value': before + qty });
-    undo.push(() => match.update({ 'system.quantity.value': before }));
-  } else {
-    const [created] = (await actor.createEmbeddedDocuments('Item', [transferData(item, qty)])) ?? [];
-    if (created) undo.push(() => actor.deleteEmbeddedDocuments('Item', [created.id]));
-  }
-}
-
-/** Remove `qty` of `item` from its owner, deleting the item when none are left. */
-async function removeItem(actor: WfrpActor, item: WfrpItem, qty: number, undo: Undo): Promise<void> {
-  const had = stockQuantity(item);
-  const left = had - qty;
-  if (left > 0) {
-    await item.update({ 'system.quantity.value': left });
-    undo.push(() => item.update({ 'system.quantity.value': had }));
-  } else {
-    const original = item.toObject();
-    await actor.deleteEmbeddedDocuments('Item', [item.id]);
-    undo.push(() => actor.createEmbeddedDocuments('Item', [original], { keepId: true }));
-  }
-}
-
 function clampQty(v: unknown): number {
   return Math.max(1, Math.floor(Number(v) || 1));
 }
@@ -132,10 +79,10 @@ async function handleBuy(payload: Record<string, unknown>, user: FoundryUser): P
   if (!item || !isForSale(item)) return fail('kaiserkram.trader.notifications.notForSale', 'That item isn\'t for sale.');
   const qty = clampQty(payload.qty);
   const infinite = isInfinite(item);
-  if (!infinite && stockQuantity(item) < qty) {
+  if (!infinite && quantityOf(item) < qty) {
     return fail('kaiserkram.trader.notifications.notEnoughStock', '{trader} only has {count} of {item}.', {
       trader: trader.name,
-      count: stockQuantity(item),
+      count: quantityOf(item),
       item: item.name,
     });
   }
@@ -158,8 +105,9 @@ async function handleBuy(payload: Record<string, unknown>, user: FoundryUser): P
     await applyPurse(customer, customerPurse, paid, undo);
     const traderPurse = purseOf(trader);
     await applyPurse(trader, traderPurse, planCredit(traderPurse, total), undo);
-    await receiveItem(customer, item, qty, undo);
-    if (!infinite) await removeItem(trader, item, qty, undo);
+    // Unlimited stock gives without running out; anything else moves, a container with its contents.
+    if (infinite) await receiveItem(item, qty, customer, undo);
+    else await transferItem(item, qty, customer, undo);
     if (quote.deal) {
       // Read again: selling the last one deletes the item, and that clears its deals meanwhile.
       const latest = haggleState(trader);
@@ -193,7 +141,7 @@ async function handleSell(payload: Record<string, unknown>, user: FoundryUser): 
   }
   const item = customer.items.get(String(payload.itemId ?? ''));
   if (!item || !isTradeable(item)) return fail('kaiserkram.trader.notifications.cantSell', 'That can\'t be sold.');
-  const qty = Math.min(clampQty(payload.qty), stockQuantity(item));
+  const qty = Math.min(clampQty(payload.qty), quantityOf(item));
   if (qty < 1) return fail('kaiserkram.trader.notifications.cantSell', 'That can\'t be sold.');
 
   const total = (await sellQuote(trader, item)) * qty;
@@ -209,8 +157,8 @@ async function handleSell(payload: Record<string, unknown>, user: FoundryUser): 
     if (traderPaid) await applyPurse(trader, traderPurse, traderPaid, undo);
     const customerPurse = purseOf(customer);
     await applyPurse(customer, customerPurse, planCredit(customerPurse, total), undo);
-    await receiveItem(trader, item, qty, undo, isForSale);
-    await removeItem(customer, item, qty, undo);
+    // Onto the same goods in stock only if they are for sale; otherwise its own row.
+    await transferItem(item, qty, trader, undo, (i) => isForSale(i as WfrpItem));
   });
 
   await card(

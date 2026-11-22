@@ -1,8 +1,7 @@
 import { escapeHtml, postChat, resolveDocument } from '../../../core/foundryApi.js';
 import { fmt, loc } from '../../../core/i18n.js';
 import { allOrNothing } from '../../../core/items.js';
-import { forgetDrag } from '../inventory.js';
-import { isTradeableItem, moveContents, quantityOf, quantityPathOf, rollback, transferItem, type ActorLike, type ItemLike, type Undo } from './items.js';
+import { isTradeableItem, moveContents, quantityOf, quantityPathOf, rollback, transferItem, type ActorLike, type ItemLike, type Undo } from '../../../core/items.js';
 import type { CloseReason, TradeRequest, TradeSession, TradeSide, TradeUpdate } from './types.js';
 import { getTrading } from '../settings.js';
 
@@ -275,8 +274,6 @@ async function move(sender: UserLike, msg: Extract<TradeRequest, { op: 'move' }>
  * once can't both keep it: whoever comes second gets their copy taken back.
  */
 async function settle(sender: UserLike, msg: Extract<TradeRequest, { op: 'settle' }>): Promise<void> {
-  // The GM creates items here (container contents); they aren't a drag of the GM's own.
-  forgetDrag();
   const notice = (text: string, failed = false) => broadcast({ kind: 'trade', op: 'given', users: [sender.id], text, failed });
   type Doc = ItemLike & { documentName?: string; parent?: ActorLike | null };
   const source = await resolveDocument<Doc>(msg.source);

@@ -14,12 +14,14 @@ export type WfrpItem = {
   uuid: string;
   system: any;
   actor: WfrpActor | null;
+  parent?: WfrpActor | null;
   flags?: Record<string, any>;
   _stats?: { compendiumSource?: string | null };
   getFlag(scope: string, key: string): unknown;
   setFlag(scope: string, key: string, value: unknown): Promise<unknown>;
   unsetFlag(scope: string, key: string): Promise<unknown>;
   update(data: Record<string, unknown>): Promise<unknown>;
+  delete(): Promise<unknown>;
   toObject(): Record<string, any>;
 };
 

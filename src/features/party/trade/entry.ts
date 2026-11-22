@@ -3,7 +3,7 @@ import { fmt, loc } from '../../../core/i18n.js';
 import { getTrading } from '../settings.js';
 import { addTokenTools, type TokenTool } from '../../../core/sceneTools.js';
 import { addTokenMenuEntries, type MenuToken, type TokenMenuEntry } from '../../../core/tokenMenu.js';
-import type { ActorLike } from './items.js';
+import type { ActorLike } from '../../../core/items.js';
 import { giveItems, proposeTrade } from './client.js';
 
 /**

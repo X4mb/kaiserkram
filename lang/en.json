@@ -418,5 +418,6 @@
   "kaiserkram.alchemist.cutHint": "Floors above the ground floor are cut to their walls so the floors below show around the building, and the roof fades when a token goes under it. Each cut follows a region you can edit (add a balcony, say); the picture is cut again when you change it.",
   "kaiserkram.alchemist.outlineName": "Visible area: {level}",
   "kaiserkram.alchemist.roofName": "Roof area",
-  "kaiserkram.alchemist.recut": "{name}: picture cut again to the new outline."
+  "kaiserkram.alchemist.recut": "{name}: picture cut again to the new outline.",
+  "kaiserkram.trader.notifications.badPrice": "Could not read \"{text}\" as a price (try \"1 gc 5 ss\" or \"1/5/0\")."
 }

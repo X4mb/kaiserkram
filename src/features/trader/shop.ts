@@ -1,7 +1,7 @@
 import { MODULE_ID } from '../../core/constants.js';
 import { dialogV2, escapeHtml, postChat, renderTemplate, resolveDocument, speakerFor } from '../../core/foundryApi.js';
 import { fmt, loc } from '../../core/i18n.js';
-import { sameGoods } from '../../core/items.js';
+import { quantityOf, receiveItem } from '../../core/items.js';
 import { CARD_CLASS, FLAGS, TEMPLATES } from './constants.js';
 import { g, type WfrpActor, type WfrpItem } from './wfrp.js';
 import { canHaggle, resetHaggling, startHaggle } from './haggle.js';
@@ -19,7 +19,6 @@ import {
   saveHaggleState,
   sellQuote,
   stockOf,
-  stockQuantity,
   traderConfig,
   type TraderConfig,
 } from './trader.js';
@@ -201,7 +200,7 @@ function defineShop() {
         (isGM ? trader.items.contents.filter(isTradeable) : stockOf(trader)).map(async (item) => {
           const quote = buyQuote(trader, item, customer?.id ?? null, state);
           const infinite = isInfinite(item);
-          const qty = stockQuantity(item);
+          const qty = quantityOf(item);
           const override = priceOverrideBP(item);
           return {
             id: item.id,
@@ -238,7 +237,7 @@ function defineShop() {
                 id: item.id,
                 name: item.name,
                 img: item.img,
-                qty: stockQuantity(item),
+                qty: quantityOf(item),
                 offer: formatBP(offer),
                 cantAfford: enforcePurse && offer > traderCoins,
               };
@@ -404,16 +403,8 @@ function defineShop() {
      * the same name: a sword with other qualities gets its own row), else as a new item.
      */
     private async addToStock(item: WfrpItem): Promise<void> {
-      const qty = Math.max(1, stockQuantity(item));
-      const stack = this.trader.items.contents.find((i) => isTradeable(i) && sameGoods(i, item));
-      if (stack) {
-        await stack.update({ 'system.quantity.value': stockQuantity(stack) + qty });
-        return;
-      }
-      const copy = item.toObject();
-      delete copy._id;
-      if (copy.flags) delete copy.flags[MODULE_ID];
-      await this.trader.createEmbeddedDocuments('Item', [copy]);
+      // A fresh copy for the shop (not in the old owner's container, not worn), or more of the same goods.
+      await receiveItem(item, Math.max(1, quantityOf(item)), this.trader, [], (i) => isTradeable(i as WfrpItem));
     }
 
     static async onAddFromCatalog(this: TraderShop, _event: Event, target: HTMLElement): Promise<void> {
@@ -443,6 +434,12 @@ function defineShop() {
       await this.trader.setFlag(MODULE_ID, `${FLAGS.CONFIG}.${key}`, value);
     }
 
+    /** Say a typed price couldn't be read, and show the stored one again. */
+    private badPrice(text: string): void {
+      notify('warn', fmt('kaiserkram.trader.notifications.badPrice', 'Could not read "{text}" as a price (try "1 gc 5 ss" or "1/5/0").', { text }));
+      void this.render();
+    }
+
     private async saveItemField(input: HTMLInputElement): Promise<void> {
       const item = this.trader.items.get(dataId(input));
       if (!item) return;
@@ -451,14 +448,19 @@ function defineShop() {
           await item.update({ 'system.quantity.value': Math.max(0, Math.floor(Number(input.value) || 0)) });
           break;
         case 'override': {
-          const bp = parsePrice(input.value);
-          if (bp === null) await item.unsetFlag(MODULE_ID, FLAGS.PRICE_OVERRIDE);
-          else await item.setFlag(MODULE_ID, FLAGS.PRICE_OVERRIDE, bp);
+          // Blank clears the fixed price; text that isn't a price leaves it as it was.
+          if (!input.value.trim()) await item.unsetFlag(MODULE_ID, FLAGS.PRICE_OVERRIDE);
+          else {
+            const bp = parsePrice(input.value);
+            if (bp === null) this.badPrice(input.value);
+            else await item.setFlag(MODULE_ID, FLAGS.PRICE_OVERRIDE, bp);
+          }
           break;
         }
         case 'book': {
           const bp = parsePrice(input.value);
-          if (bp !== null) await item.update({ 'system.price': bpToPrice(bp) });
+          if (bp === null) this.badPrice(input.value);
+          else await item.update({ 'system.price': bpToPrice(bp) });
           break;
         }
         case 'infinite':
@@ -513,7 +515,7 @@ function defineShop() {
       const offer = await sellQuote(trader, item);
       const qty = await askQuantity(
         fmt('kaiserkram.trader.sell.title', 'Sell {item}', { item: item.name }),
-        stockQuantity(item),
+        quantityOf(item),
         formatBP(offer),
       );
       if (!qty) return;
@@ -541,7 +543,7 @@ function defineShop() {
       const customer = this.customer();
       if (!item || !customer) return;
       const quote = buyQuote(this.trader, item, customer.id);
-      const max = isInfinite(item) ? 99 : stockQuantity(item);
+      const max = isInfinite(item) ? 99 : quantityOf(item);
       // A haggled deal is good for one; say so when buying more.
       const each = quote.deal
         ? fmt('kaiserkram.trader.buy.dealEach', '{deal} for the first, then {list}', {

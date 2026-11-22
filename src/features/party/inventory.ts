@@ -2,7 +2,7 @@ import { MODULE_ID } from '../../core/constants.js';
 import { activeGMId, flags, notify, on } from '../../core/foundryApi.js';
 import { fmt } from '../../core/i18n.js';
 import { FLAGS } from './constants.js';
-import { copyForNewOwner, isTradeableItem, moveContents, quantityOf, quantityPathOf } from './trade/items.js';
+import { copyForNewOwner, isTradeableItem, moveContents, OWN_CREATE, quantityOf, quantityPathOf } from '../../core/items.js';
 import { sendRequest } from './trade/client.js';
 
 /**
@@ -77,14 +77,6 @@ const DRAG_WINDOW_MS = 10_000;
  */
 const AFTER_DRAG_MS = 3000;
 
-/**
- * Code that moves an item itself (the stash window, a trade, a gift) calls this first, so the
- * createItem below doesn't take the item off its source a second time.
- */
-export function forgetDrag(): void {
-  dragged = null;
-}
-
 function onDragEnd(): void {
   if (dragged) dragged.at = Math.min(dragged.at, Date.now() - DRAG_WINDOW_MS + AFTER_DRAG_MS);
 }
@@ -102,7 +94,9 @@ function onDragStart(event: DragEvent): void {
  * Whatever added the copy (the system's sheet, the canvas drop below, another module), take the
  * dragged item away from where it came from: all of it, or just the part that moved.
  */
-function onCreateItem(created: ItemLike, _options: unknown, userId: string): void {
+function onCreateItem(created: ItemLike, options: Record<string, unknown> | undefined, userId: string): void {
+  // Made by the module while moving it (a trade, the stash): already taken off its source.
+  if (options?.[OWN_CREATE]) return;
   if (userId !== game.user?.id || !dragged || Date.now() - dragged.at > DRAG_WINDOW_MS) return;
   const source = itemFromDrop({ type: 'Item', uuid: dragged.uuid });
   const target = created.parent;

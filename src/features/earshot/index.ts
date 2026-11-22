@@ -74,8 +74,8 @@ function registerHooks(): void {
     refreshWhisperers();
     refreshAll();
     registerCanvasPositionTicker();
-    // canvasTearDown only detaches the Web Audio graph; WebRTC peers survive a scene change and
-    // need to be re-wired, or remote voice stays silently dropped.
+    // WebRTC peers survive a scene change; re-wire their Web Audio graphs on the new canvas, or
+    // remote voice can stay silently dropped. (Rewiring replaces each graph in one step.)
     const client = (game as unknown as { webrtc?: { client?: unknown } }).webrtc?.client;
     if (client instanceof proximityClientClass()) void client.reattachAllPeers();
   });
@@ -85,7 +85,7 @@ function registerHooks(): void {
     destroySpeakingRings();
     unregisterCanvasPositionTicker();
     destroyVoiceIndicatorLayer();
-    proximityRouter.detachAll();
+    // Voices stay connected while the next scene loads; canvasReady re-wires them.
   });
   on('rtcSettingsChanged', scheduleProximityRefresh);
   // A whisperer who leaves stops showing a badge.

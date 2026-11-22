@@ -3,7 +3,7 @@ import { dialogV2, escapeHtml, notify } from '../../../core/foundryApi.js';
 import { fmt, loc } from '../../../core/i18n.js';
 import { emitSocket } from '../../../core/socket.js';
 import { handleRequest, setBroadcaster } from './authority.js';
-import { byCoinValue, isMoney, isTradeableItem, quantityOf, type ActorLike } from './items.js';
+import { byCoinValue, isMoney, isTradeableItem, quantityOf, type ActorLike } from '../../../core/items.js';
 import { REQUEST_OPS, type CloseReason, type RequestBody, type TradeMessage, type TradeRequest, type TradeSession, type TradeUpdate } from './types.js';
 
 type UserLike = { id: string; isGM: boolean; isSelf?: boolean };

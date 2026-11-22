@@ -3,7 +3,7 @@ import { activeGMId, escapeHtml, notify, toElement } from '../../core/foundryApi
 import { sendRequest } from './trade/client.js';
 import { fmt, loc } from '../../core/i18n.js';
 import { isPartyActor } from './inventory.js';
-import { byCoinValue, isMoney, isTradeableItem, quantityOf, transferItem, type ActorLike, type ItemLike } from './trade/items.js';
+import { byCoinValue, isMoney, isTradeableItem, quantityOf, transferItem, type ActorLike, type ItemLike } from '../../core/items.js';
 
 /**
  * The party stash: the party marker's actor inventory beside one of your characters, to put

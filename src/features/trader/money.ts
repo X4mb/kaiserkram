@@ -34,16 +34,18 @@ export function formatBP(bp: number): string {
 }
 
 /**
- * Parse a typed price such as "1 gc 5 ss", "3s 6b" or "1/5/0" (GC/SS/BP) into brass pennies.
- * A bare number counts as brass pennies. Blank input returns null.
+ * Parse a typed price such as "1 gc 5 ss", "1,5 gc", "3s 6b" or "1/5/0" (GC/SS/BP) into brass
+ * pennies. A bare number counts as brass pennies; "p" (Pfennig) is read as brass too. Blank input,
+ * an unknown unit or anything left over that isn't a price returns null.
  */
 export function parsePrice(text: string): number | null {
-  const s = text.trim().toLowerCase();
+  // A comma is a decimal point too ("1,5 gc").
+  const s = text.trim().toLowerCase().replace(/(\d),(\d)/g, '$1.$2');
   if (!s) return null;
   const slash = s.match(/^(\d+)\s*\/\s*(\d+)\s*(?:\/\s*(\d+))?$/);
   if (slash) return priceToBP({ gc: slash[1], ss: slash[2], bp: slash[3] ?? 0 });
-  if (/^\d+$/.test(s)) return Number(s);
-  const units: Record<string, number> = { g: COIN.GC, s: COIN.SS, b: COIN.BP };
+  if (/^\d+(?:\.\d+)?$/.test(s)) return Math.round(Number(s));
+  const units: Record<string, number> = { g: COIN.GC, s: COIN.SS, b: COIN.BP, p: COIN.BP };
   const re = /(\d+(?:\.\d+)?)\s*([a-z\u00c0-\u024f]+)/g;
   let total = 0;
   let matched = false;
@@ -53,6 +55,8 @@ export function parsePrice(text: string): number | null {
     total += Number(m[1]) * unit;
     matched = true;
   }
+  // Anything but the amounts and spaces left over ("1,5" without a unit, a stray word): unreadable.
+  if (s.replace(re, '').trim()) return null;
   return matched ? Math.round(total) : null;
 }
 

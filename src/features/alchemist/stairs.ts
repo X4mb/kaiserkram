@@ -143,10 +143,6 @@ export async function placeStairs(): Promise<void> {
       flags: {
         [MODULE_ID]: {
           [STAIRS_FLAG]: {
-            x: Math.round(area.x),
-            y: Math.round(area.y),
-            width: Math.round(area.width),
-            height: Math.round(area.height),
             from: current.id,
             up: way === 'up' || way === 'both' ? above?.id : undefined,
             down: way === 'down' || way === 'both' ? below?.id : undefined,
@@ -159,7 +155,12 @@ export async function placeStairs(): Promise<void> {
 }
 
 /** Where a staircase is and what it links: the level it was drawn on, and the one above and/or below. */
-type Stairs = { x: number; y: number; width: number; height: number; from: string; up?: string; down?: string };
+/**
+ * What a staircase links: the level it was drawn on, and the one above and/or below. Where it is
+ * comes from its region's shape, so moving or reshaping the region moves the stairs. (Stairs
+ * placed by early builds also kept their box here; it is used only if the region has no shape.)
+ */
+type Stairs = { from: string; up?: string; down?: string; x?: number; y?: number; width?: number; height?: number };
 const STAIRS_FLAG = 'stairs';
 
 type TokenDoc = {
@@ -178,8 +179,12 @@ type TokenDoc = {
   update(data: Record<string, unknown>): Promise<unknown>;
 };
 
-function inside(stairs: Stairs, p: { x: number; y: number }): boolean {
-  return p.x >= stairs.x && p.x <= stairs.x + stairs.width && p.y >= stairs.y && p.y <= stairs.y + stairs.height;
+type RegionLike = { polygonTree?: { testPoint(p: { x: number; y: number }): boolean } };
+
+function inside(region: RegionLike, stairs: Stairs, p: { x: number; y: number }): boolean {
+  if (region.polygonTree) return region.polygonTree.testPoint(p);
+  const { x = 0, y = 0, width = 0, height = 0 } = stairs;
+  return p.x >= x && p.x <= x + width && p.y >= y && p.y <= y + height;
 }
 
 /** Put `doc` on `levelId`, standing on its floor. */
@@ -225,7 +230,7 @@ function onMove(doc: TokenDoc, movement: { origin: Position; destination: Positi
     const stairs = flags(region).getFlag(MODULE_ID, STAIRS_FLAG) as Stairs | undefined;
     if (!stairs || ![stairs.from, stairs.up, stairs.down].includes(level)) continue;
     // Stepping onto them, not moving about on them (or arriving on them from the other level).
-    if (!inside(stairs, to) || inside(stairs, from)) continue;
+    if (!inside(region as RegionLike, stairs, to) || inside(region as RegionLike, stairs, from)) continue;
     void takeStairs(doc, stairs, level);
     return;
   }
