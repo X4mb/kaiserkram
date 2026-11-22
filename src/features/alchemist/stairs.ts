@@ -158,7 +158,7 @@ export async function placeStairs(): Promise<void> {
 /**
  * What a staircase links: the level it was drawn on, and the one above and/or below. Where it is
  * comes from its region's shape, so moving or reshaping the region moves the stairs. (Stairs
- * placed by early builds also kept their box here; it is used only if the region has no shape.)
+ * placed by early builds also kept their box here; it is only a fallback.)
  */
 type Stairs = { from: string; up?: string; down?: string; x?: number; y?: number; width?: number; height?: number };
 const STAIRS_FLAG = 'stairs';

@@ -224,15 +224,22 @@ async function takeFrom(item: ItemLike, qty: number, undo: Undo, moveTo?: { acto
 
 /**
  * Move `qty` of `item` onto `target`: stacked onto the same goods there, or as a new item; a whole
- * container takes its contents along. If taking it off the source fails, the copy on the target
+ * container takes its contents along unless `withContents` is false (then WFRP4e leaves them loose
+ * with their owner when the container goes). If taking it off the source fails, the copy on the target
  * is taken back, so nothing is doubled. Pass `undo` to collect the steps that would put the whole
  * move back (for several moves that must all happen or none).
  */
-export async function transferItem(item: ItemLike, qty: number, target: ActorLike, undo: Undo = [], canStack: StackRule = isTradeableItem): Promise<void> {
+export async function transferItem(
+  item: ItemLike,
+  qty: number,
+  target: ActorLike,
+  undo: Undo = [],
+  { canStack = isTradeableItem, withContents = true }: { canStack?: StackRule; withContents?: boolean } = {},
+): Promise<void> {
   const steps: Undo = [];
   try {
     const copy = await receiveItem(item, qty, target, steps, canStack);
-    await takeFrom(item, qty, steps, copy ? { actor: target, container: copy } : undefined);
+    await takeFrom(item, qty, steps, copy && withContents ? { actor: target, container: copy } : undefined);
   } catch (err) {
     await rollback(steps);
     throw err;

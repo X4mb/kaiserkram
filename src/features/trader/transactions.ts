@@ -107,7 +107,8 @@ async function handleBuy(payload: Record<string, unknown>, user: FoundryUser): P
     await applyPurse(trader, traderPurse, planCredit(traderPurse, total), undo);
     // Unlimited stock gives without running out; anything else moves, a container with its contents.
     if (infinite) await receiveItem(item, qty, customer, undo);
-    else await transferItem(item, qty, customer, undo);
+    // A bought container comes empty: its price doesn't cover what the trader keeps in it.
+    else await transferItem(item, qty, customer, undo, { withContents: false });
     if (quote.deal) {
       // Read again: selling the last one deletes the item, and that clears its deals meanwhile.
       const latest = haggleState(trader);
@@ -158,7 +159,8 @@ async function handleSell(payload: Record<string, unknown>, user: FoundryUser): 
     const customerPurse = purseOf(customer);
     await applyPurse(customer, customerPurse, planCredit(customerPurse, total), undo);
     // Onto the same goods in stock only if they are for sale; otherwise its own row.
-    await transferItem(item, qty, trader, undo, (i) => isForSale(i as WfrpItem));
+    // A sold container goes empty: the trader pays for the container, not for what is in it.
+    await transferItem(item, qty, trader, undo, { canStack: (i) => isForSale(i as WfrpItem), withContents: false });
   });
 
   await card(

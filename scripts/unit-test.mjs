@@ -4,6 +4,7 @@ import { join, dirname } from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const outfile = join(root, 'dist', 'unit-tests.mjs');
+// Not in dist/: that folder is packaged into module.zip and copied into Foundry.
+const outfile = join(root, 'node_modules', '.cache', 'kaiserkram', 'unit-tests.mjs');
 await build({ entryPoints: [join(root, 'tests', 'unit.ts')], bundle: true, platform: 'node', format: 'esm', outfile, logLevel: 'error' });
 await import(pathToFileURL(outfile).href);

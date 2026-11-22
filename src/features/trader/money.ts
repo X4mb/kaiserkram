@@ -39,8 +39,8 @@ export function formatBP(bp: number): string {
  * an unknown unit or anything left over that isn't a price returns null.
  */
 export function parsePrice(text: string): number | null {
-  // A comma is a decimal point too ("1,5 gc").
-  const s = text.trim().toLowerCase().replace(/(\d),(\d)/g, '$1.$2');
+  // A comma between digits is a decimal point ("1,5 gc"); any other comma just separates parts.
+  const s = text.trim().toLowerCase().replace(/(\d),(\d)/g, '$1.$2').replace(/,/g, ' ');
   if (!s) return null;
   const slash = s.match(/^(\d+)\s*\/\s*(\d+)\s*(?:\/\s*(\d+))?$/);
   if (slash) return priceToBP({ gc: slash[1], ss: slash[2], bp: slash[3] ?? 0 });
@@ -55,7 +55,7 @@ export function parsePrice(text: string): number | null {
     total += Number(m[1]) * unit;
     matched = true;
   }
-  // Anything but the amounts and spaces left over ("1,5" without a unit, a stray word): unreadable.
+  // Anything but the amounts and spaces left over (a stray word): unreadable.
   if (s.replace(re, '').trim()) return null;
   return matched ? Math.round(total) : null;
 }

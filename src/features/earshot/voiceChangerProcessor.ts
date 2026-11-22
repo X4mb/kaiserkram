@@ -39,12 +39,12 @@ class VoiceChangerProcessor {
     return this.rawInputStream;
   }
 
-  /** True when the track is this processor's output (lets callers avoid re-processing it). */
   /** The raw mic track now feeds only this processor (Foundry's stream carries the processed one). */
   takeRawInput(): void {
     this.ownsRawInput = true;
   }
 
+  /** True when the track is this processor's output (lets callers avoid re-processing it). */
   ownsTrack(track: MediaStreamTrack): boolean {
     return this.processedStream?.getAudioTracks().includes(track) ?? false;
   }

@@ -161,7 +161,7 @@ let FeatureManagerClass: AppV2Constructor | undefined;
 function fitToScreen(content: HTMLElement): void {
   const app = content.closest<HTMLElement>('.application') ?? content.parentElement;
   if (app) {
-    Object.assign(app.style, { maxHeight: `${window.innerHeight - 32}px`, display: 'flex', flexDirection: 'column' });
+    Object.assign(app.style, { maxHeight: 'calc(100vh - 2rem)', display: 'flex', flexDirection: 'column' });
   }
   Object.assign(content.style, { display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: '0', flex: '1 1 auto' });
   const list = content.querySelector<HTMLElement>('.kaiserkram-feature-list');

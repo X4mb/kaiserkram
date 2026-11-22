@@ -101,9 +101,9 @@ function defineProximityClient(Base: BaseClient) {
     }
 
     /**
-     * Re-wire Web Audio for every currently connected peer. The underlying WebRTC connections are
-     * not scene-scoped, so `canvasTearDown` (which detaches the Web Audio graph only) needs this on
-     * the following `canvasReady` or remote audio stays silently dropped until a full page reload.
+     * Re-wire Web Audio for every currently connected peer. The WebRTC connections outlive a scene
+     * change; this runs on each `canvasReady` so remote audio can't stay silently dropped. Until
+     * then voices keep their previous gains.
      */
     async reattachAllPeers(): Promise<void> {
       await Promise.all(

@@ -93,6 +93,7 @@ await test('typed prices', () => {
   assert.equal(parsePrice('5 mp'), null, 'unknown unit');
   assert.equal(parsePrice('1,5'), 2, 'a bare number is brass pennies');
   assert.equal(parsePrice('5 gc please'), null, 'leftover words');
+  assert.equal(parsePrice('1 gc, 5 ss'), 300, 'a comma between parts');
 });
 
 await test('paying makes change and never overspends', () => {
@@ -152,6 +153,16 @@ await test('a whole container moves with what is inside', async () => {
   const newPouch = b.list.find((i: Doc) => i.name === 'Pouch');
   assert.equal(b.list.find((i: Doc) => i.name === 'Rope').system.location.value, newBag.id);
   assert.equal(b.list.find((i: Doc) => i.name === 'Gem').system.location.value, newPouch.id);
+});
+
+await test('a container moved without its contents leaves them with their owner', async () => {
+  const a = actor('A3');
+  const b = actor('B3');
+  const bag = addItem(a, { name: 'Backpack', type: 'container', system: { quantity: { value: 1 }, location: { value: '' } } });
+  addItem(a, goods('Sword', 1, { location: { value: bag.id } }));
+  await transferItem(bag as never, 1, b as never, [], { withContents: false });
+  assert.equal(count(b, 'Sword'), 0, 'the trader did not pay for the sword');
+  assert.equal(count(a, 'Sword'), 1);
 });
 
 await test('two players dragging the same stack: nobody gets extra', async () => {
