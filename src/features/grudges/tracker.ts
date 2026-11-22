@@ -153,7 +153,9 @@ function trackerClass(): new () => TrackerWindow {
       const parties = rowParties(target);
       if (!parties) return;
       const delta = Number(target.dataset.delta) < 0 ? -1 : 1;
-      await changePoint(parties.holder, targetOfRelation(parties.rel), target.dataset.kind as Kind, delta);
+      // The name and picture the player saw stay as they were; the GM's view of who it really is doesn't overwrite them.
+      const { rel } = parties;
+      await changePoint(parties.holder, { uuid: rel.target, name: rel.name, img: rel.img }, target.dataset.kind as Kind, delta);
     }
 
     static async onRoll(this: TrackerWindow, _event: Event, target: HTMLElement): Promise<void> {

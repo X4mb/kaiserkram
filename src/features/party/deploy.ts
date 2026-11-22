@@ -83,15 +83,11 @@ async function deployOnce(tokenDoc: TokenDocument, options: DeployPartyOptions):
     x: tokenDoc.x + (tokenDoc.width * gridSize) / 2,
     y: tokenDoc.y + (tokenDoc.height * gridSize) / 2,
   };
-  const batchId = foundry.utils.randomID();
-
   await spawnActorsAround(scene, newActors, center, {
     hidden: tokenDoc.hidden,
     extraFlags: () => ({
-      [FLAGS.DEPLOY_BATCH_ID]: batchId,
       [FLAGS.ORIGIN_MARKER_ID]: tokenDoc.id,
       [FLAGS.ORIGIN_FOLDER_UUID]: folder.uuid,
-      [FLAGS.ORIGIN_FOLDER_NAME]: folder.name,
     }),
   });
   await applyAfterDeployBehavior(tokenDoc, options.afterDeployBehavior);

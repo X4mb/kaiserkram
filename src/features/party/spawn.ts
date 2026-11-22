@@ -68,7 +68,7 @@ function computeOffsets(count: number, layout: string): Offset[] {
 
 export interface SpawnActorsOptions {
   hidden?: boolean;
-  /** Per-token flags, keyed by dotted path under flags.kaiserkram (e.g. `party.deployBatchId`). */
+  /** Per-token flags, keyed by dotted path under flags.kaiserkram (e.g. `party.originMarkerId`). */
   extraFlags?: (actor: Actor, index: number) => Record<string, unknown> | undefined;
 }
 

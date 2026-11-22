@@ -9,6 +9,8 @@ type State = 'uninitialized' | 'initializing' | 'ready' | 'disposed';
 class VoiceChangerProcessor {
   private ctx: AudioContext | null = null;
   private rawInputStream: MediaStream | null = null;
+  /** Set once the raw mic track was taken out of Foundry's stream: from then on it is ours to stop. */
+  private ownsRawInput = false;
   private sourceNode: MediaStreamAudioSourceNode | null = null;
   private destNode: MediaStreamAudioDestinationNode | null = null;
   private processedStream: MediaStream | null = null;
@@ -39,6 +41,11 @@ class VoiceChangerProcessor {
   }
 
   /** True when the track is this processor's output (lets callers avoid re-processing it). */
+  /** The raw mic track now feeds only this processor (Foundry's stream carries the processed one). */
+  takeRawInput(): void {
+    this.ownsRawInput = true;
+  }
+
   ownsTrack(track: MediaStreamTrack): boolean {
     return this.processedStream?.getAudioTracks().includes(track) ?? false;
   }
@@ -100,6 +107,10 @@ class VoiceChangerProcessor {
       this.workletBlobUrl = null;
     }
     this.ctx = null;
+    // Foundry stops only the tracks still in its stream; the raw mic we took out is ours to end,
+    // or it keeps recording after a device switch or with A/V off.
+    if (this.ownsRawInput) for (const track of this.rawInputStream?.getTracks() ?? []) track.stop();
+    this.ownsRawInput = false;
     this.rawInputStream = null;
     this.sourceNode = null;
     this.destNode = null;

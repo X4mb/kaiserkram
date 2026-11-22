@@ -50,6 +50,7 @@ function defineProximityClient(Base: BaseClient) {
         if (processedTrack) {
           stream.removeTrack(rawTrack);
           stream.addTrack(processedTrack);
+          voiceChangerProcessor.takeRawInput();
           await this.#applyPinnedVoiceProfile();
         }
       } catch (err) {

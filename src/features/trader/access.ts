@@ -140,7 +140,8 @@ export async function createTrader(
         name: loc('kaiserkram.trader.sheet.newTrader', 'Trader'),
         type: 'npc',
         img: DEFAULT_TRADER_IMAGE,
-        prototypeToken: { texture: { src: DEFAULT_TRADER_IMAGE } },
+        // Linked, so every token of the trader shares one stock and purse.
+        prototypeToken: { texture: { src: DEFAULT_TRADER_IMAGE }, actorLink: true },
         // Prices are set on the trader itself, so changing the defaults later leaves it alone.
         flags: {
           [MODULE_ID]: expandObject({
@@ -172,7 +173,7 @@ export async function createTrader(
 
 async function setTrader(actor: WfrpActor, on: boolean): Promise<void> {
   if (on) {
-    await actor.setFlag(MODULE_ID, FLAGS.IS_TRADER, true);
+    await actor.update({ [`flags.${MODULE_ID}.${FLAGS.IS_TRADER}`]: true, 'prototypeToken.actorLink': true });
     await ensureBasicSkills(actor).catch((err) => console.error('[kaiserkram] trader: adding basic skills failed', err));
     openShop(actor, 'manage');
   } else {

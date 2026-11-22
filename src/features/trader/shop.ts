@@ -661,6 +661,10 @@ function shopClass(): ReturnType<typeof defineShop> {
 
 /** Open (or bring forward) the shop window for `trader` on this client. */
 export function openShop(trader: WfrpActor, tab?: ShopTab): TraderShop {
+  // An unlinked token (WFRP4e's default for NPCs) carries its own copy of the trader: always
+  // shop at the actor itself, so there is one stock and one purse.
+  const real = (trader as WfrpActor & { isToken?: boolean }).isToken ? (g().actors.get(trader.id) ?? trader) : trader;
+  trader = real;
   const shop = openShops.get(trader.uuid) ?? new (shopClass())(trader);
   if (tab) shop.tab = tab;
   void shop.render({ force: true });

@@ -10,10 +10,8 @@ export const FLAGS = {
   MARKER_PLACED: 'party.markerPlaced',
 
   // Set on each token spawned by a deploy, so it can find its way back.
-  DEPLOY_BATCH_ID: 'party.deployBatchId',
   ORIGIN_MARKER_ID: 'party.originMarkerId',
   ORIGIN_FOLDER_UUID: 'party.originFolderUuid',
-  ORIGIN_FOLDER_NAME: 'party.originFolderName',
 
   // Set on the actor that backs party markers for one folder, and on the folder holding those actors.
   MARKER_ACTOR_FOR: 'party.markerActorFor',

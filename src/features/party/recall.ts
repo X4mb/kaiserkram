@@ -10,27 +10,24 @@ export function isPartyMarker(tokenDoc: TokenDocument): boolean {
   return Boolean(flags(tokenDoc).getFlag(MODULE_ID, FLAGS.IS_PARTY_TOKEN));
 }
 
+/** The marker a token belongs to: itself if it is one, the one it was deployed from otherwise. */
+function markerIdOf(tokenDoc: TokenDocument): string | undefined {
+  if (isPartyMarker(tokenDoc)) return tokenDoc.id ?? undefined;
+  return flags(tokenDoc).getFlag(MODULE_ID, FLAGS.ORIGIN_MARKER_ID) as string | undefined;
+}
+
 export function isDeployedMember(tokenDoc: TokenDocument): boolean {
-  return Boolean(flags(tokenDoc).getFlag(MODULE_ID, FLAGS.DEPLOY_BATCH_ID));
+  return !isPartyMarker(tokenDoc) && Boolean(markerIdOf(tokenDoc));
 }
 
 /**
- * Finds the tokens linked to `tokenDoc`. From the marker, that's every token still linked
- * to it (across all its deploys, not just the latest); from a deployed member, it's just the
- * siblings from that one deploy. Used by both Recall and Deploy (to skip actors already out).
+ * Every token deployed from `tokenDoc`'s marker (across all its deploys), whether `tokenDoc` is
+ * the marker or one of them. Used by Recall, Deploy (to skip actors already out) and following.
  */
 export function findDeployedMembers(tokenDoc: TokenDocument, scene: Scene): TokenDocument[] {
-  if (isPartyMarker(tokenDoc)) {
-    return sceneTokens(scene).tokens.contents.filter(
-      (t) => flags(t).getFlag(MODULE_ID, FLAGS.ORIGIN_MARKER_ID) === tokenDoc.id,
-    );
-  }
-
-  const batchId = flags(tokenDoc).getFlag(MODULE_ID, FLAGS.DEPLOY_BATCH_ID) as string | undefined;
-  if (!batchId) return [];
-  return sceneTokens(scene).tokens.contents.filter(
-    (t) => flags(t).getFlag(MODULE_ID, FLAGS.DEPLOY_BATCH_ID) === batchId,
-  );
+  const markerId = markerIdOf(tokenDoc);
+  if (!markerId) return [];
+  return sceneTokens(scene).tokens.contents.filter((t) => flags(t).getFlag(MODULE_ID, FLAGS.ORIGIN_MARKER_ID) === markerId);
 }
 
 /** The middle of `members` on the canvas (each token's own center, averaged). */
@@ -70,10 +67,7 @@ const recalling = new Set<string>();
  * place if it's still on the scene, otherwise recreating one from the source folder.
  */
 export async function recallParty(tokenDoc: TokenDocument): Promise<void> {
-  const markerId = isPartyMarker(tokenDoc)
-    ? tokenDoc.id
-    : (flags(tokenDoc).getFlag(MODULE_ID, FLAGS.ORIGIN_MARKER_ID) as string | undefined);
-  const key = `${tokenDoc.parent?.id}.${markerId ?? tokenDoc.id}`;
+  const key = `${tokenDoc.parent?.id}.${markerIdOf(tokenDoc) ?? tokenDoc.id}`;
   if (recalling.has(key)) return;
   recalling.add(key);
   try {
@@ -105,9 +99,7 @@ async function recallOnce(tokenDoc: TokenDocument): Promise<void> {
   const gridSize = (scene.grid as unknown as { size: number }).size;
   const centroid = centerOf(members, scene);
 
-  const markerId = isPartyMarker(tokenDoc)
-    ? tokenDoc.id
-    : (flags(tokenDoc).getFlag(MODULE_ID, FLAGS.ORIGIN_MARKER_ID) as string | undefined);
+  const markerId = markerIdOf(tokenDoc);
   const marker = markerId ? sceneTokens(scene).tokens.get(markerId) : undefined;
 
   const memberIds = members.map((m) => m.id).filter((id): id is string => Boolean(id));
