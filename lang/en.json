@@ -376,7 +376,7 @@
   "kaiserkram.features.alchemist.name": "Dungeon Alchemist Import",
   "kaiserkram.features.alchemist.hint": "Imports a multi-level Dungeon Alchemist export as one scene with Scene Levels (walls, lights and heights set up), and adds a Stairs tool to link levels.",
   "kaiserkram.alchemist.SETTINGS.levelHeight.name": "Height per level",
-  "kaiserkram.alchemist.SETTINGS.levelHeight.hint": "How far apart the levels of an imported map are, in the scene's distance units. Can be changed for each import.",
+  "kaiserkram.alchemist.SETTINGS.levelHeight.hint": "How far apart the levels of an imported map are, in feet as Dungeon Alchemist exports them (with Metric Units on, shown and used in metres). Can be changed for each import.",
   "kaiserkram.alchemist.button": "Dungeon Alchemist",
   "kaiserkram.alchemist.title": "Import from Dungeon Alchemist",
   "kaiserkram.alchemist.intro": "Pick the lowest level of the export (e.g. Tower_00). Every file with the same name and a higher number becomes a level above it.",
@@ -419,5 +419,17 @@
   "kaiserkram.alchemist.outlineName": "Visible area: {level}",
   "kaiserkram.alchemist.roofName": "Roof area",
   "kaiserkram.alchemist.recut": "{name}: picture cut again to the new outline.",
-  "kaiserkram.trader.notifications.badPrice": "Could not read \"{text}\" as a price (try \"1 gc 5 ss\" or \"1/5/0\")."
+  "kaiserkram.trader.notifications.badPrice": "Could not read \"{text}\" as a price (try \"1 gc 5 ss\" or \"1/5/0\").",
+  "kaiserkram.features.metric.name": "Metric Units",
+  "kaiserkram.features.metric.hint": "Shows metres instead of yards and feet everywhere it is read: sheets, spells, items, chat cards, journals, dialogs. A yard counts as a metre, a foot as 0.3 m. Nothing stored changes, so turning it off brings yards back.",
+  "kaiserkram.features.doors.name": "Doors in Reach",
+  "kaiserkram.features.doors.hint": "Players open and close doors only when one of their tokens is close enough (a distance you set). The GM is never held back.",
+  "kaiserkram.features.damagePreview.name": "Damage Preview",
+  "kaiserkram.features.damagePreview.hint": "On a WFRP4e opposed-test result, shows the defender's owner and the GM how many Wounds the hit will cost and what is left, before Apply Damage.",
+  "kaiserkram.doors.SETTINGS.reach.name": "Reach to a door (squares)",
+  "kaiserkram.doors.SETTINGS.reach.hint": "How far from a door a player's token may stand to open or close it, in grid squares from the token's centre. 1 means right next to it; 1.5 gives a little slack.",
+  "kaiserkram.doors.tooFar": "Too far from the door: get within {reach} squares of it.",
+  "kaiserkram.damagePreview.line": "Expected: −{loss} Wounds → {after}/{max}",
+  "kaiserkram.damagePreview.critical": "Critical Wound +{critical}",
+  "kaiserkram.damagePreview.hint": "Damage less Toughness Bonus and armour at the hit location (at least 1). Talents, traits, weapon qualities and Ward can still change it."
 }

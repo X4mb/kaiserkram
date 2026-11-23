@@ -20,6 +20,27 @@ const TEXT: Record<FeatureId, { name: [string, string]; hint: [string, string] }
       "Imports a multi-level Dungeon Alchemist export as one scene with Scene Levels (walls, lights and heights set up), and adds a Stairs tool to link levels.",
     ],
   },
+  metric: {
+    name: ['kaiserkram.features.metric.name', 'Metric Units'],
+    hint: [
+      'kaiserkram.features.metric.hint',
+      'Shows metres instead of yards and feet everywhere it is read: sheets, spells, items, chat cards, journals, dialogs. A yard counts as a metre, a foot as 0.3 m. Nothing stored changes, so turning it off brings yards back.',
+    ],
+  },
+  doors: {
+    name: ['kaiserkram.features.doors.name', 'Doors in Reach'],
+    hint: [
+      'kaiserkram.features.doors.hint',
+      'Players open and close doors only when one of their tokens is close enough (a distance you set). The GM is never held back.',
+    ],
+  },
+  damagePreview: {
+    name: ['kaiserkram.features.damagePreview.name', 'Damage Preview'],
+    hint: [
+      'kaiserkram.features.damagePreview.hint',
+      "On a WFRP4e opposed-test result, shows the defender's owner and the GM how many Wounds the hit will cost and what is left, before Apply Damage.",
+    ],
+  },
   grudges: {
     name: ['kaiserkram.features.grudges.name', 'Grudges'],
     hint: [

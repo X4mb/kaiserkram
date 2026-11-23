@@ -51,6 +51,11 @@ export type BuildOptions = {
    * instead of a level of its own: the cut roof picture, its outline and the uncut original.
    */
   roofTile?: { image: string; outline: number[][]; source: string } | null;
+  /**
+   * Distances in other units than the export's: `scale` multiplies grid distance and light radii,
+   * `units` names the scene's unit (feet exports shown in metres: 0.3 and "m").
+   */
+  units?: { scale: number; name: string } | null;
   /** Flag scope for the outline regions (the module id). */
   scope: string;
   /** Names for the outline regions. */
@@ -134,6 +139,10 @@ export function buildScene(files: LevelFile[], options: BuildOptions): BuiltScen
   const base = sorted[0].map;
   const firstNumber = sorted[0].number;
   const { senseNone, senseLimited, senseNormal, moveNone, moveNormal } = options.constants;
+  // Only a feet export is converted (Dungeon Alchemist's default); anything else stays as exported.
+  const feet = /^(ft|feet|foot)\.?$/i.test(base.gridUnits ?? 'ft');
+  const units = feet ? options.units : null;
+  const scale = units?.scale ?? 1;
   // Dungeon Alchemist writes Foundry's old wall values: 0 none, 1 normal, 2 limited.
   const sense = (v: number | undefined) => (v === 1 ? senseNormal : v === 2 ? senseLimited : senseNone);
 
@@ -195,8 +204,8 @@ export function buildScene(files: LevelFile[], options: BuildOptions): BuiltScen
         elevation: bottom,
         levels: [id],
         config: {
-          dim: Number(l.dim) || 0,
-          bright: Number(l.bright) || 0,
+          dim: (Number(l.dim) || 0) * scale,
+          bright: (Number(l.bright) || 0) * scale,
           color: l.tintColor ?? null,
           alpha: Number(l.tintAlpha) || 0,
         },
@@ -238,8 +247,8 @@ export function buildScene(files: LevelFile[], options: BuildOptions): BuiltScen
       shiftY: Number(base.shiftY) || 0,
       grid: {
         size: base.grid,
-        distance: Number(base.gridDistance) || 5,
-        units: base.gridUnits ?? 'ft',
+        distance: Math.round((Number(base.gridDistance) || 5) * scale * 100) / 100,
+        units: units?.name ?? base.gridUnits ?? 'ft',
         color: base.gridColor ?? '#000000',
         alpha: base.gridAlpha ?? 0.2,
       },

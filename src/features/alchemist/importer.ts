@@ -6,6 +6,7 @@ import { route } from '../../core/foundryApi.js';
 import { cutPicture, ensureFolder, filePicker, folderOf, upload } from './files.js';
 import { outlineFromWalls } from './outline.js';
 import { SETTINGS } from './settings.js';
+import { isEnabled } from '../../core/toggles.js';
 
 /**
  * The import window: where the export is (a folder on this computer, uploaded on import, or
@@ -52,6 +53,9 @@ function constants() {
 }
 
 type Options = { sceneName: string; firstLevel: number; levelHeight: number; cut: boolean };
+
+/** Table rounding, as Metric Units shows feet: 5 ft squares become 1.5 m. */
+const METRE_PER_FOOT = 0.3;
 
 /** One level as read: its data, its picture's path in Foundry, and the picture itself if it came from this computer. */
 type Source = { number: number; map: DaMap; image: string | null; blob?: Blob };
@@ -126,6 +130,7 @@ async function createScene(sources: Source[], options: Options, folder: string):
     newId: () => foundry.utils.randomID(16),
     levelName,
     constants: constants(),
+    units: isEnabled('metric') ? { scale: METRE_PER_FOOT, name: 'm' } : null,
     roofTile: roof,
     scope: MODULE_ID,
     outlineName: (level) => fmt('kaiserkram.alchemist.outlineName', 'Visible area: {level}', { level }),
@@ -237,7 +242,9 @@ type Choice = { source: string; first: string; path: string; firstLevel: number;
 export async function openImport(): Promise<void> {
   if (!game.user?.isGM) return;
   let picked: File[] = [];
-  const levelHeight = Number(settings().get(MODULE_ID, SETTINGS.LEVEL_HEIGHT)) || 10;
+  // With Metric Units on, scenes are made in metres; the setting is in the export's feet.
+  const feetHeight = Number(settings().get(MODULE_ID, SETTINGS.LEVEL_HEIGHT)) || 10;
+  const levelHeight = isEnabled('metric') ? Math.round(feetHeight * METRE_PER_FOOT * 10) / 10 : feetHeight;
   const firstLevel = Number(settings().get(MODULE_ID, SETTINGS.FIRST_LEVEL)) || 0;
 
   const choice = (await dialogV2().wait({

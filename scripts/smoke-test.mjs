@@ -236,7 +236,7 @@ function ok(label) {
 
 // 1. Everything on, WFRP4e world.
 {
-  const all = { landing: true, travel: true, alchemist: true, party: true, earshot: true, grudges: true, trader: true, containers: true };
+  const all = { landing: true, travel: true, alchemist: true, metric: true, doors: true, party: true, earshot: true, grudges: true, trader: true, containers: true, damagePreview: true };
   const { record, featureHooks, hookFns, game, CONFIG, OriginalClient } = await run({
     label: 'all-on',
     systemId: 'wfrp4e',
@@ -320,7 +320,7 @@ function ok(label) {
 
 // 3. Everything on in a non-WFRP world: Trader stays off.
 {
-  const all = { landing: true, travel: true, alchemist: true, party: true, earshot: true, grudges: true, trader: true, containers: true };
+  const all = { landing: true, travel: true, alchemist: true, metric: true, doors: true, party: true, earshot: true, grudges: true, trader: true, containers: true, damagePreview: true };
   const { record, game } = await run({ label: 'dnd5e', systemId: 'dnd5e', enabled: all });
   assert.deepEqual(record.errors, []);
   assert.deepEqual(record.sheets, []);

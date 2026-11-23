@@ -30,6 +30,9 @@ const { totalFor } = await import('../src/features/trader/trader.js');
 const { handleRequest, setBroadcaster } = await import('../src/features/party/trade/authority.js');
 const { buildScene, filesOfMap } = await import('../src/features/alchemist/build.js');
 const { outlineFromWalls } = await import('../src/features/alchemist/outline.js');
+const { toMetric } = await import('../src/features/metric/convert.js');
+const { previewDamage } = await import('../src/features/damagePreview/index.js');
+const { distanceToSegment } = await import('../src/features/doors/index.js');
 
 type Doc = Record<string, any>;
 let nextId = 0;
@@ -235,6 +238,43 @@ await test('levels, heights and the roof from the file numbers', () => {
   const levels = (built.data as Doc).levels as Doc[];
   assert.deepEqual(levels.map((l) => [l.name, l.elevation.bottom, l.elevation.top]), [['L-1', -10, 0], ['L0', 0, 10], ['Roof', 10, 20]]);
   assert.equal((built.data as Doc).initialLevel, built.levels[1].id, 'opens on the ground floor');
+});
+
+// --- Metric, doors, damage preview -------------------------------------------------------------
+await test('imperial units read as metric', () => {
+  const cases: [string, string][] = [
+    ['Range: 24 yds', 'Range: 24 m'], ['Willpower yards', 'Willpower metres'], ['Yards', 'Metres'], ['1 yard', '1 metre'],
+    ['6 feet tall', '1.8 m tall'], ['30ft', '9m'], ['a 10-foot pole', 'a 3-m pole'], ['At your feet', 'At your feet'],
+    ['40 miles', '64 km'], ['12 inches', '30 cm'], ['24 yds - 48 yds: -10', '24 m - 48 m: -10'],
+    ['backyard', 'backyard'], ['the yardarm', 'the yardarm'], ['1,5 miles', '2.4 km'],
+  ];
+  for (const [text, metric] of cases) assert.equal(toMetric(text), metric, text);
+});
+
+await test('door reach measured to the nearest point of the door', () => {
+  assert.equal(distanceToSegment({ x: 0, y: 5 }, { x: -10, y: 0 }, { x: 10, y: 0 }), 5);
+  assert.equal(distanceToSegment({ x: 13, y: 4 }, { x: -10, y: 0 }, { x: 10, y: 0 }), 5, 'past the end: to the end');
+});
+
+await test('expected wounds and a critical below zero', () => {
+  assert.deepEqual(previewDamage(10, 3, 2, 12, 12), { loss: 5, after: 7, max: 12, critical: 0 });
+  assert.deepEqual(previewDamage(4, 3, 2, 12, 12), { loss: 1, after: 11, max: 12, critical: 0 }, 'at least 1');
+  assert.deepEqual(previewDamage(12, 3, 0, 4, 12), { loss: 9, after: -5, max: 12, critical: 50 });
+});
+
+await test('a feet export becomes a metre scene with Metric Units', () => {
+  let id = 0;
+  const built = buildScene(
+    [{ number: 0, map: { width: 1500, height: 1500, grid: 150, gridDistance: 5, gridUnits: 'ft', lights: [{ x: 1, y: 1, dim: 20, bright: 10 }] }, image: 'a.webp' }],
+    {
+      sceneName: 'M', firstLevel: 0, levelHeight: 3, newId: () => `L${id++}`, levelName: () => 'L',
+      constants: { senseNone: 0, senseLimited: 10, senseNormal: 20, moveNone: 0, moveNormal: 20, fade: 1 },
+      scope: 'kaiserkram', outlineName: (l) => l, roofName: 'Roof', units: { scale: 0.3, name: 'm' },
+    },
+  );
+  const data = built.data as Doc;
+  assert.deepEqual([data.grid.distance, data.grid.units], [1.5, 'm']);
+  assert.deepEqual([data.lights[0].config.dim, data.lights[0].config.bright], [6, 3]);
 });
 
 console.log(`[kaiserkram] unit: ${passed} passed`);

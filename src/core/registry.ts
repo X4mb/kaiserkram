@@ -7,6 +7,9 @@ import { containers } from '../features/containers/index.js';
 import { grudges } from '../features/grudges/index.js';
 import { travel } from '../features/travel/index.js';
 import { alchemist } from '../features/alchemist/index.js';
+import { metric } from '../features/metric/index.js';
+import { doors } from '../features/doors/index.js';
+import { damagePreview } from '../features/damagePreview/index.js';
 
 /** Every feature, in the order the feature manager lists them. */
-export const FEATURES: readonly Feature[] = [landing, travel, alchemist, party, earshot, grudges, trader, containers];
+export const FEATURES: readonly Feature[] = [landing, travel, alchemist, metric, doors, party, earshot, grudges, trader, containers, damagePreview];

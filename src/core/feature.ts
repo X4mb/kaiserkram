@@ -1,4 +1,4 @@
-export type FeatureId = 'landing' | 'party' | 'earshot' | 'trader' | 'containers' | 'grudges' | 'travel' | 'alchemist';
+export type FeatureId = 'landing' | 'party' | 'earshot' | 'trader' | 'containers' | 'grudges' | 'travel' | 'alchemist' | 'metric' | 'doors' | 'damagePreview';
 export type FeatureGroup = 'general' | 'wfrp4e';
 
 /**
