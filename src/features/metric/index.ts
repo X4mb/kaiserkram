@@ -1,6 +1,7 @@
 import type { Feature } from '../../core/feature.js';
 import { on, toElement } from '../../core/foundryApi.js';
 import { toMetric } from './convert.js';
+import { patchCanvasUnits } from './canvas.js';
 
 /**
  * Metric units: everything the table reads (sheets, items, spells, chat cards, journals, dialogs,
@@ -46,5 +47,8 @@ export const metric: Feature = {
     // Every window (sheets, journals, dialogs, the roll dialog) and every chat message.
     on('renderApplicationV2', onRender as (...args: never[]) => unknown);
     on('renderChatMessageHTML', ((_message: unknown, html: unknown) => onRender(null, html)) as (...args: never[]) => unknown);
+    // The ruler and token labels on the canvas: after the system has set its own classes.
+    on('setup', patchCanvasUnits);
+    on('canvasInit', patchCanvasUnits);
   },
 };

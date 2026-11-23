@@ -4,6 +4,8 @@ import { sendRequest } from './trade/client.js';
 import { fmt, loc } from '../../core/i18n.js';
 import { isPartyActor } from './inventory.js';
 import { addHudButton, hudColumn } from './hud.js';
+import { deployParty } from './deploy.js';
+import { findDeployedMembers, isPartyMarker, recallParty } from './recall.js';
 import { goodsAndMoney, quantityOf, transferItem, type ActorLike, type ItemLike } from '../../core/items.js';
 
 /**
@@ -269,13 +271,14 @@ export function routeDirectoryClick(_app: unknown, html: unknown): void {
   root.addEventListener('dblclick', intercept, true);
 }
 
-type TokenProto = { _onClickLeft2?(event: unknown): unknown; actor?: ActorLike | null } & Record<symbol, unknown>;
+type TokenProto = { _onClickLeft2?(event: unknown): unknown; actor?: ActorLike | null; document?: TokenDocument } & Record<symbol, unknown>;
 const PATCHED = Symbol('kaiserkramStashDoubleClick');
 
 /**
- * A player double-clicking the party marker gets the stash rather than the actor sheet. GMs keep
- * the sheet. Patched on the token class in
- * use (a system's own Token subclass included) before any token is drawn.
+ * Double-clicking the party marker: a player gets the stash rather than the actor sheet; the GM
+ * deploys the party, or recalls it when it is already out (the sheet stays in the Actors sidebar).
+ * Patched on the token class in use (a system's own Token subclass included) before any token is
+ * drawn.
  */
 export function routeMarkerDoubleClick(): void {
   const proto = (CONFIG as unknown as { Token?: { objectClass?: { prototype: TokenProto } } }).Token?.objectClass?.prototype;
@@ -283,6 +286,13 @@ export function routeMarkerDoubleClick(): void {
   const original = proto._onClickLeft2;
   proto._onClickLeft2 = function (this: TokenProto, event: unknown) {
     const actor = this.actor;
+    const doc = this.document;
+    if (game.user?.isGM && doc && isPartyMarker(doc)) {
+      const scene = doc.parent as Scene | null;
+      if (scene && findDeployedMembers(doc, scene).length) void recallParty(doc);
+      else void deployParty(doc);
+      return;
+    }
     if (!game.user?.isGM && actor && actor.isOwner && isPartyActor(actor)) {
       openStash(actor);
       return;

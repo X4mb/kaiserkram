@@ -43,3 +43,31 @@ export function toMetric(text: string): string {
   for (const [pattern, replace] of RULES) out = out.replace(pattern, replace as (substring: string, ...args: string[]) => string);
   return out;
 }
+
+/** A scene's distance unit in metric: the factor and the new name; null when already metric. */
+export function metricUnit(units: string): { factor: number; name: string } | null {
+  const u = units.trim().toLowerCase().replace(/\.$/, '');
+  if (['ft', 'feet', 'foot'].includes(u)) return { factor: 0.3, name: 'm' };
+  if (['yd', 'yds', 'yard', 'yards'].includes(u)) return { factor: 1, name: 'm' };
+  if (['mi', 'mile', 'miles'].includes(u)) return { factor: 1.6, name: 'km' };
+  return null;
+}
+
+/**
+ * Every number in `text` times `factor`, written for `lang` ("+15" → "+4,5" in German). Foundry
+ * writes ruler numbers with the language's separators, so they are read the same way.
+ */
+export function scaleNumbers(text: string, factor: number, lang = 'en'): string {
+  if (factor === 1) return text;
+  const parts = new Intl.NumberFormat(lang).formatToParts(12345.6);
+  const group = parts.find((p) => p.type === 'group')?.value ?? ',';
+  const decimal = parts.find((p) => p.type === 'decimal')?.value ?? '.';
+  return text.replace(/\d[\d.,\s  ']*/g, (match) => {
+    const trail = /[.,\s  ']*$/.exec(match)?.[0] ?? '';
+    const digits = match.slice(0, match.length - trail.length);
+    const value = Number(digits.split(group).join('').replace(decimal, '.'));
+    if (!Number.isFinite(value)) return match;
+    const scaled = Math.round(value * factor * 100) / 100;
+    return scaled.toLocaleString(lang, { maximumFractionDigits: 2 }) + trail;
+  });
+}

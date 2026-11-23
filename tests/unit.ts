@@ -30,7 +30,7 @@ const { totalFor } = await import('../src/features/trader/trader.js');
 const { handleRequest, setBroadcaster } = await import('../src/features/party/trade/authority.js');
 const { buildScene, filesOfMap } = await import('../src/features/alchemist/build.js');
 const { outlineFromWalls } = await import('../src/features/alchemist/outline.js');
-const { toMetric } = await import('../src/features/metric/convert.js');
+const { metricUnit, scaleNumbers, toMetric } = await import('../src/features/metric/convert.js');
 const { previewDamage } = await import('../src/features/damagePreview/index.js');
 const { distanceToSegment } = await import('../src/features/doors/index.js');
 
@@ -249,6 +249,17 @@ await test('imperial units read as metric', () => {
     ['backyard', 'backyard'], ['the yardarm', 'the yardarm'], ['1,5 miles', '2.4 km'],
   ];
   for (const [text, metric] of cases) assert.equal(toMetric(text), metric, text);
+});
+
+await test('ruler numbers in metric, in the table language', () => {
+  assert.deepEqual(metricUnit('ft'), { factor: 0.3, name: 'm' });
+  assert.equal(metricUnit('m'), null, 'already metric: left alone, so converting twice changes nothing');
+  assert.equal(scaleNumbers('15', 0.3, 'en'), '4.5');
+  assert.equal(scaleNumbers('+5', 0.3, 'en'), '+1.5');
+  assert.equal(scaleNumbers('\u22125', 0.3, 'en'), '\u22121.5');
+  assert.equal(scaleNumbers('1,000', 0.3, 'en'), '300');
+  assert.equal(scaleNumbers('12,5', 0.3, 'de'), '3,75');
+  assert.equal(scaleNumbers('24', 1, 'en'), '24');
 });
 
 await test('door reach measured to the nearest point of the door', () => {
